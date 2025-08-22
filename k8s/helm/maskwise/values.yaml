@@ -1,0 +1,296 @@
+# Maskwise Helm Chart Values
+
+# Global settings
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: ""
+
+# Application images
+image:
+  registry: docker.io
+  repository: maskwise
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+# API service configuration
+api:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: maskwise/api
+    tag: ""
+  service:
+    type: ClusterIP
+    port: 3001
+    targetPort: 3001
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  env:
+    NODE_ENV: production
+    JWT_SECRET: ""
+    UPLOAD_DIR: /app/uploads
+    STORAGE_DIR: /app/storage
+
+# Worker service configuration
+worker:
+  enabled: true
+  replicaCount: 3
+  image:
+    repository: maskwise/worker
+    tag: ""
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+    requests:
+      cpu: 1000m
+      memory: 1Gi
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 85
+
+# Web frontend configuration
+web:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: maskwise/web
+    tag: ""
+  service:
+    type: ClusterIP
+    port: 3000
+    targetPort: 3000
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+
+# Presidio Analyzer
+presidioAnalyzer:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: mcr.microsoft.com/presidio-analyzer
+    tag: latest
+  service:
+    type: ClusterIP
+    port: 3000
+    targetPort: 3000
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 75
+
+# Presidio Anonymizer
+presidioAnonymizer:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: mcr.microsoft.com/presidio-anonymizer
+    tag: latest
+  service:
+    type: ClusterIP
+    port: 3000
+    targetPort: 3000
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 75
+
+# Apache Tika
+tika:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: apache/tika
+    tag: latest-full
+  service:
+    type: ClusterIP
+    port: 9998
+    targetPort: 9998
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+    requests:
+      cpu: 1000m
+      memory: 2Gi
+
+# Tesseract OCR
+tesseract:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: tesseractshadow/tesseract4re
+    tag: latest
+  service:
+    type: ClusterIP
+    port: 8884
+    targetPort: 8884
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: maskwise.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: web
+        - path: /api
+          pathType: Prefix
+          service: api
+  tls:
+    - secretName: maskwise-tls
+      hosts:
+        - maskwise.example.com
+
+# Storage configuration
+persistence:
+  enabled: true
+  storageClass: ""
+  uploads:
+    size: 50Gi
+    accessMode: ReadWriteMany
+  storage:
+    size: 100Gi
+    accessMode: ReadWriteMany
+
+# PostgreSQL dependency configuration
+postgresql:
+  enabled: true
+  auth:
+    postgresPassword: ""
+    username: maskwise
+    password: ""
+    database: maskwise
+  primary:
+    persistence:
+      enabled: true
+      size: 20Gi
+  metrics:
+    enabled: true
+
+# Redis dependency configuration
+redis:
+  enabled: true
+  auth:
+    enabled: true
+    password: ""
+  master:
+    persistence:
+      enabled: true
+      size: 8Gi
+  metrics:
+    enabled: true
+
+# ServiceMonitor for Prometheus
+serviceMonitor:
+  enabled: false
+  namespace: monitoring
+  interval: 30s
+  scrapeTimeout: 10s
+
+# Pod Security Context
+podSecurityContext:
+  fsGroup: 1001
+  runAsNonRoot: true
+  runAsUser: 1001
+
+# Security Context
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1001
+  capabilities:
+    drop:
+      - ALL
+
+# Network Policies
+networkPolicy:
+  enabled: false
+  ingress: []
+  egress: []
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# RBAC
+rbac:
+  create: true
+  rules: []
+
+# Service Account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# Node affinity
+nodeAffinity: {}
+
+# Pod affinity
+podAffinity: {}
+
+# Pod anti-affinity
+podAntiAffinity: {}
+
+# Tolerations
+tolerations: []
+
+# Node selector
+nodeSelector: {}

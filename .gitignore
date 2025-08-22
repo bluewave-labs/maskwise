@@ -1,0 +1,126 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+*.lcov
+.nyc_output
+
+# Production builds
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# Misc
+.DS_Store
+*.pem
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+
+# IDEs and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# OS files
+Thumbs.db
+
+# Turbo
+.turbo/
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Docker
+docker-compose.override.yml
+
+# Uploads and storage (contains user data)
+uploads/
+storage/
+temp/
+
+# Logs
+logs/
+*.log
+
+# Database
+*.sqlite
+*.sqlite3
+*.db
+prisma/migrations/dev/
+
+# Cache
+.cache/
+.parcel-cache/
+.eslintcache
+
+# Package manager files
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# Claude specific files (sensitive)
+CLAUDE.md
+claude.md
+.claude/
+
+# Test output
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Temporary files
+tmp/
+*.tmp
+*.temp
+
+# Security sensitive
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
+private/
+secrets/
+
+# Backup files
+*.backup
+*.bak
+*.old
+
+# Lock files (we'll keep package-lock.json)
+yarn.lock
+pnpm-lock.yaml
+bun.lockb

@@ -1,0 +1,29 @@
+apiVersion: v2
+name: maskwise
+description: On-premise PII detection and anonymization platform built on Microsoft Presidio
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+home: https://github.com/your-org/maskwise
+sources:
+  - https://github.com/your-org/maskwise
+maintainers:
+  - name: Maskwise Team
+    email: team@maskwise.com
+
+keywords:
+  - pii-detection
+  - data-privacy
+  - presidio
+  - anonymization
+  - nlp
+
+dependencies:
+  - name: postgresql
+    version: 12.12.10
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+  - name: redis
+    version: 18.1.5
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled

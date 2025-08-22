@@ -1,0 +1,195 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: maskwise
+      POSTGRES_USER: maskwise
+      POSTGRES_PASSWORD: maskwise_dev_password
+    ports:
+      - "5436:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./data/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U maskwise"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for job queues
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Microsoft Presidio Analyzer
+  presidio-analyzer:
+    image: mcr.microsoft.com/presidio-analyzer:latest
+    ports:
+      - "5003:3000"
+    environment:
+      - PORT=3000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Microsoft Presidio Anonymizer
+  presidio-anonymizer:
+    image: mcr.microsoft.com/presidio-anonymizer:latest
+    ports:
+      - "5004:3000"
+    environment:
+      - PORT=3000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Apache Tika for document processing
+  tika:
+    image: apache/tika:latest-full
+    ports:
+      - "9998:9998"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9998/version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Tesseract OCR service
+  tesseract:
+    image: hertzg/tesseract-server:latest
+    ports:
+      - "8884:3000"
+    environment:
+      - PORT=3000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Backend API
+  api:
+    build:
+      context: .
+      dockerfile: ./apps/api/Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://maskwise:maskwise_dev_password@postgres:5432/maskwise
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=maskwise_jwt_secret_dev_only
+      - PRESIDIO_ANALYZER_URL=http://presidio-analyzer:3000
+      - PRESIDIO_ANONYMIZER_URL=http://presidio-anonymizer:3000
+      - TIKA_URL=http://tika:9998
+      - TESSERACT_URL=http://tesseract:8884
+      - UPLOAD_DIR=/app/uploads
+      - STORAGE_DIR=/app/storage
+    volumes:
+      - ./uploads:/app/uploads
+      - ./storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      presidio-analyzer:
+        condition: service_healthy
+      presidio-anonymizer:
+        condition: service_healthy
+      tika:
+        condition: service_healthy
+    develop:
+      watch:
+        - action: sync
+          path: ./apps/api
+          target: /app
+          ignore:
+            - node_modules/
+        - action: rebuild
+          path: ./apps/api/package.json
+
+  # Worker service
+  worker:
+    build:
+      context: .
+      dockerfile: ./apps/worker/Dockerfile
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://maskwise:maskwise_dev_password@postgres:5432/maskwise
+      - REDIS_URL=redis://redis:6379
+      - PRESIDIO_ANALYZER_URL=http://presidio-analyzer:3000
+      - PRESIDIO_ANONYMIZER_URL=http://presidio-anonymizer:3000
+      - TIKA_URL=http://tika:9998
+      - TESSERACT_URL=http://tesseract:8884
+      - UPLOAD_DIR=/app/uploads
+      - STORAGE_DIR=/app/storage
+    volumes:
+      - ./uploads:/app/uploads
+      - ./storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      presidio-analyzer:
+        condition: service_healthy
+      presidio-anonymizer:
+        condition: service_healthy
+      tika:
+        condition: service_healthy
+    develop:
+      watch:
+        - action: sync
+          path: ./apps/worker
+          target: /app
+          ignore:
+            - node_modules/
+        - action: rebuild
+          path: ./apps/worker/package.json
+
+  # Frontend web app
+  web:
+    build:
+      context: .
+      dockerfile: ./apps/web/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:3001
+      - NODE_ENV=development
+    depends_on:
+      - api
+    develop:
+      watch:
+        - action: sync
+          path: ./apps/web
+          target: /app
+          ignore:
+            - node_modules/
+            - .next/
+        - action: rebuild
+          path: ./apps/web/package.json
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  default:
+    name: maskwise-network

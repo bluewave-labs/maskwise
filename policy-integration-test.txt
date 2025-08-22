@@ -1,0 +1,20 @@
+Policy Integration Test Data
+============================
+
+High confidence PII (should be detected):
+- Email: john.doe@company.com
+- SSN: 123-45-6789
+- Credit Card: 4532-1234-5678-9012
+- Phone: (555) 123-4567
+
+Medium confidence data:
+- Potential Email: contact@test
+- Phone-like: 555.123.4567
+- Date: 2024-01-15
+
+Personal Information:
+- Name: Jane Smith
+- Address: 123 Main Street, Anytown, CA 12345
+- Website: https://example.com
+
+This file tests policy-driven PII detection with different confidence thresholds and actions.

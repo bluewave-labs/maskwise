@@ -1,0 +1,178 @@
+{{- if .Values.presidioAnalyzer.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "maskwise.fullname" . }}-presidio-analyzer
+  labels:
+    {{- include "maskwise.labels" . | nindent 4 }}
+    app.kubernetes.io/component: presidio-analyzer
+spec:
+  {{- if not .Values.presidioAnalyzer.autoscaling.enabled }}
+  replicas: {{ .Values.presidioAnalyzer.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "maskwise.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: presidio-analyzer
+  template:
+    metadata:
+      labels:
+        {{- include "maskwise.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: presidio-analyzer
+    spec:
+      containers:
+        - name: presidio-analyzer
+          image: "{{ .Values.presidioAnalyzer.image.repository }}:{{ .Values.presidioAnalyzer.image.tag }}"
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.presidioAnalyzer.resources | nindent 12 }}
+{{- end }}
+
+{{- if .Values.presidioAnonymizer.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "maskwise.fullname" . }}-presidio-anonymizer
+  labels:
+    {{- include "maskwise.labels" . | nindent 4 }}
+    app.kubernetes.io/component: presidio-anonymizer
+spec:
+  {{- if not .Values.presidioAnonymizer.autoscaling.enabled }}
+  replicas: {{ .Values.presidioAnonymizer.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "maskwise.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: presidio-anonymizer
+  template:
+    metadata:
+      labels:
+        {{- include "maskwise.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: presidio-anonymizer
+    spec:
+      containers:
+        - name: presidio-anonymizer
+          image: "{{ .Values.presidioAnonymizer.image.repository }}:{{ .Values.presidioAnonymizer.image.tag }}"
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.presidioAnonymizer.resources | nindent 12 }}
+{{- end }}
+
+{{- if .Values.tika.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "maskwise.fullname" . }}-tika
+  labels:
+    {{- include "maskwise.labels" . | nindent 4 }}
+    app.kubernetes.io/component: tika
+spec:
+  replicas: {{ .Values.tika.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "maskwise.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: tika
+  template:
+    metadata:
+      labels:
+        {{- include "maskwise.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: tika
+    spec:
+      containers:
+        - name: tika
+          image: "{{ .Values.tika.image.repository }}:{{ .Values.tika.image.tag }}"
+          ports:
+            - name: http
+              containerPort: 9998
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /version
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /version
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.tika.resources | nindent 12 }}
+{{- end }}
+
+{{- if .Values.tesseract.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "maskwise.fullname" . }}-tesseract
+  labels:
+    {{- include "maskwise.labels" . | nindent 4 }}
+    app.kubernetes.io/component: tesseract
+spec:
+  replicas: {{ .Values.tesseract.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "maskwise.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: tesseract
+  template:
+    metadata:
+      labels:
+        {{- include "maskwise.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: tesseract
+    spec:
+      containers:
+        - name: tesseract
+          image: "{{ .Values.tesseract.image.repository }}:{{ .Values.tesseract.image.tag }}"
+          ports:
+            - name: http
+              containerPort: 8884
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.tesseract.resources | nindent 12 }}
+{{- end }}

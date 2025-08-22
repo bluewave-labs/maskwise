@@ -1,0 +1,315 @@
+// This is your Prisma schema file
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  role      UserRole @default(ADMIN)
+  firstName String?
+  lastName  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isActive  Boolean  @default(true)
+
+  // Relations
+  projects   Project[]
+  auditLogs  AuditLog[]
+  createdJobs Job[] @relation("CreatedBy")
+
+  @@map("users")
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  tags        String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  isActive    Boolean  @default(true)
+
+  // Relations
+  userId   String
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  datasets Dataset[]
+
+  @@map("projects")
+}
+
+model Dataset {
+  id           String      @id @default(cuid())
+  name         String
+  filename     String
+  fileType     FileType
+  fileSize     BigInt
+  sourcePath   String
+  sourceType   SourceType
+  contentHash  String
+  metadataHash String
+  status       DatasetStatus @default(PENDING)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  // File metadata
+  rowCount    Int?
+  columnCount Int?
+  schema      Json?
+  
+  // Processing results
+  outputPath  String?
+  reportPath  String?
+  
+  // Relations
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  jobs      Job[]
+  findings  Finding[]
+
+  @@map("datasets")
+}
+
+model Job {
+  id        String    @id @default(cuid())
+  type      JobType
+  status    JobStatus @default(QUEUED)
+  priority  Int       @default(1)
+  startedAt DateTime?
+  endedAt   DateTime?
+  error     String?
+  progress  Int       @default(0)
+  metadata  Json?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Relations
+  datasetId String
+  dataset   Dataset @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  createdById String
+  createdBy   User   @relation("CreatedBy", fields: [createdById], references: [id])
+  policy      Policy @relation(fields: [policyId], references: [id])
+  policyId    String
+
+  @@map("jobs")
+}
+
+model Finding {
+  id         String     @id @default(cuid())
+  entityType EntityType
+  text       String     // Masked/redacted text for display
+  confidence Float
+  startOffset Int
+  endOffset  Int
+  lineNumber Int?
+  columnName String?
+  contextBefore String?
+  contextAfter  String?
+  createdAt  DateTime   @default(now())
+
+  // Relations
+  datasetId String
+  dataset   Dataset @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+
+  @@map("findings")
+}
+
+model Policy {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  isDefault   Boolean  @default(false)
+  config      Json     // YAML policy stored as JSON
+  version     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  versions PolicyVersion[]
+  jobs     Job[]
+
+  @@map("policies")
+}
+
+model PolicyVersion {
+  id          String   @id @default(cuid())
+  version     String
+  config      Json     // YAML policy stored as JSON
+  changelog   String?
+  isActive    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  // Relations
+  policyId String
+  policy   Policy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  @@unique([policyId, version])
+  @@map("policy_versions")
+}
+
+model PolicyTemplate {
+  id          String              @id @default(cuid())
+  name        String
+  description String
+  category    PolicyTemplateCategory
+  config      Json                // YAML template stored as JSON
+  tags        String[]
+  downloads   Int                 @default(0)
+  rating      Float?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@map("policy_templates")
+}
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  action     AuditAction
+  resource   String      // e.g., "project", "dataset", "policy"
+  resourceId String
+  details    Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime    @default(now())
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
+
+model EvidenceManifest {
+  id           String   @id @default(cuid())
+  jobId        String   @unique
+  datasetHash  String
+  policyHash   String
+  resultsHash  String
+  signature    String?  // Digital signature for integrity
+  manifest     Json     // Complete evidence manifest
+  createdAt    DateTime @default(now())
+
+  @@map("evidence_manifests")
+}
+
+model SystemConfig {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("system_config")
+}
+
+// Enums
+enum UserRole {
+  ADMIN
+  DATA_ENGINEER
+  ML_ENGINEER
+  COMPLIANCE_OFFICER
+}
+
+enum FileType {
+  CSV
+  JSONL
+  PARQUET
+  TXT
+  PDF
+  DOCX
+  DOC
+  XLSX
+  XLS
+  PPTX
+  PPT
+  ODT
+  ODS
+  ODP
+  RTF
+  HTML
+  XML
+  JPEG
+  PNG
+  TIFF
+  BMP
+  GIF
+}
+
+enum SourceType {
+  UPLOAD
+  S3
+  AZURE_BLOB
+  GOOGLE_BIGQUERY
+  POSTGRESQL
+}
+
+enum DatasetStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum JobType {
+  EXTRACT_TEXT
+  ANALYZE_PII
+  ANONYMIZE
+  GENERATE_REPORT
+}
+
+enum JobStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum EntityType {
+  PERSON
+  EMAIL_ADDRESS
+  PHONE_NUMBER
+  CREDIT_CARD
+  SSN
+  IBAN
+  IP_ADDRESS
+  DATE_TIME
+  LOCATION
+  ORGANIZATION
+  MEDICAL_LICENSE
+  US_DRIVER_LICENSE
+  US_PASSPORT
+  UK_NHS
+  URL
+  CUSTOM
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  VIEW
+  DOWNLOAD
+  UPLOAD
+  LOGIN
+  LOGOUT
+}
+
+enum PolicyTemplateCategory {
+  GENERAL
+  HEALTHCARE
+  FINANCE
+  LEGAL
+  GDPR
+  HIPAA
+  PCI_DSS
+  CUSTOM
+}

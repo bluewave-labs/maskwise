@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "maskwise.fullname" . }}-config
+  labels:
+    {{- include "maskwise.labels" . | nindent 4 }}
+data:
+  NODE_ENV: {{ .Values.api.env.NODE_ENV | quote }}
+  UPLOAD_DIR: {{ .Values.api.env.UPLOAD_DIR | quote }}
+  STORAGE_DIR: {{ .Values.api.env.STORAGE_DIR | quote }}
+  PRESIDIO_ANALYZER_URL: "http://{{ include "maskwise.fullname" . }}-presidio-analyzer:{{ .Values.presidioAnalyzer.service.port }}"
+  PRESIDIO_ANONYMIZER_URL: "http://{{ include "maskwise.fullname" . }}-presidio-anonymizer:{{ .Values.presidioAnonymizer.service.port }}"
+  TIKA_URL: "http://{{ include "maskwise.fullname" . }}-tika:{{ .Values.tika.service.port }}"
+  TESSERACT_URL: "http://{{ include "maskwise.fullname" . }}-tesseract:{{ .Values.tesseract.service.port }}"

@@ -1,0 +1,201 @@
+import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Request, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { UsersService } from './users.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { CreateUserDto } from './dto/create-user.dto';
+
+@ApiTags('Users')
+@Controller('users')
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth('JWT-auth')
+export class UsersController {
+  constructor(private readonly usersService: UsersService) {}
+
+  @Get('profile')
+  @ApiOperation({ summary: 'Get current user profile' })
+  @ApiResponse({ status: 200, description: 'User profile retrieved' })
+  async getProfile(@Request() req) {
+    const user = await this.usersService.findById(req.user.id);
+    if (user) {
+      const { password, ...userWithoutPassword } = user;
+      return userWithoutPassword;
+    }
+    return null;
+  }
+
+  @Put('profile')
+  @ApiOperation({ summary: 'Update current user profile' })
+  @ApiResponse({ status: 200, description: 'Profile updated successfully' })
+  async updateProfile(@Request() req, @Body() updateUserDto: UpdateUserDto) {
+    const updatedUser = await this.usersService.update(req.user.id, updateUserDto);
+    
+    // Log the profile update
+    await this.usersService.logAuditAction(
+      req.user.id,
+      'UPDATE',
+      'user',
+      req.user.id,
+      { fields: Object.keys(updateUserDto) },
+    );
+
+    const { password, ...userWithoutPassword } = updatedUser;
+    return userWithoutPassword;
+  }
+
+  @Get('audit-logs')
+  @ApiOperation({ summary: 'Get current user audit logs' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiResponse({ status: 200, description: 'Audit logs retrieved' })
+  async getAuditLogs(
+    @Request() req,
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '50',
+  ) {
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 50;
+    const skip = (pageNum - 1) * limitNum;
+    
+    return this.usersService.getAuditLogs(req.user.id, {
+      skip,
+      take: limitNum,
+    });
+  }
+
+  @Get('audit-logs/all')
+  @ApiOperation({ summary: 'Get all audit logs (Admin only)' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'action', required: false, type: String })
+  @ApiQuery({ name: 'dateFrom', required: false, type: String })
+  @ApiQuery({ name: 'dateTo', required: false, type: String })
+  @ApiQuery({ name: 'userId', required: false, type: String })
+  @ApiResponse({ status: 200, description: 'All audit logs retrieved' })
+  async getAllAuditLogs(
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '50',
+    @Query('search') search?: string,
+    @Query('action') action?: string,
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
+    @Query('userId') userId?: string,
+  ) {
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 50;
+    const skip = (pageNum - 1) * limitNum;
+    
+    return this.usersService.getAuditLogs(undefined, {
+      skip,
+      take: limitNum,
+      search,
+      action,
+      dateFrom,
+      dateTo,
+      userId,
+    });
+  }
+
+  @Post()
+  @ApiOperation({ summary: 'Create new user (Admin only)' })
+  @ApiResponse({ status: 201, description: 'User created successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid input data' })
+  @ApiResponse({ status: 409, description: 'Email already exists' })
+  async create(@Body() createUserDto: CreateUserDto, @Request() req) {
+    const newUser = await this.usersService.create(createUserDto);
+    
+    // Log the user creation
+    await this.usersService.logAuditAction(
+      req.user.id,
+      'CREATE',
+      'user',
+      newUser.id,
+      { email: createUserDto.email, role: createUserDto.role || 'USER' },
+    );
+
+    const { password, ...userWithoutPassword } = newUser;
+    return userWithoutPassword;
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Get all users (Admin only)' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiResponse({ status: 200, description: 'Users retrieved' })
+  async findAll(
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '50',
+  ) {
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 50;
+    const skip = (pageNum - 1) * limitNum;
+    
+    const users = await this.usersService.findAll({
+      skip,
+      take: limitNum,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return users.map(user => {
+      const { password, ...userWithoutPassword } = user;
+      return userWithoutPassword;
+    });
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get user by ID (Admin only)' })
+  @ApiResponse({ status: 200, description: 'User retrieved' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async findOne(@Param('id') id: string) {
+    const user = await this.usersService.findById(id);
+    if (user) {
+      const { password, ...userWithoutPassword } = user;
+      return userWithoutPassword;
+    }
+    return null;
+  }
+
+  @Put(':id')
+  @ApiOperation({ summary: 'Update user by ID (Admin only)' })
+  @ApiResponse({ status: 200, description: 'User updated successfully' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async update(
+    @Param('id') id: string,
+    @Body() updateUserDto: UpdateUserDto,
+    @Request() req,
+  ) {
+    const updatedUser = await this.usersService.update(id, updateUserDto);
+    
+    // Log the user update
+    await this.usersService.logAuditAction(
+      req.user.id,
+      'UPDATE',
+      'user',
+      id,
+      { fields: Object.keys(updateUserDto) },
+    );
+
+    const { password, ...userWithoutPassword } = updatedUser;
+    return userWithoutPassword;
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Deactivate user by ID (Admin only)' })
+  @ApiResponse({ status: 200, description: 'User deactivated successfully' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async remove(@Param('id') id: string, @Request() req) {
+    const deactivatedUser = await this.usersService.delete(id);
+    
+    // Log the user deactivation
+    await this.usersService.logAuditAction(
+      req.user.id,
+      'DELETE',
+      'user',
+      id,
+    );
+
+    const { password, ...userWithoutPassword } = deactivatedUser;
+    return userWithoutPassword;
+  }
+}

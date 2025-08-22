@@ -1,0 +1,21 @@
+{
+  "name": "@maskwise/shared",
+  "version": "1.0.0",
+  "description": "Shared utilities and types for Maskwise platform",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "eslint src/**/*.ts",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "typescript": "^5.2.2",
+    "@types/node": "^20.8.0"
+  },
+  "dependencies": {
+    "zod": "^3.22.4"
+  }
+}

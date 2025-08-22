@@ -1,0 +1,125 @@
+{{- if .Values.api.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "maskwise.fullname" . }}-api
+  labels:
+    {{- include "maskwise.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  type: {{ .Values.api.service.type }}
+  ports:
+    - port: {{ .Values.api.service.port }}
+      targetPort: {{ .Values.api.service.targetPort }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "maskwise.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+{{- end }}
+
+{{- if .Values.web.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "maskwise.fullname" . }}-web
+  labels:
+    {{- include "maskwise.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  type: {{ .Values.web.service.type }}
+  ports:
+    - port: {{ .Values.web.service.port }}
+      targetPort: {{ .Values.web.service.targetPort }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "maskwise.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+{{- end }}
+
+{{- if .Values.presidioAnalyzer.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "maskwise.fullname" . }}-presidio-analyzer
+  labels:
+    {{- include "maskwise.labels" . | nindent 4 }}
+    app.kubernetes.io/component: presidio-analyzer
+spec:
+  type: {{ .Values.presidioAnalyzer.service.type }}
+  ports:
+    - port: {{ .Values.presidioAnalyzer.service.port }}
+      targetPort: {{ .Values.presidioAnalyzer.service.targetPort }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "maskwise.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: presidio-analyzer
+{{- end }}
+
+{{- if .Values.presidioAnonymizer.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "maskwise.fullname" . }}-presidio-anonymizer
+  labels:
+    {{- include "maskwise.labels" . | nindent 4 }}
+    app.kubernetes.io/component: presidio-anonymizer
+spec:
+  type: {{ .Values.presidioAnonymizer.service.type }}
+  ports:
+    - port: {{ .Values.presidioAnonymizer.service.port }}
+      targetPort: {{ .Values.presidioAnonymizer.service.targetPort }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "maskwise.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: presidio-anonymizer
+{{- end }}
+
+{{- if .Values.tika.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "maskwise.fullname" . }}-tika
+  labels:
+    {{- include "maskwise.labels" . | nindent 4 }}
+    app.kubernetes.io/component: tika
+spec:
+  type: {{ .Values.tika.service.type }}
+  ports:
+    - port: {{ .Values.tika.service.port }}
+      targetPort: {{ .Values.tika.service.targetPort }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "maskwise.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: tika
+{{- end }}
+
+{{- if .Values.tesseract.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "maskwise.fullname" . }}-tesseract
+  labels:
+    {{- include "maskwise.labels" . | nindent 4 }}
+    app.kubernetes.io/component: tesseract
+spec:
+  type: {{ .Values.tesseract.service.type }}
+  ports:
+    - port: {{ .Values.tesseract.service.port }}
+      targetPort: {{ .Values.tesseract.service.targetPort }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "maskwise.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: tesseract
+{{- end }}

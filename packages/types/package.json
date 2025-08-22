@@ -1,0 +1,17 @@
+{
+  "name": "@maskwise/types",
+  "version": "1.0.0",
+  "description": "TypeScript type definitions for Maskwise platform",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "eslint src/**/*.ts",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "typescript": "^5.2.2"
+  }
+}
