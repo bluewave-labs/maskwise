@@ -29,7 +29,7 @@
     "k8s:delete": "helm uninstall maskwise -n maskwise",
     "k8s:status": "kubectl get pods -n maskwise",
     "k8s:logs": "kubectl logs -n maskwise -l app.kubernetes.io/component=api --tail=50",
-    "test:integration": "node test-user-workflow-integration.js",
+    "test:integration": "node tests/test-user-workflow-integration.js",
     "health": "curl -s http://localhost:3001/health && curl -s http://localhost:3000"
   },
   "devDependencies": {

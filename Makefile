@@ -96,7 +96,7 @@ status:
 # Testing
 test:
 	@echo "🧪 Running integration tests..."
-	node test-user-workflow-integration.js
+	node tests/test-user-workflow-integration.js
 
 # Database operations
 db-reset:
