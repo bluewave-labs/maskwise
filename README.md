@@ -50,7 +50,7 @@ make dev
 ```
 
 **Access the application:**
-- Frontend: http://localhost:3000
+- Frontend: http://localhost:4200
 - API: http://localhost:3001  
 - API Docs: http://localhost:3001/api/docs
 - Default admin: admin@maskwise.com / admin123

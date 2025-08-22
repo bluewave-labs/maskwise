@@ -46,7 +46,7 @@ install:
 
 setup: install start
 	@echo "🎉 Setup complete! Access the app at:"
-	@echo "   Frontend: http://localhost:3000"
+	@echo "   Frontend: http://localhost:4200"
 	@echo "   API: http://localhost:3001"
 
 # Development
