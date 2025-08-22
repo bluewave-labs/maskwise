@@ -88,7 +88,7 @@ function formatTimestamp(timestamp: string): string {
 }
 
 export function ActivityFeed() {
-  const { activities, isLoading, error, refetch } = useRecentActivity(10);
+  const { activities, isLoading, error, refetch } = useRecentActivity(5);
 
   if (error) {
     return (
