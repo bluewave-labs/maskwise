@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import api from '@/lib/api';
+import { api } from '@/lib/api';
 import { AuditLog } from '@/types/audit';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -41,8 +41,11 @@ export function useRecentActivity(limit: number = 10): UseRecentActivityReturn {
   };
 
   useEffect(() => {
-    fetchActivities();
-  }, [limit, isAuthenticated, authLoading]); // Re-fetch when auth state changes
+    // Only fetch when authenticated and auth is not loading
+    if (!authLoading && isAuthenticated) {
+      fetchActivities();
+    }
+  }, [limit, isAuthenticated]); // Re-fetch when auth state or limit changes
 
   return {
     activities,

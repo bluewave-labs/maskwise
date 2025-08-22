@@ -32,17 +32,16 @@ export function useDashboardStats(): UseDashboardStatsReturn {
     }
 
     try {
-      if (!isLoading) setIsLoading(true);
       setError(null);
       const response = await api.get<DashboardStats>('/dashboard/stats');
       setStats(response.data);
+      setIsLoading(false);
     } catch (err: any) {
       console.error('Failed to fetch dashboard stats:', err);
       // Only set error if it's not an auth error (which will be handled by auth system)
       if (err.response?.status !== 401) {
         setError(err.response?.data?.message || err.message || 'Failed to fetch dashboard statistics');
       }
-    } finally {
       setIsLoading(false);
     }
   };
@@ -60,8 +59,8 @@ export function useDashboardStats(): UseDashboardStatsReturn {
       // Dashboard stats don't need active polling, just slow background updates
       return false; // Always use slow interval for dashboard
     },
-    fastInterval: 15000,  // 15 seconds (not used for dashboard)
-    slowInterval: 60000,  // 1 minute for dashboard updates
+    fastInterval: 30000,  // 30 seconds (not used for dashboard)
+    slowInterval: 300000, // 5 minutes for dashboard updates
     immediate: true,      // Fetch immediately on mount
     pauseOnHidden: true,  // Pause when tab is hidden
     maxErrors: 3          // Stop after 3 consecutive errors
