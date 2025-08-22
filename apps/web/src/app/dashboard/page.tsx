@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
-import { TrendingUp, Database, Shield, Users, Activity, Upload, FolderPlus, FileText, Eye } from 'lucide-react';
+import { TrendingUp, Database, Shield, Users, Activity, Upload, FolderPlus, FileText, Eye, Sparkles } from 'lucide-react';
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -134,19 +134,42 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 gap-3">
-                  <Button className="flex items-center gap-2">
+                  <Button 
+                    className="flex items-center gap-2 col-span-2"
+                    onClick={() => window.location.href = '/anonymize'}
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    Start Anonymization Workflow
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    className="flex items-center gap-2"
+                    onClick={() => window.location.href = '/datasets'}
+                  >
                     <Upload className="h-4 w-4" />
                     Upload Dataset
                   </Button>
-                  <Button variant="outline" className="flex items-center gap-2">
+                  <Button 
+                    variant="outline" 
+                    className="flex items-center gap-2"
+                    onClick={() => window.location.href = '/projects'}
+                  >
                     <FolderPlus className="h-4 w-4" />
                     Create Project
                   </Button>
-                  <Button variant="outline" className="flex items-center gap-2">
+                  <Button 
+                    variant="outline" 
+                    className="flex items-center gap-2"
+                    onClick={() => window.location.href = '/policies'}
+                  >
                     <FileText className="h-4 w-4" />
                     View Policies
                   </Button>
-                  <Button variant="outline" className="flex items-center gap-2">
+                  <Button 
+                    variant="outline" 
+                    className="flex items-center gap-2"
+                    onClick={() => window.location.href = '/settings?tab=audit'}
+                  >
                     <Eye className="h-4 w-4" />
                     Audit Logs
                   </Button>

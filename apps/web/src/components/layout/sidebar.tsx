@@ -10,7 +10,8 @@ import {
   FileText, 
   Settings, 
   BarChart3,
-  LogOut
+  LogOut,
+  Sparkles
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -20,6 +21,7 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Projects', href: '/projects', icon: FolderOpen },
   { name: 'Datasets', href: '/datasets', icon: Database },
+  { name: 'Anonymize', href: '/anonymize', icon: Sparkles },
   { name: 'Policies', href: '/policies', icon: Shield },
   { name: 'Reports', href: '/reports', icon: BarChart3 },
   { name: 'Settings', href: '/settings', icon: Settings },
