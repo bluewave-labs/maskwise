@@ -95,6 +95,7 @@ prisma/migrations/dev/
 CLAUDE.md
 claude.md
 .claude/
+FLAGWISE_DESIGN_SYSTEM_SETUP.md
 
 # Test output
 test-results/
