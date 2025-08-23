@@ -208,15 +208,16 @@ export default function SystemHealthDashboard() {
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <div className="flex items-center space-x-4 text-[13px] text-muted-foreground">
-            <span>Version: {healthData?.version || 'Unknown'}</span>
-            <span>Uptime: {healthData ? formatUptime(healthData.uptime) : 'Unknown'}</span>
-            {lastUpdate && (
-              <span>Last Updated: {lastUpdate.toLocaleTimeString()}</span>
-            )}
+            <span>Version: <span className="font-mono font-medium">{healthData?.version || 'Unknown'}</span></span>
+            <span>Uptime: <span className="font-mono font-medium">{healthData ? formatUptime(healthData.uptime) : 'Unknown'}</span></span>
           </div>
         </div>
         <div className="flex items-center space-x-3">
-          <StatusBadge status={healthData?.overallStatus || 'unknown'} />
+          {lastUpdate && (
+            <span className="text-[13px] text-muted-foreground">
+              Last Updated: <span className="font-mono font-medium">{lastUpdate.toLocaleTimeString()}</span>
+            </span>
+          )}
           <Button onClick={handleRefresh} size="sm" disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
@@ -233,7 +234,7 @@ export default function SystemHealthDashboard() {
             <Cpu className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-normal text-foreground mb-2">
+            <div className="text-2xl font-normal text-foreground mb-2 font-mono font-medium">
               {healthData?.resources?.cpuUsage || 0}%
             </div>
             <Progress value={healthData?.resources?.cpuUsage || 0} className="h-2" />
@@ -250,11 +251,11 @@ export default function SystemHealthDashboard() {
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-normal text-foreground mb-2">
+            <div className="text-2xl font-normal text-foreground mb-2 font-mono font-medium">
               {healthData?.resources?.memoryUsage || 0}%
             </div>
             <Progress value={healthData?.resources?.memoryUsage || 0} className="h-2" />
-            <p className="text-[13px] text-muted-foreground mt-2">
+            <p className="text-[13px] text-muted-foreground mt-2 font-mono font-medium">
               {formatBytes((healthData?.resources?.usedMemory || 0) * 1024 * 1024)} / {formatBytes((healthData?.resources?.totalMemory || 0) * 1024 * 1024)}
             </p>
           </CardContent>
@@ -267,11 +268,11 @@ export default function SystemHealthDashboard() {
             <HardDrive className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-normal text-foreground mb-2">
+            <div className="text-2xl font-normal text-foreground mb-2 font-mono font-medium">
               {healthData?.resources?.diskUsage || 0}%
             </div>
             <Progress value={healthData?.resources?.diskUsage || 0} className="h-2" />
-            <p className="text-[13px] text-muted-foreground mt-2">
+            <p className="text-[13px] text-muted-foreground mt-2 font-mono font-medium">
               {formatBytes((healthData?.resources?.usedDisk || 0) * 1024 * 1024)} / {formatBytes((healthData?.resources?.totalDisk || 0) * 1024 * 1024)}
             </p>
           </CardContent>
@@ -284,11 +285,11 @@ export default function SystemHealthDashboard() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-normal text-foreground mb-2">
+            <div className="text-2xl font-normal text-foreground mb-2 font-mono font-medium">
               {healthData?.metrics?.activeUsers || 0}
             </div>
             <p className="text-[13px] text-muted-foreground">
-              {healthData?.metrics?.totalUsers || 0} total users
+              <span className="font-mono font-medium">{healthData?.metrics?.totalUsers || 0}</span> total users
             </p>
             <p className="text-[13px] text-muted-foreground">
               Last 24 hours
@@ -339,7 +340,12 @@ export default function SystemHealthDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {healthData?.queues?.map((queue) => (
               <div key={queue.name} className="p-4 border rounded-lg">
-                <h4 className="text-[13px] font-normal text-foreground mb-3 capitalize">{queue.name.replace('-', ' ')}</h4>
+                <h4 className="text-[13px] font-normal text-foreground mb-3">
+                  {queue.name === 'pii-analysis' ? 'PII Analysis' : 
+                   queue.name === 'file-processing' ? 'File Processing' :
+                   queue.name === 'anonymization' ? 'Anonymization' :
+                   queue.name.replace('-', ' ')}
+                </h4>
                 <div className="space-y-2">
                   <div className="flex justify-between text-[13px]">
                     <span className="text-muted-foreground">Waiting:</span>
@@ -356,10 +362,6 @@ export default function SystemHealthDashboard() {
                   <div className="flex justify-between text-[13px]">
                     <span className="text-muted-foreground">Failed:</span>
                     <span className="text-red-600">{queue.failed}</span>
-                  </div>
-                  <div className="flex justify-between text-[13px] pt-1 border-t">
-                    <span className="text-muted-foreground">Workers:</span>
-                    <span className="text-foreground">{queue.workers}</span>
                   </div>
                 </div>
               </div>

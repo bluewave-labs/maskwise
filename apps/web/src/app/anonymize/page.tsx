@@ -157,7 +157,7 @@ export default function AnonymizePage() {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Shield className="h-5 w-5 text-muted-foreground" />
-                <CardTitle className="text-base">PII Detection</CardTitle>
+                <CardTitle className="text-[15px]">PII Detection</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
@@ -172,7 +172,7 @@ export default function AnonymizePage() {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <FileText className="h-5 w-5 text-muted-foreground" />
-                <CardTitle className="text-base">Policy-Based Rules</CardTitle>
+                <CardTitle className="text-[15px]">Policy-Based Rules</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
@@ -187,7 +187,7 @@ export default function AnonymizePage() {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-muted-foreground" />
-                <CardTitle className="text-base">Smart Anonymization</CardTitle>
+                <CardTitle className="text-[15px]">Smart Anonymization</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
@@ -202,7 +202,7 @@ export default function AnonymizePage() {
         {/* Workflow Steps Preview */}
         <Card>
           <CardHeader>
-            <CardTitle>How It Works</CardTitle>
+            <CardTitle className="text-[15px]">How It Works</CardTitle>
             <CardDescription>
               Complete the anonymization process in 6 simple steps
             </CardDescription>

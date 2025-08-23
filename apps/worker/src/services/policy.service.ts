@@ -98,22 +98,48 @@ export class PolicyService {
 
       let policyConfig: PolicyConfig;
 
-      // Try to parse as YAML first (new format)
+      // Check if we have active versions
       if (policy.versions.length > 0) {
         const activeVersion = policy.versions[0];
-        try {
-          const yamlConfig = yaml.load(activeVersion.config as string) as PolicyYAML;
-          policyConfig = this.convertYamlToConfig(yamlConfig);
-          logger.info('Policy YAML parsed successfully', { 
+        
+        // Check if config is already a parsed JSON object or a YAML string
+        let configData = activeVersion.config;
+        
+        if (typeof configData === 'string') {
+          // Try to parse as YAML first, then JSON
+          try {
+            configData = yaml.load(configData) as PolicyYAML;
+            logger.info('Policy parsed as YAML successfully', { 
+              policyId, 
+              policyName: (configData as any).name 
+            });
+          } catch (yamlError) {
+            try {
+              configData = JSON.parse(configData);
+              logger.info('Policy parsed as JSON successfully', { 
+                policyId, 
+                policyName: (configData as any).name 
+              });
+            } catch (jsonError) {
+              logger.error('Failed to parse policy as YAML or JSON', { 
+                policyId, 
+                yamlError: yamlError instanceof Error ? yamlError.message : 'Unknown error',
+                jsonError: jsonError instanceof Error ? jsonError.message : 'Unknown error'
+              });
+              policyConfig = this.convertLegacyConfig(policy.config);
+            }
+          }
+        }
+        
+        // Convert the parsed config data
+        if (configData && typeof configData === 'object') {
+          policyConfig = this.convertYamlToConfig(configData as PolicyYAML);
+          logger.info('Policy configuration converted successfully', { 
             policyId, 
-            policyName: yamlConfig.name,
-            entities: yamlConfig.detection.entities.length 
+            entities: (configData as PolicyYAML).detection?.entities?.length || 0 
           });
-        } catch (yamlError) {
-          logger.warn('Failed to parse policy YAML, trying JSON fallback', { 
-            policyId, 
-            error: yamlError instanceof Error ? yamlError.message : 'Unknown error' 
-          });
+        } else {
+          logger.warn('Policy config is not an object, using legacy fallback', { policyId });
           policyConfig = this.convertLegacyConfig(policy.config);
         }
       } else {
