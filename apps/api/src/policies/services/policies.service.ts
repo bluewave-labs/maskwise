@@ -266,7 +266,8 @@ export class PoliciesService {
       }
     });
 
-    return updatedPolicy;
+    // Return updated policy with versions and count
+    return await this.findOne(policyId);
   }
 
   /**

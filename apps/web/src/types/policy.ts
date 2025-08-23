@@ -8,8 +8,8 @@ export interface Policy {
   version: string;
   createdAt: string;
   updatedAt: string;
-  versions: PolicyVersion[];
-  _count: {
+  versions?: PolicyVersion[];
+  _count?: {
     versions: number;
   };
 }

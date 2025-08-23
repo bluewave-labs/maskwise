@@ -13,6 +13,7 @@ import { Policy, YAMLValidationResult } from '@/types/policy';
 import { ArrowLeft, Edit, Eye, Save, History, MoreVertical, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Spinner } from '@/components/ui/spinner';
+import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 
 function PolicyDetailsContent() {
   const router = useRouter();
@@ -26,6 +27,7 @@ function PolicyDetailsContent() {
   const [isSaving, setIsSaving] = useState(false);
   const [validationResult, setValidationResult] = useState<YAMLValidationResult>({ isValid: true });
   const [yamlContent, setYamlContent] = useState('');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const policyId = params?.id as string;
 
@@ -160,25 +162,29 @@ anonymization:
     }
   };
 
-  const handleDeletePolicy = async () => {
+  const handleDeletePolicy = () => {
     if (!policy) return;
+    setDeleteDialogOpen(true);
+  };
 
-    if (window.confirm(`Are you sure you want to delete the policy "${policy.name}"?`)) {
-      const success = await deletePolicy(policy.id);
-      if (success) {
-        toast({
-          title: 'Policy Deleted',
-          description: `Policy "${policy.name}" has been deleted successfully.`,
-        });
-        router.push('/policies');
-      }
+  const confirmDeletePolicy = async () => {
+    if (!policy) return;
+    
+    const success = await deletePolicy(policy.id);
+    if (success) {
+      toast({
+        title: 'Policy Deleted',
+        description: `Policy "${policy.name}" has been deleted successfully.`,
+      });
+      router.push('/policies');
     }
+    setDeleteDialogOpen(false);
   };
 
   const getPolicyStatus = () => {
     if (!policy) return 'unknown';
     if (!policy.isActive) return 'inactive';
-    if (policy._count.versions === 0) return 'draft';
+    if (policy._count?.versions === 0) return 'draft';
     return 'active';
   };
 
@@ -283,118 +289,73 @@ anonymization:
         </div>
       </div>
 
-      {/* Policy Information Boxes */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Policy Name & Status */}
-        <Card className="col-span-1 md:col-span-2">
-          <CardContent className="p-6">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <h1 className="text-[15px] font-bold text-gray-900 mb-2">{policy.name}</h1>
-                <p className="text-gray-600 text-[13px] mb-3">{policy.description}</p>
-                <div className="flex items-center gap-2">
-                  <Badge 
-                    variant="secondary" 
-                    className={`text-xs ${
-                      status === 'active' ? 'bg-green-100 text-green-800' :
-                      status === 'inactive' ? 'bg-gray-100 text-gray-800' :
-                      'bg-yellow-100 text-yellow-800'
-                    }`}
-                  >
-                    {status.charAt(0).toUpperCase() + status.slice(1)}
-                  </Badge>
-                  {policy.isDefault && (
-                    <Badge variant="secondary" className="text-xs">Default</Badge>
-                  )}
-                </div>
-              </div>
+      {/* Compact Policy Information */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="space-y-2">
+            {/* First Row: Title and Status */}
+            <div className="flex items-center gap-3">
+              <h1 className="text-[15px] font-bold text-gray-900">{policy.name}</h1>
+              <span className="text-gray-400">|</span>
+              <p className="text-[13px] text-gray-600">{policy.description}</p>
+              <span className="text-gray-400">|</span>
+              <Badge 
+                variant="secondary" 
+                className={`text-xs ${
+                  status === 'active' ? 'bg-green-100 text-green-800' :
+                  status === 'inactive' ? 'bg-gray-100 text-gray-800' :
+                  'bg-yellow-100 text-yellow-800'
+                }`}
+              >
+                {status.charAt(0).toUpperCase() + status.slice(1)}
+              </Badge>
+              {policy.isDefault && (
+                <Badge variant="secondary" className="text-xs">Default</Badge>
+              )}
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Version Info */}
-        <Card>
-          <CardContent className="p-6">
-            <div className="text-center">
-              <div className="text-sm font-normal text-gray-600 mb-1">Current Version</div>
-              <div className="text-2xl font-bold text-gray-900">{policy.version}</div>
+            
+            {/* Second Row: Version and Dates */}
+            <div className="flex items-center gap-3 text-[13px] text-gray-600">
+              <span>Version: <strong className="text-gray-900">{policy.version}</strong> ({policy._count?.versions || 0} total)</span>
+              <span className="text-gray-400">|</span>
+              <span>Created: <strong className="text-gray-900">{formatDate(policy.createdAt)}</strong></span>
+              <span className="text-gray-400">|</span>
+              <span>Updated: <strong className="text-gray-900">{formatDate(policy.updatedAt)}</strong></span>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Version Count */}
-        <Card>
-          <CardContent className="p-6">
-            <div className="text-center">
-              <div className="text-sm font-normal text-gray-600 mb-1">Total Versions</div>
-              <div className="text-2xl font-bold text-gray-900">{policy._count.versions}</div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Additional Info Boxes */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Last Updated */}
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="flex-1">
-                <div className="text-sm font-normal text-gray-600 mb-1">Last Updated</div>
-                <div className="text-lg font-semibold text-gray-900">{formatDate(policy.updatedAt)}</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Created Date */}
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="flex-1">
-                <div className="text-sm font-normal text-gray-600 mb-1">Created</div>
-                <div className="text-lg font-semibold text-gray-900">{formatDate(policy.createdAt)}</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
 
 
       {/* Version History */}
-      {policy.versions && policy.versions.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center">
-              <History className="w-5 h-5 mr-2" />
-              Version History
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {policy.versions.slice(0, 5).map((version) => (
-                <div key={version.id} className="flex items-center justify-between p-2 border rounded">
-                  <div className="flex items-center space-x-3">
-                    <Badge variant="secondary" className="text-xs">
-                      v{version.version}
+      {policy.versions && Array.isArray(policy.versions) && policy.versions.length > 0 && (
+        <div>
+          <h2 className="text-[15px] font-bold mb-4">
+            Version History
+          </h2>
+          <div className="space-y-2">
+            {policy.versions.slice(0, 5).map((version) => (
+              <div key={version.id} className="flex items-center justify-between p-2 border rounded">
+                <div className="flex items-center space-x-3">
+                  <Badge variant="secondary" className="text-xs">
+                    v{version.version}
+                  </Badge>
+                  {version.isActive && (
+                    <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
+                      Active
                     </Badge>
-                    {version.isActive && (
-                      <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
-                        Active
-                      </Badge>
-                    )}
-                    <span className="text-sm text-gray-600">
-                      {formatDate(version.createdAt)}
-                    </span>
-                  </div>
-                  {version.changelog && (
-                    <span className="text-sm text-gray-500">{version.changelog}</span>
                   )}
+                  <span className="text-[13px] text-gray-600">
+                    {formatDate(version.createdAt)}
+                  </span>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                {version.changelog && (
+                  <span className="text-[13px] text-gray-500">{version.changelog}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* YAML Editor */}
@@ -403,6 +364,18 @@ anonymization:
         onSave={handleSavePolicy}
         onValidChange={handleValidationChange}
         readonly={!isEditing}
+      />
+
+      {/* Delete Policy Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        onConfirm={confirmDeletePolicy}
+        title="Delete Policy"
+        description={`Are you sure you want to delete the policy \"${policy?.name}\"? This action cannot be undone.`}
+        confirmText="Delete Policy"
+        cancelText="Cancel"
+        variant="destructive"
       />
     </div>
   );
