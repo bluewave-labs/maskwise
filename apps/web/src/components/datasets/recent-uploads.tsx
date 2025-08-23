@@ -92,7 +92,7 @@ export function RecentUploads({ projectId, refreshTrigger }: RecentUploadsProps)
       });
 
       const response = await api.get(`/datasets?${params.toString()}`);
-      const newDatasets = response.data.datasets || [];
+      const newDatasets = response.data.data || response.data.datasets || response.data || [];
       
       // Check for newly completed datasets to show notifications
       if (previousDatasets.length > 0) {
@@ -112,7 +112,7 @@ export function RecentUploads({ projectId, refreshTrigger }: RecentUploadsProps)
       setDatasets(newDatasets);
       setLoading(false);
       setIsRefreshing(false);
-      return response.data;
+      return { datasets: newDatasets };
     } catch (error) {
       setLoading(false);
       setIsRefreshing(false);

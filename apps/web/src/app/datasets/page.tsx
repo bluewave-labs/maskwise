@@ -284,7 +284,7 @@ export default function DatasetsPage() {
               {/* Recent Uploads Section */}
               <div className="mt-12">
                 <RecentUploads 
-                  projectId={selectedProjectId} 
+                  projectId={selectedProjectId} // Will show all uploads when undefined
                   refreshTrigger={uploadKey}
                 />
               </div>
