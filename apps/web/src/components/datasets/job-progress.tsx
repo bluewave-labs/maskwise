@@ -18,6 +18,7 @@ import {
   Shield
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { api } from '@/lib/api';
 
 interface JobProgressData {
   jobs: Array<{
@@ -128,27 +129,19 @@ export function JobProgress({
   // Fetch progress data
   const fetchProgress = async () => {
     try {
-      const token = document.cookie
-        .split('; ')
-        .find(row => row.startsWith('access_token='))
-        ?.split('=')[1];
+      console.log(`[JobProgress] Fetching progress for dataset: ${datasetId}`);
+      
+      const response = await api.get(`/datasets/${datasetId}/jobs/progress`);
+      const data = response.data;
 
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
-      const response = await fetch(`/api/datasets/${datasetId}/jobs/progress`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+      console.log(`[JobProgress] Progress data received:`, {
+        overallProgress: data.overallProgress,
+        currentStage: data.currentStage,
+        isProcessing: data.isProcessing,
+        jobsCount: data.jobs?.length || 0,
+        jobs: data.jobs?.map(j => ({ type: j.type, status: j.status, progress: j.progress })) || []
       });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
+      
       setProgressData(data);
       setError(null);
       setRetryCount(0);
@@ -159,14 +152,16 @@ export function JobProgress({
       }
 
       // Continue polling if processing
+      console.log(`[JobProgress] Setting polling state to: ${data.isProcessing}`);
       if (data.isProcessing) {
         setIsPolling(true);
       } else {
         setIsPolling(false);
+        console.log(`[JobProgress] Processing completed! Overall progress: ${data.overallProgress}%, Stage: ${data.currentStage}`);
       }
 
     } catch (err) {
-      console.error('Failed to fetch progress:', err);
+      console.error('[JobProgress] Failed to fetch progress:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch progress');
       setRetryCount(prev => prev + 1);
     } finally {

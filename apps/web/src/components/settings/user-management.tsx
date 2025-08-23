@@ -259,11 +259,11 @@ export function UserManagement({ className }: UserManagementProps) {
   const getRoleBadgeColor = (role: string) => {
     switch (role.toLowerCase()) {
       case 'admin':
-        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+        return 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100';
       case 'moderator':
-        return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
+        return 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100';
       default:
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+        return 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100';
     }
   };
 
@@ -447,7 +447,7 @@ export function UserManagement({ className }: UserManagementProps) {
                     </td>
                     <td className="p-4 text-[13px] text-muted-foreground">{user.email}</td>
                     <td className="p-4">
-                      <Badge className={getRoleBadgeColor(user.role)}>
+                      <Badge variant="outline" className={getRoleBadgeColor(user.role)}>
                         {user.role}
                       </Badge>
                     </td>

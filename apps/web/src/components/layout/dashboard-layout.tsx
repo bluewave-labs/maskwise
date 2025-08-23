@@ -13,7 +13,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     <ErrorBoundary>
       <div className="flex h-screen bg-background">
         <Sidebar className="flex-shrink-0" />
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto" style={{ backgroundColor: '#FDFDFC' }}>
           <ErrorBoundary
             fallback={(error, retry) => (
               <div className="flex items-center justify-center h-full">

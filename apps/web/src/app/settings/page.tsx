@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { ProtectedRoute } from '@/components/auth/protected-route';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Card } from '@/components/ui/card';
@@ -60,6 +61,7 @@ const SETTINGS_TABS: TabConfig[] = [
 
 export default function SettingsPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<SettingsTab>('users');
   const [loading, setLoading] = useState(true);
 
@@ -186,18 +188,17 @@ export default function SettingsPage() {
                   const isActive = activeTab === tab.id;
                   
                   return (
-                    <Button
+                    <Link
                       key={tab.id}
-                      variant="ghost"
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`py-4 px-0 h-auto border-b-2 rounded-none hover:bg-transparent ${
+                      href={`/settings?tab=${tab.id}`}
+                      className={`inline-flex items-center justify-center py-4 px-0 h-auto border-b-2 rounded-none hover:bg-transparent transition-colors text-[13px] font-normal ${
                         isActive
                           ? 'border-primary text-primary'
                           : 'border-transparent text-muted-foreground hover:text-foreground'
                       }`}
                     >
-                      <span className="font-normal">{tab.name}</span>
-                    </Button>
+                      {tab.name}
+                    </Link>
                   );
                 })}
               </nav>

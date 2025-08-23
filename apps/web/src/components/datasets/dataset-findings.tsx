@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { toast } from '@/hooks/use-toast';
+import { api } from '@/lib/api';
 import { 
   Eye, 
   Shield, 
@@ -58,20 +59,8 @@ export function DatasetFindings({ datasetId, onClose }: DatasetFindingsProps) {
 
   const fetchDataset = async () => {
     try {
-      const token = localStorage.getItem('authToken');
-      if (!token) throw new Error('Authentication required');
-
-      const response = await fetch(`http://localhost:3001/datasets/${datasetId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-      const data = await response.json();
-      setDataset(data);
+      const response = await api.get(`/datasets/${datasetId}`);
+      setDataset(response.data);
     } catch (error) {
       console.error('Failed to fetch dataset:', error);
       toast({
@@ -84,22 +73,8 @@ export function DatasetFindings({ datasetId, onClose }: DatasetFindingsProps) {
 
   const fetchFindings = async () => {
     try {
-      const token = localStorage.getItem('authToken');
-      if (!token) throw new Error('Authentication required');
-
-      const response = await fetch(
-        `http://localhost:3001/datasets/${datasetId}/findings?page=${page}&limit=20`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-      const data = await response.json();
+      const response = await api.get(`/datasets/${datasetId}/findings?page=1&limit=10`);
+      const data = response.data;
       setFindings(data.findings || []);
       setTotalPages(Math.ceil(data.total / data.limit));
     } catch (error) {
@@ -239,11 +214,18 @@ export function DatasetFindings({ datasetId, onClose }: DatasetFindingsProps) {
 
       {/* Findings List */}
       <Card className="p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Shield className="h-5 w-5 text-blue-500" />
-          <h3 className="text-lg font-semibold">
-            Detailed Findings ({findings.length})
-          </h3>
+        <div className="mb-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Shield className="h-5 w-5 text-blue-500" />
+            <h3 className="text-lg font-semibold">
+              First 10 PII Findings ({findings.length} shown)
+            </h3>
+          </div>
+          {findings.length > 0 && (
+            <p className="text-[13px] text-muted-foreground">
+              Showing the first 10 findings in this document for review purposes.
+            </p>
+          )}
         </div>
 
         {findings.length === 0 ? (
@@ -310,30 +292,6 @@ export function DatasetFindings({ datasetId, onClose }: DatasetFindingsProps) {
               );
             })}
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex justify-center gap-2 pt-4">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                >
-                  Previous
-                </Button>
-                <span className="px-3 py-1 text-[13px]">
-                  Page {page} of {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                >
-                  Next
-                </Button>
-              </div>
-            )}
           </div>
         )}
       </Card>

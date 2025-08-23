@@ -19,9 +19,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { useProjects } from '@/hooks/useProjects';
 import { FileUpload } from './file-upload';
-import { ProjectSelector } from './project-selector';
 import { PolicySelector } from '../policies/policy-selector';
 import { RecentUploads } from './recent-uploads';
 import { DatasetFindings } from './dataset-findings';
@@ -51,6 +52,9 @@ export function AnonymizationWorkflow({ className, onComplete }: AnonymizationWo
   const [hasFindings, setHasFindings] = useState(false);
   const [hasAnonymized, setHasAnonymized] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Add projects hook
+  const { projects, loading: projectsLoading } = useProjects();
 
   const steps: WorkflowStep[] = [
     {
@@ -102,7 +106,7 @@ export function AnonymizationWorkflow({ className, onComplete }: AnonymizationWo
     setError(null);
   };
 
-  const handlePolicySelect = (policyId: string) => {
+  const handlePolicySelect = (policyId: string, policy: any) => {
     setSelectedPolicyId(policyId);
     setError(null);
   };
@@ -129,13 +133,20 @@ export function AnonymizationWorkflow({ className, onComplete }: AnonymizationWo
     }
   };
 
-  const handleUploadComplete = (datasetId: string) => {
-    setUploadedDatasetId(datasetId);
-    setIsProcessing(true);
-    // Automatically move to detection step
-    setTimeout(() => {
-      handleNextStep();
-    }, 1000);
+  const handleUploadComplete = (result: any) => {
+    // Extract dataset ID from the upload response
+    const datasetId = result?.dataset?.id;
+    if (datasetId) {
+      setUploadedDatasetId(datasetId);
+      setIsProcessing(true);
+      // Automatically move to detection step
+      setTimeout(() => {
+        handleNextStep();
+      }, 1000);
+    } else {
+      console.error('Upload completed but no dataset ID found in response:', result);
+      setError('Upload completed but dataset ID not found');
+    }
   };
 
   const handleDetectionComplete = (jobId: string) => {
@@ -162,17 +173,33 @@ export function AnonymizationWorkflow({ className, onComplete }: AnonymizationWo
           <div className="space-y-6">
             <div>
               <h3 className="text-[13px] font-normal mb-3">Select Project</h3>
-              <ProjectSelector
-                value={selectedProjectId}
-                onChange={handleProjectSelect}
-                placeholder="Choose a project for this anonymization task"
-              />
+              <Select value={selectedProjectId} onValueChange={handleProjectSelect}>
+                <SelectTrigger className="h-[36px]">
+                  <SelectValue placeholder="Choose a project for this anonymization task" />
+                </SelectTrigger>
+                <SelectContent>
+                  {projectsLoading ? (
+                    <SelectItem value="loading" disabled>Loading projects...</SelectItem>
+                  ) : projects.length === 0 ? (
+                    <SelectItem value="no-projects" disabled>No projects available</SelectItem>
+                  ) : (
+                    projects.map((project) => (
+                      <SelectItem key={project.id} value={project.id}>
+                        {project.name}
+                        {project.description && (
+                          <span className="text-muted-foreground ml-2">- {project.description}</span>
+                        )}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <h3 className="text-[13px] font-normal mb-3">Select Anonymization Policy</h3>
               <PolicySelector
-                value={selectedPolicyId}
-                onChange={handlePolicySelect}
+                selectedPolicyId={selectedPolicyId}
+                onPolicySelect={handlePolicySelect}
                 placeholder="Choose a policy to apply to your data"
               />
             </div>
@@ -180,7 +207,7 @@ export function AnonymizationWorkflow({ className, onComplete }: AnonymizationWo
               <Alert>
                 <CheckCircle2 className="h-4 w-4" />
                 <AlertDescription>
-                  Ready to proceed with file upload
+                  Ready to proceed with file upload. Click next below.
                 </AlertDescription>
               </Alert>
             )}
@@ -217,9 +244,21 @@ export function AnonymizationWorkflow({ className, onComplete }: AnonymizationWo
                 <p className="text-[13px] text-muted-foreground">
                   Analyzing your file for sensitive information
                 </p>
-                {processingJobId && (
+                {uploadedDatasetId && (
                   <div className="mt-6">
-                    <JobProgress jobId={processingJobId} />
+                    <JobProgress 
+                      datasetId={uploadedDatasetId} 
+                      onProgressUpdate={(progress) => {
+                        // When job completes, automatically move to next step
+                        if (!progress.isProcessing && progress.overallProgress === 100) {
+                          setTimeout(() => {
+                            setIsProcessing(false);
+                            handleDetectionComplete(uploadedDatasetId);
+                            handleNextStep();
+                          }, 1000);
+                        }
+                      }}
+                    />
                   </div>
                 )}
               </div>
