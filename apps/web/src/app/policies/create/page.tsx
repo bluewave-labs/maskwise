@@ -156,8 +156,8 @@ anonymization:
             Back
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Create Policy</h1>
-            <p className="text-gray-600">Create a new PII detection and anonymization policy</p>
+            <h1 className="text-[15px] font-bold text-gray-900">Create Policy</h1>
+            <p className="text-gray-600 text-[13px]">Create a new PII detection and anonymization policy</p>
           </div>
         </div>
         <Button

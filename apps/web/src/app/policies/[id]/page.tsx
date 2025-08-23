@@ -219,36 +219,15 @@ anonymization:
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Button
-            variant="outline"
-            onClick={() => router.back()}
-            className="h-[34px]"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back
-          </Button>
-          <div>
-            <div className="flex items-center space-x-3">
-              <h1 className="text-2xl font-bold text-gray-900">{policy.name}</h1>
-              <Badge 
-                variant="secondary" 
-                className={`text-xs ${
-                  status === 'active' ? 'bg-green-100 text-green-800' :
-                  status === 'inactive' ? 'bg-gray-100 text-gray-800' :
-                  'bg-yellow-100 text-yellow-800'
-                }`}
-              >
-                {status.charAt(0).toUpperCase() + status.slice(1)}
-              </Badge>
-              {policy.isDefault && (
-                <Badge variant="secondary" className="text-xs">Default</Badge>
-              )}
-            </div>
-            <p className="text-gray-600">{policy.description}</p>
-          </div>
-        </div>
+      <div className="flex items-center justify-between mb-6">
+        <Button
+          variant="outline"
+          onClick={() => router.back()}
+          className="h-[34px]"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back
+        </Button>
         <div className="flex items-center space-x-2">
           {!isEditing ? (
             <>
@@ -304,28 +283,83 @@ anonymization:
         </div>
       </div>
 
-      {/* Policy Metadata */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Policy Information</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <div className="text-sm font-medium text-gray-600">Version</div>
-              <div className="text-lg">{policy.version}</div>
+      {/* Policy Information Boxes */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Policy Name & Status */}
+        <Card className="col-span-1 md:col-span-2">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <h1 className="text-[15px] font-bold text-gray-900 mb-2">{policy.name}</h1>
+                <p className="text-gray-600 text-[13px] mb-3">{policy.description}</p>
+                <div className="flex items-center gap-2">
+                  <Badge 
+                    variant="secondary" 
+                    className={`text-xs ${
+                      status === 'active' ? 'bg-green-100 text-green-800' :
+                      status === 'inactive' ? 'bg-gray-100 text-gray-800' :
+                      'bg-yellow-100 text-yellow-800'
+                    }`}
+                  >
+                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                  </Badge>
+                  {policy.isDefault && (
+                    <Badge variant="secondary" className="text-xs">Default</Badge>
+                  )}
+                </div>
+              </div>
             </div>
-            <div>
-              <div className="text-sm font-medium text-gray-600">Versions</div>
-              <div className="text-lg">{policy._count.versions}</div>
+          </CardContent>
+        </Card>
+
+        {/* Version Info */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center">
+              <div className="text-sm font-normal text-gray-600 mb-1">Current Version</div>
+              <div className="text-2xl font-bold text-gray-900">{policy.version}</div>
             </div>
-            <div>
-              <div className="text-sm font-medium text-gray-600">Last Updated</div>
-              <div className="text-lg">{formatDate(policy.updatedAt)}</div>
+          </CardContent>
+        </Card>
+
+        {/* Version Count */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center">
+              <div className="text-sm font-normal text-gray-600 mb-1">Total Versions</div>
+              <div className="text-2xl font-bold text-gray-900">{policy._count.versions}</div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Additional Info Boxes */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Last Updated */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div className="flex-1">
+                <div className="text-sm font-normal text-gray-600 mb-1">Last Updated</div>
+                <div className="text-lg font-semibold text-gray-900">{formatDate(policy.updatedAt)}</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Created Date */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div className="flex-1">
+                <div className="text-sm font-normal text-gray-600 mb-1">Created</div>
+                <div className="text-lg font-semibold text-gray-900">{formatDate(policy.createdAt)}</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
 
       {/* Version History */}
       {policy.versions && policy.versions.length > 0 && (

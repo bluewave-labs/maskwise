@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
 import { TrendingUp, Database, Shield, Users, Activity, Upload, FolderPlus, FileText, Eye, Sparkles } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -26,153 +27,169 @@ export default function DashboardPage() {
 
           {error && (
             <div className="bg-destructive/15 border border-destructive/50 p-4 rounded-lg mb-8">
-              <p className="text-destructive font-medium">Failed to load dashboard statistics</p>
-              <p className="text-destructive/80 text-sm mt-1">{error}</p>
+              <p className="text-destructive font-normal">Failed to load dashboard statistics</p>
+              <p className="text-destructive/80 text-[13px] mt-1">{error}</p>
               <button
                 onClick={refetch}
-                className="mt-2 text-sm text-destructive underline hover:no-underline"
+                className="mt-2 text-[13px] text-destructive underline hover:no-underline"
               >
                 Try again
               </button>
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <MetricCard variant="blue">
-              <MetricCardContent>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <Card>
+              <CardContent className="p-4">
                 <div className="flex items-center">
-                  <TrendingUp className="h-5 w-5 text-blue-500" />
-                  <div className="ml-3">
-                    <p className="text-sm font-medium text-muted-foreground">Recent Scans</p>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" style={{strokeWidth: 1.5}} />
+                  <div className="ml-4">
+                    <p className="text-[13px] font-normal text-gray-600">Recent Scans</p>
                     {isLoading ? (
-                      <div className="flex items-center">
-                        <Spinner size="sm" className="mr-2" />
-                        <span className="text-muted-foreground">Loading...</span>
-                      </div>
+                      <>
+                        <Skeleton className="h-6 w-12 mb-1" />
+                        <Skeleton className="h-3 w-16" />
+                      </>
                     ) : (
                       <>
-                        <p className="text-xl font-medium text-gray-700">{stats?.recentScans ?? 0}</p>
-                        <p className="text-xs text-muted-foreground">Last 7 days</p>
+                        <p className="text-xl font-semibold">{stats?.recentScans ?? 0}</p>
                       </>
                     )}
                   </div>
                 </div>
-              </MetricCardContent>
-            </MetricCard>
+              </CardContent>
+            </Card>
             
-            <MetricCard variant="green">
-              <MetricCardContent>
+            <Card>
+              <CardContent className="p-4">
                 <div className="flex items-center">
-                  <Database className="h-5 w-5 text-green-500" />
-                  <div className="ml-3">
-                    <p className="text-sm font-medium text-muted-foreground">Datasets</p>
+                  <Database className="h-4 w-4 text-muted-foreground" style={{strokeWidth: 1.5}} />
+                  <div className="ml-4">
+                    <p className="text-[13px] font-normal text-gray-600">Datasets</p>
                     {isLoading ? (
-                      <div className="flex items-center">
-                        <Spinner size="sm" className="mr-2" />
-                        <span className="text-muted-foreground">Loading...</span>
-                      </div>
+                      <>
+                        <Skeleton className="h-6 w-12 mb-1" />
+                        <Skeleton className="h-3 w-20" />
+                      </>
                     ) : (
                       <>
-                        <p className="text-xl font-medium text-gray-700">{stats?.totalDatasets ?? 0}</p>
-                        <p className="text-xs text-muted-foreground">Total processed</p>
+                        <p className="text-xl font-semibold">{stats?.totalDatasets ?? 0}</p>
                       </>
                     )}
                   </div>
                 </div>
-              </MetricCardContent>
-            </MetricCard>
+              </CardContent>
+            </Card>
             
-            <MetricCard variant="red">
-              <MetricCardContent>
+            <Card>
+              <CardContent className="p-4">
                 <div className="flex items-center">
-                  <Shield className="h-5 w-5 text-red-500" />
-                  <div className="ml-3">
-                    <p className="text-sm font-medium text-muted-foreground">PII Findings</p>
+                  <Shield className="h-4 w-4 text-muted-foreground" style={{strokeWidth: 1.5}} />
+                  <div className="ml-4">
+                    <p className="text-[13px] font-normal text-gray-600">PII Findings</p>
                     {isLoading ? (
-                      <div className="flex items-center">
-                        <Spinner size="sm" className="mr-2" />
-                        <span className="text-muted-foreground">Loading...</span>
-                      </div>
+                      <>
+                        <Skeleton className="h-6 w-12 mb-1" />
+                        <Skeleton className="h-3 w-24" />
+                      </>
                     ) : (
                       <>
-                        <p className="text-xl font-medium text-gray-700">{stats?.piiFindings ?? 0}</p>
-                        <p className="text-xs text-muted-foreground">Entities detected</p>
+                        <p className="text-xl font-semibold">{stats?.piiFindings ?? 0}</p>
                       </>
                     )}
                   </div>
                 </div>
-              </MetricCardContent>
-            </MetricCard>
+              </CardContent>
+            </Card>
             
-            <MetricCard variant="purple">
-              <MetricCardContent>
+            <Card>
+              <CardContent className="p-4">
                 <div className="flex items-center">
-                  <Users className="h-5 w-5 text-purple-500" />
-                  <div className="ml-3">
-                    <p className="text-sm font-medium text-muted-foreground">Projects</p>
+                  <Users className="h-4 w-4 text-muted-foreground" style={{strokeWidth: 1.5}} />
+                  <div className="ml-4">
+                    <p className="text-[13px] font-normal text-gray-600">Projects</p>
                     {isLoading ? (
-                      <div className="flex items-center">
-                        <Spinner size="sm" className="mr-2" />
-                        <span className="text-muted-foreground">Loading...</span>
-                      </div>
+                      <>
+                        <Skeleton className="h-6 w-12 mb-1" />
+                        <Skeleton className="h-3 w-20" />
+                      </>
                     ) : (
                       <>
-                        <p className="text-xl font-medium text-gray-700">{stats?.activeProjects ?? 0}</p>
-                        <p className="text-xs text-muted-foreground">Active projects</p>
+                        <p className="text-xl font-semibold">{stats?.activeProjects ?? 0}</p>
                       </>
                     )}
                   </div>
                 </div>
-              </MetricCardContent>
-            </MetricCard>
+              </CardContent>
+            </Card>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             <Card>
               <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
+                <h2 className="text-xl font-semibold">Quick Actions</h2>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 gap-3">
-                  <Button 
-                    className="flex items-center gap-2 col-span-2"
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Anonymization Workflow - Full Width */}
+                  <div 
+                    className="col-span-2 p-6 bg-gradient-to-br from-blue-50 to-blue-100/50 hover:from-blue-100 hover:to-blue-200/50 border border-blue-200 hover:border-blue-400 rounded-lg cursor-pointer transition-all group"
                     onClick={() => window.location.href = '/anonymize'}
                   >
-                    <Sparkles className="h-4 w-4" />
-                    Start Anonymization Workflow
-                  </Button>
-                  <Button 
-                    variant="outline"
-                    className="flex items-center gap-2"
+                    <div className="flex flex-col items-center text-center space-y-2">
+                      <Sparkles className="h-4 w-4 text-muted-foreground" style={{strokeWidth: 1.5}} />
+                      <h3 className="font-semibold text-[13px] text-gray-900">Start Anonymization</h3>
+                      <p className="text-[13px] text-gray-600">Begin guided workflow</p>
+                    </div>
+                  </div>
+
+                  {/* Upload Dataset */}
+                  <div 
+                    className="p-6 bg-gradient-to-br from-gray-50 to-gray-100/50 hover:from-gray-100 hover:to-gray-200/50 border border-gray-200 hover:border-gray-400 rounded-lg cursor-pointer transition-all group"
                     onClick={() => window.location.href = '/datasets'}
                   >
-                    <Upload className="h-4 w-4" />
-                    Upload Dataset
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="flex items-center gap-2"
+                    <div className="flex flex-col items-center text-center space-y-2">
+                      <Upload className="h-4 w-4 text-muted-foreground" style={{strokeWidth: 1.5}} />
+                      <h3 className="font-semibold text-[13px] text-gray-900">Upload Dataset</h3>
+                      <p className="text-[13px] text-gray-600">Add new files</p>
+                    </div>
+                  </div>
+
+                  {/* Create Project */}
+                  <div 
+                    className="p-6 bg-gradient-to-br from-green-50 to-green-100/50 hover:from-green-100 hover:to-green-200/50 border border-green-200 hover:border-green-400 rounded-lg cursor-pointer transition-all group"
                     onClick={() => window.location.href = '/projects'}
                   >
-                    <FolderPlus className="h-4 w-4" />
-                    Create Project
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="flex items-center gap-2"
+                    <div className="flex flex-col items-center text-center space-y-2">
+                      <FolderPlus className="h-4 w-4 text-muted-foreground" style={{strokeWidth: 1.5}} />
+                      <h3 className="font-semibold text-[13px] text-gray-900">Create Project</h3>
+                      <p className="text-[13px] text-gray-600">Organize datasets</p>
+                    </div>
+                  </div>
+
+                  {/* View Policies */}
+                  <div 
+                    className="p-6 bg-gradient-to-br from-purple-50 to-purple-100/50 hover:from-purple-100 hover:to-purple-200/50 border border-purple-200 hover:border-purple-400 rounded-lg cursor-pointer transition-all group"
                     onClick={() => window.location.href = '/policies'}
                   >
-                    <FileText className="h-4 w-4" />
-                    View Policies
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="flex items-center gap-2"
+                    <div className="flex flex-col items-center text-center space-y-2">
+                      <FileText className="h-4 w-4 text-muted-foreground" style={{strokeWidth: 1.5}} />
+                      <h3 className="font-semibold text-[13px] text-gray-900">View Policies</h3>
+                      <p className="text-[13px] text-gray-600">Manage rules</p>
+                    </div>
+                  </div>
+
+                  {/* Audit Logs */}
+                  <div 
+                    className="p-6 bg-gradient-to-br from-orange-50 to-orange-100/50 hover:from-orange-100 hover:to-orange-200/50 border border-orange-200 hover:border-orange-400 rounded-lg cursor-pointer transition-all group"
                     onClick={() => window.location.href = '/settings?tab=audit'}
                   >
-                    <Eye className="h-4 w-4" />
-                    Audit Logs
-                  </Button>
+                    <div className="flex flex-col items-center text-center space-y-2">
+                      <Eye className="h-4 w-4 text-muted-foreground" style={{strokeWidth: 1.5}} />
+                      <h3 className="font-semibold text-[13px] text-gray-900">Audit Logs</h3>
+                      <p className="text-[13px] text-gray-600">View activity</p>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>

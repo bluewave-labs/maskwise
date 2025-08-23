@@ -114,7 +114,7 @@ export function PolicySelector({
     return (
       <div className="flex items-center space-x-2 p-3 bg-red-50 border border-red-200 rounded">
         <AlertTriangle className="h-4 w-4 text-red-600" />
-        <span className="text-sm text-red-700">Failed to load policies</span>
+        <span className="text-[13px] text-red-700">Failed to load policies</span>
       </div>
     );
   }
@@ -135,7 +135,7 @@ export function PolicySelector({
                 <span>{selectedPolicy.name}</span>
                 <Badge 
                   variant="secondary" 
-                  className={`text-xs ${getStatusColor(getPolicyStatus(selectedPolicy))}`}
+                  className={`text-[13px] ${getStatusColor(getPolicyStatus(selectedPolicy))}`}
                 >
                   {getPolicyStatus(selectedPolicy)}
                 </Badge>
@@ -152,9 +152,9 @@ export function PolicySelector({
                   <div className="flex items-center space-x-2">
                     {getStatusIcon(status)}
                     <div>
-                      <div className="font-medium">{policy.name}</div>
+                      <div className="font-normal">{policy.name}</div>
                       {policy.description && (
-                        <div className="text-xs text-gray-500 truncate max-w-xs">
+                        <div className="text-[13px] text-gray-500 truncate max-w-xs">
                           {policy.description}
                         </div>
                       )}
@@ -163,12 +163,12 @@ export function PolicySelector({
                   <div className="flex items-center space-x-1">
                     <Badge 
                       variant="secondary" 
-                      className={`text-xs ${getStatusColor(status)}`}
+                      className={`text-[13px] ${getStatusColor(status)}`}
                     >
                       v{policy.version}
                     </Badge>
                     {policy.isDefault && (
-                      <Badge variant="secondary" className="text-xs">
+                      <Badge variant="secondary" className="text-[13px]">
                         Default
                       </Badge>
                     )}
@@ -182,8 +182,8 @@ export function PolicySelector({
             <div className="p-3 text-center text-gray-500">
               <div className="flex flex-col items-center space-y-2">
                 <FileText className="h-6 w-6 text-gray-400" />
-                <span className="text-sm">No active policies found</span>
-                <span className="text-xs">Create a policy first</span>
+                <span className="text-[13px]">No active policies found</span>
+                <span className="text-[13px]">Create a policy first</span>
               </div>
             </div>
           )}
@@ -192,25 +192,25 @@ export function PolicySelector({
 
       {/* Policy Information Display */}
       {selectedPolicy && (
-        <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm">
+        <div className="p-3 bg-blue-50 border border-blue-200 rounded text-[13px]">
           <div className="flex items-start space-x-2">
             <Shield className="h-4 w-4 text-blue-600 mt-0.5" />
             <div className="flex-1">
-              <div className="font-medium text-blue-900">{selectedPolicy.name}</div>
+              <div className="font-normal text-blue-900">{selectedPolicy.name}</div>
               {selectedPolicy.description && (
                 <div className="text-blue-700 mt-1">{selectedPolicy.description}</div>
               )}
               <div className="flex items-center space-x-2 mt-2">
                 <Badge 
                   variant="secondary" 
-                  className={`text-xs ${getStatusColor(getPolicyStatus(selectedPolicy))}`}
+                  className={`text-[13px] ${getStatusColor(getPolicyStatus(selectedPolicy))}`}
                 >
                   {getPolicyStatus(selectedPolicy)}
                 </Badge>
-                <span className="text-xs text-blue-600">
+                <span className="text-[13px] text-blue-600">
                   Version {selectedPolicy.version}
                 </span>
-                <span className="text-xs text-blue-600">
+                <span className="text-[13px] text-blue-600">
                   {selectedPolicy._count.versions} version{selectedPolicy._count.versions !== 1 ? 's' : ''}
                 </span>
               </div>

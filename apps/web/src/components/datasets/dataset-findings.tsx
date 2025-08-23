@@ -189,22 +189,22 @@ export function DatasetFindings({ datasetId, onClose }: DatasetFindingsProps) {
               <h2 className="text-2xl font-bold">{dataset.name}</h2>
               {getStatusIcon(dataset.status)}
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-[13px]">
               <div>
                 <p className="text-muted-foreground">File</p>
-                <p className="font-medium">{dataset.filename}</p>
+                <p className="font-normal">{dataset.filename}</p>
               </div>
               <div>
                 <p className="text-muted-foreground">Type</p>
-                <p className="font-medium">{dataset.fileType}</p>
+                <p className="font-normal">{dataset.fileType}</p>
               </div>
               <div>
                 <p className="text-muted-foreground">Status</p>
-                <p className="font-medium capitalize">{dataset.status.toLowerCase()}</p>
+                <p className="font-normal capitalize">{dataset.status.toLowerCase()}</p>
               </div>
               <div>
                 <p className="text-muted-foreground">PII Findings</p>
-                <p className="font-medium">{dataset._count?.findings || findings.length}</p>
+                <p className="font-normal">{dataset._count?.findings || findings.length}</p>
               </div>
             </div>
           </div>
@@ -230,7 +230,7 @@ export function DatasetFindings({ datasetId, onClose }: DatasetFindingsProps) {
                   {entityType.replace('_', ' ')}
                 </Badge>
                 <p className="text-2xl font-bold mt-1">{count}</p>
-                <p className="text-xs text-muted-foreground">findings</p>
+                <p className="text-[13px] text-muted-foreground">findings</p>
               </div>
             ))}
           </div>
@@ -251,14 +251,14 @@ export function DatasetFindings({ datasetId, onClose }: DatasetFindingsProps) {
             {dataset.status === 'COMPLETED' ? (
               <div>
                 <CheckCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                <p>No PII found in this dataset</p>
-                <p className="text-sm mt-1">This file appears to be clean of sensitive information</p>
+                <p className="text-[13px]">No PII found in this dataset</p>
+                <p className="text-[13px] mt-1">This file appears to be clean of sensitive information</p>
               </div>
             ) : (
               <div>
                 <Clock className="h-12 w-12 mx-auto mb-2 opacity-50" />
                 <p>Analysis in progress</p>
-                <p className="text-sm mt-1">Findings will appear here once analysis is complete</p>
+                <p className="text-[13px] mt-1">Findings will appear here once analysis is complete</p>
               </div>
             )}
           </div>
@@ -273,12 +273,12 @@ export function DatasetFindings({ datasetId, onClose }: DatasetFindingsProps) {
                       <Badge className={getEntityTypeColor(finding.entityType)}>
                         {finding.entityType.replace('_', ' ')}
                       </Badge>
-                      <span className={`text-sm font-medium ${risk.color}`}>
+                      <span className={`text-[13px] font-normal ${risk.color}`}>
                         {Math.round(finding.confidence * 100)}% confidence ({risk.level} risk)
                       </span>
                     </div>
                     {finding.lineNumber && (
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-[13px] text-muted-foreground">
                         Line {finding.lineNumber}
                       </span>
                     )}
@@ -288,7 +288,7 @@ export function DatasetFindings({ datasetId, onClose }: DatasetFindingsProps) {
                     <Progress value={finding.confidence * 100} className="h-2" />
                   </div>
 
-                  <div className="text-sm">
+                  <div className="text-[13px]">
                     <p className="font-mono bg-background p-2 rounded border">
                       {finding.contextBefore && (
                         <span className="text-muted-foreground">{finding.contextBefore}</span>
@@ -302,7 +302,7 @@ export function DatasetFindings({ datasetId, onClose }: DatasetFindingsProps) {
                     </p>
                   </div>
 
-                  <div className="text-xs text-muted-foreground mt-2">
+                  <div className="text-[13px] text-muted-foreground mt-2">
                     Found at position {finding.startOffset}-{finding.endOffset} • 
                     Detected {new Date(finding.createdAt).toLocaleString()}
                   </div>
@@ -321,7 +321,7 @@ export function DatasetFindings({ datasetId, onClose }: DatasetFindingsProps) {
                 >
                   Previous
                 </Button>
-                <span className="px-3 py-1 text-sm">
+                <span className="px-3 py-1 text-[13px]">
                   Page {page} of {totalPages}
                 </span>
                 <Button

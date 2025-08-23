@@ -77,6 +77,18 @@ export class UsersService {
     });
   }
 
+  async activate(id: string): Promise<User> {
+    const user = await this.findById(id);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return this.prisma.user.update({
+      where: { id },
+      data: { isActive: true },
+    });
+  }
+
   async logAuditAction(
     userId: string,
     action: AuditAction,

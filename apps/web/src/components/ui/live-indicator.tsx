@@ -106,11 +106,11 @@ export function LiveIndicator({
     <div className={`flex items-center space-x-2 ${className}`}>
       <Badge variant={variant} className="flex items-center space-x-1">
         <Icon className={`h-3 w-3 ${pulse ? 'animate-pulse' : ''}`} />
-        <span className="text-[11px]">{label}</span>
+        <span className="text-[13px]">{label}</span>
       </Badge>
       
       {showDetails && (
-        <div className="text-[11px] text-muted-foreground">
+        <div className="text-[13px] text-muted-foreground">
           {isActive ? (
             <span>Every {formatTime(interval)}</span>
           ) : (

@@ -177,9 +177,14 @@ export function usePolicyTemplates() {
   const createFromTemplate = useCallback(async (templateId: string, name: string): Promise<Policy | null> => {
     try {
       setError(null);
+      console.log('Calling API with:', { templateId, name });
       const response = await api.post(`/policies/from-template/${templateId}`, { name });
+      console.log('API response:', response.data);
       return response.data;
     } catch (err: any) {
+      console.error('Full error object:', err);
+      console.error('Error response data:', err.response?.data);
+      console.error('Error status:', err.response?.status);
       const errorMessage = getErrorMessage(err, 'Failed to create policy from template');
       setError(errorMessage);
       console.error('Error creating from template:', err);

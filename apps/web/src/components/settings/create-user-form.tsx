@@ -182,37 +182,13 @@ export function CreateUserForm({ onCancel, onUserCreated }: CreateUserFormProps)
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onCancel}
-          className="flex items-center gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Users
-        </Button>
-      </div>
-
-      <div className="flex items-center gap-3 mb-6">
-        <UserPlus className="h-6 w-6 text-blue-600" />
-        <div>
-          <h3 className="text-lg font-semibold">Create New User</h3>
-          <p className="text-muted-foreground text-sm">
-            Add a new user to the system with role-based access
-          </p>
-        </div>
-      </div>
-
       {/* Create User Form */}
-      <Card className="p-6">
+      <div className="p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Name Fields */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="firstName">
-                <User className="h-4 w-4 inline mr-2" />
                 First Name
               </Label>
               <Input
@@ -225,13 +201,12 @@ export function CreateUserForm({ onCancel, onUserCreated }: CreateUserFormProps)
                 disabled={loading}
               />
               {errors.firstName && (
-                <p className="text-sm text-red-600">{errors.firstName}</p>
+                <p className="text-[13px] text-red-600">{errors.firstName}</p>
               )}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="lastName">
-                <User className="h-4 w-4 inline mr-2" />
                 Last Name
               </Label>
               <Input
@@ -244,7 +219,7 @@ export function CreateUserForm({ onCancel, onUserCreated }: CreateUserFormProps)
                 disabled={loading}
               />
               {errors.lastName && (
-                <p className="text-sm text-red-600">{errors.lastName}</p>
+                <p className="text-[13px] text-red-600">{errors.lastName}</p>
               )}
             </div>
           </div>
@@ -252,7 +227,6 @@ export function CreateUserForm({ onCancel, onUserCreated }: CreateUserFormProps)
           {/* Email Field */}
           <div className="space-y-2">
             <Label htmlFor="email">
-              <Mail className="h-4 w-4 inline mr-2" />
               Email Address
             </Label>
             <Input
@@ -265,14 +239,13 @@ export function CreateUserForm({ onCancel, onUserCreated }: CreateUserFormProps)
               disabled={loading}
             />
             {errors.email && (
-              <p className="text-sm text-red-600">{errors.email}</p>
+              <p className="text-[13px] text-red-600">{errors.email}</p>
             )}
           </div>
 
           {/* Password Field */}
           <div className="space-y-2">
             <Label htmlFor="password">
-              <Lock className="h-4 w-4 inline mr-2" />
               Password
             </Label>
             <div className="flex gap-2">
@@ -304,9 +277,9 @@ export function CreateUserForm({ onCancel, onUserCreated }: CreateUserFormProps)
               </Button>
             </div>
             {errors.password && (
-              <p className="text-sm text-red-600">{errors.password}</p>
+              <p className="text-[13px] text-red-600">{errors.password}</p>
             )}
-            <p className="text-sm text-muted-foreground">
+            <p className="text-[13px] text-muted-foreground">
               Password will be shared with the user. Consider using the generate button for a secure password.
             </p>
           </div>
@@ -314,7 +287,6 @@ export function CreateUserForm({ onCancel, onUserCreated }: CreateUserFormProps)
           {/* Role Selection */}
           <div className="space-y-2">
             <Label htmlFor="role">
-              <Shield className="h-4 w-4 inline mr-2" />
               Role
             </Label>
             <Select 
@@ -330,22 +302,28 @@ export function CreateUserForm({ onCancel, onUserCreated }: CreateUserFormProps)
                   <SelectItem key={role.value} value={role.value}>
                     <div className="flex items-center gap-2">
                       <Shield className={`h-4 w-4 ${getRoleColor(role.value)}`} />
-                      <div>
-                        <div className="font-medium">{role.label}</div>
-                        <div className="text-xs text-muted-foreground">{role.description}</div>
-                      </div>
+                      <span className="font-normal">{role.label} ({role.description})</span>
                     </div>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             {errors.role && (
-              <p className="text-sm text-red-600">{errors.role}</p>
+              <p className="text-[13px] text-red-600">{errors.role}</p>
             )}
           </div>
 
           {/* Form Actions */}
-          <div className="flex items-center gap-3 pt-4">
+          <div className="flex items-center justify-end gap-3 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancel}
+              disabled={loading}
+            >
+              Cancel
+            </Button>
+            
             <Button
               type="submit"
               disabled={loading}
@@ -358,31 +336,22 @@ export function CreateUserForm({ onCancel, onUserCreated }: CreateUserFormProps)
               )}
               {loading ? 'Creating User...' : 'Create User'}
             </Button>
-            
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onCancel}
-              disabled={loading}
-            >
-              Cancel
-            </Button>
           </div>
         </form>
-      </Card>
+      </div>
 
       {/* Instructions Card */}
-      <Card className="p-4 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
-        <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">
+      <div className="p-4 bg-slate-50 dark:bg-slate-900/20 border border-slate-200 dark:border-slate-800 rounded-lg">
+        <h4 className="font-normal text-slate-700 dark:text-slate-300 mb-2">
           User Creation Guidelines
         </h4>
-        <ul className="text-sm text-blue-700 dark:text-blue-200 space-y-1">
+        <ul className="text-[13px] text-slate-600 dark:text-slate-400 space-y-1">
           <li>• The user will receive their credentials (email and password) from you directly</li>
           <li>• Make sure to provide a secure password or use the generate button</li>
           <li>• Users can change their password after first login through their profile</li>
           <li>• Role permissions: User (basic), Moderator (management), Admin (full access)</li>
         </ul>
-      </Card>
+      </div>
     </div>
   );
 }

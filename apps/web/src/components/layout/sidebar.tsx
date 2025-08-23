@@ -53,20 +53,20 @@ export function Sidebar({ className }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 p-4">
-        <ul className="space-y-2">
+        <ul className="space-y-1">
           {navigation.map((item) => {
             const isActive = pathname === item.href;
             return (
               <li key={item.name}>
                 <Link
                   href={item.href}
-                  className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  className={`flex items-center px-3 py-2 rounded-lg text-[13px] font-normal transition-colors ${
                     isActive
-                      ? 'bg-primary text-primary-foreground'
+                      ? 'bg-accent text-foreground'
                       : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                   }`}
                 >
-                  <item.icon className="h-4 w-4 mr-3" />
+                  <item.icon className="h-4 w-4 mr-3 text-muted-foreground" />
                   <span>{item.name}</span>
                 </Link>
               </li>
@@ -79,8 +79,8 @@ export function Sidebar({ className }: SidebarProps) {
       <div className="p-4 border-t border-border">
         {user && (
           <div className="mb-3">
-            <p className="text-sm font-medium text-foreground truncate">{user.firstName} {user.lastName}</p>
-            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+            <p className="text-[13px] font-normal text-foreground truncate">{user.firstName} {user.lastName}</p>
+            <p className="text-[13px] text-muted-foreground truncate">{user.email}</p>
           </div>
         )}
         <Button

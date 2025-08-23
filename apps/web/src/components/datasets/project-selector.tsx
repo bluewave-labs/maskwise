@@ -126,15 +126,15 @@ export function ProjectSelector({ selectedProjectId, onProjectSelect }: ProjectS
           <div className="flex items-center gap-3">
             <FolderOpen className="h-5 w-5 text-blue-600" />
             <div>
-              <p className="font-medium text-blue-900 dark:text-blue-100">
+              <p className="font-normal text-blue-900 dark:text-blue-100">
                 Selected: {selectedProject.name}
               </p>
               {selectedProject.description && (
-                <p className="text-sm text-blue-700 dark:text-blue-200">
+                <p className="text-[13px] text-blue-700 dark:text-blue-200">
                   {selectedProject.description}
                 </p>
               )}
-              <div className="flex items-center gap-4 mt-1 text-xs text-blue-600 dark:text-blue-300">
+              <div className="flex items-center gap-4 mt-1 text-[13px] text-blue-600 dark:text-blue-300">
                 {selectedProject._count && (
                   <span>{selectedProject._count.datasets} datasets</span>
                 )}
@@ -244,13 +244,13 @@ export function ProjectSelector({ selectedProjectId, onProjectSelect }: ProjectS
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h4 className="font-medium">{project.name}</h4>
+                      <h4 className="font-normal">{project.name}</h4>
                       {project.description && (
-                        <p className="text-sm text-muted-foreground mt-1">
+                        <p className="text-[13px] text-muted-foreground mt-1">
                           {project.description}
                         </p>
                       )}
-                      <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-4 mt-2 text-[13px] text-muted-foreground">
                         {project._count && (
                           <span>{project._count.datasets} datasets</span>
                         )}
@@ -263,7 +263,7 @@ export function ProjectSelector({ selectedProjectId, onProjectSelect }: ProjectS
                           {project.tags.map((tag, index) => (
                             <span
                               key={index}
-                              className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded"
+                              className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-[13px] rounded"
                             >
                               {tag}
                             </span>

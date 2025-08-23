@@ -180,6 +180,26 @@ export class UsersController {
     return userWithoutPassword;
   }
 
+  @Put(':id/activate')
+  @ApiOperation({ summary: 'Activate user by ID (Admin only)' })
+  @ApiResponse({ status: 200, description: 'User activated successfully' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async activate(@Param('id') id: string, @Request() req) {
+    const activatedUser = await this.usersService.activate(id);
+    
+    // Log the user activation
+    await this.usersService.logAuditAction(
+      req.user.id,
+      'UPDATE',
+      'user',
+      id,
+      { action: 'activate' },
+    );
+
+    const { password, ...userWithoutPassword } = activatedUser;
+    return userWithoutPassword;
+  }
+
   @Delete(':id')
   @ApiOperation({ summary: 'Deactivate user by ID (Admin only)' })
   @ApiResponse({ status: 200, description: 'User deactivated successfully' })

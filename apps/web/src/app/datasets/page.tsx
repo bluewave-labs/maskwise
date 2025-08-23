@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ProtectedRoute } from '@/components/auth/protected-route';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { ProjectSelector } from '@/components/datasets/project-selector';
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
 import { FolderOpen, Upload, Database, TrendingUp, Shield } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface Project {
   id: string;
@@ -41,6 +42,12 @@ export default function DatasetsPage() {
   const [selectedPolicyId, setSelectedPolicyId] = useState<string>();
   const [selectedPolicy, setSelectedPolicy] = useState<Policy>();
   const [uploadKey, setUploadKey] = useState(0); // Force re-render of upload component
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Show content immediately after component mounts
+    setLoading(false);
+  }, []);
 
   const handleProjectSelect = (projectId: string, project: Project) => {
     setSelectedProjectId(projectId);
@@ -73,64 +80,130 @@ export default function DatasetsPage() {
   return (
     <ProtectedRoute>
       <DashboardLayout>
-        <div className="p-8 max-w-6xl mx-auto">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
-              <Database className="h-8 w-8" />
-              Datasets
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              Upload files for PII detection and manage your data sources
-            </p>
-          </div>
+        <div className="p-8 max-w-6xl">
+          {loading ? (
+            <div className="space-y-6">
+              {/* Header skeleton */}
+              <div className="mb-8">
+                <Skeleton className="h-8 w-32 mb-2" />
+                <Skeleton className="h-4 w-96" />
+              </div>
+
+              {/* Stats cards skeleton */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="rounded-lg border bg-card p-4">
+                    <div className="flex items-center gap-3">
+                      <Skeleton className="h-8 w-8 rounded-full" />
+                      <div className="flex-1">
+                        <Skeleton className="h-3 w-24 mb-2" />
+                        <Skeleton className="h-5 w-20" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Content grid skeleton */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Left column */}
+                <div className="space-y-6">
+                  <div className="rounded-lg border bg-card p-6">
+                    <Skeleton className="h-5 w-32 mb-4" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                  
+                  <div className="rounded-lg border bg-card p-6">
+                    <Skeleton className="h-5 w-40 mb-4" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+
+                  <div className="rounded-lg border bg-card p-6">
+                    <Skeleton className="h-5 w-32 mb-3" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-3/4" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right column */}
+                <div className="space-y-6">
+                  <div className="rounded-lg border bg-card p-8 text-center">
+                    <Skeleton className="h-16 w-16 mx-auto mb-4" />
+                    <Skeleton className="h-6 w-48 mx-auto mb-2" />
+                    <Skeleton className="h-4 w-64 mx-auto" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Header */}
+              <div className="mb-8">
+                <h1 className="text-[15px] font-bold text-foreground">
+                  Datasets
+                </h1>
+                <p className="text-muted-foreground text-[13px] mt-2">
+                  Upload files for PII detection and manage your data sources
+                </p>
+              </div>
 
           {/* Quick Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <Card className="p-4">
-              <div className="flex items-center gap-3">
-                <FolderOpen className="h-8 w-8 text-blue-500" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Selected Project</p>
-                  <p className="font-semibold">
-                    {selectedProject ? selectedProject.name : 'None selected'}
-                  </p>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <Card>
+              <div className="p-4">
+                <div className="flex items-center">
+                  <FolderOpen className="h-4 w-4 text-muted-foreground" style={{strokeWidth: 1.5}} />
+                  <div className="ml-4">
+                    <p className="text-[13px] font-normal text-gray-600">Selected Project</p>
+                    <p className="text-xl font-semibold">
+                      {selectedProject ? selectedProject.name : 'None selected'}
+                    </p>
+                  </div>
                 </div>
               </div>
             </Card>
 
-            <Card className="p-4">
-              <div className="flex items-center gap-3">
-                <Shield className="h-8 w-8 text-orange-500" />
-                <div>
-                  <p className="text-sm text-muted-foreground">PII Policy</p>
-                  <p className="font-semibold">
-                    {selectedPolicy ? selectedPolicy.name : 'None selected'}
-                  </p>
+            <Card>
+              <div className="p-4">
+                <div className="flex items-center">
+                  <Shield className="h-4 w-4 text-muted-foreground" style={{strokeWidth: 1.5}} />
+                  <div className="ml-4">
+                    <p className="text-[13px] font-normal text-gray-600">PII Policy</p>
+                    <p className="text-xl font-semibold">
+                      {selectedPolicy ? selectedPolicy.name : 'None selected'}
+                    </p>
+                  </div>
                 </div>
               </div>
             </Card>
 
-            <Card className="p-4">
-              <div className="flex items-center gap-3">
-                <Upload className="h-8 w-8 text-green-500" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Datasets</p>
-                  <p className="font-semibold">
-                    {selectedProject?._count?.datasets || 0}
-                  </p>
+            <Card>
+              <div className="p-4">
+                <div className="flex items-center">
+                  <Upload className="h-4 w-4 text-muted-foreground" style={{strokeWidth: 1.5}} />
+                  <div className="ml-4">
+                    <p className="text-[13px] font-normal text-gray-600">Datasets</p>
+                    <p className="text-xl font-semibold">
+                      {selectedProject?._count?.datasets || 0}
+                    </p>
+                  </div>
                 </div>
               </div>
             </Card>
 
-            <Card className="p-4">
-              <div className="flex items-center gap-3">
-                <TrendingUp className="h-8 w-8 text-purple-500" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Status</p>
-                  <p className="font-semibold">
-                    {(selectedProjectId && selectedPolicyId) ? 'Ready to upload' : 'Configure settings'}
-                  </p>
+            <Card>
+              <div className="p-4">
+                <div className="flex items-center">
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" style={{strokeWidth: 1.5}} />
+                  <div className="ml-4">
+                    <p className="text-[13px] font-normal text-gray-600">Status</p>
+                    <p className="text-xl font-semibold">
+                      {(selectedProjectId && selectedPolicyId) ? 'Ready to upload' : 'Configure settings'}
+                    </p>
+                  </div>
                 </div>
               </div>
             </Card>
@@ -146,8 +219,7 @@ export default function DatasetsPage() {
               />
 
               <Card className="p-6">
-                <h3 className="font-semibold mb-4 flex items-center gap-2">
-                  <Shield className="h-5 w-5" />
+                <h3 className="font-semibold mb-4">
                   PII Detection Policy
                 </h3>
                 <PolicySelector
@@ -209,13 +281,15 @@ export default function DatasetsPage() {
             </div>
           </div>
 
-          {/* Recent Uploads Section */}
-          <div className="mt-12">
-            <RecentUploads 
-              projectId={selectedProjectId} 
-              refreshTrigger={uploadKey}
-            />
-          </div>
+              {/* Recent Uploads Section */}
+              <div className="mt-12">
+                <RecentUploads 
+                  projectId={selectedProjectId} 
+                  refreshTrigger={uploadKey}
+                />
+              </div>
+            </>
+          )}
         </div>
       </DashboardLayout>
     </ProtectedRoute>

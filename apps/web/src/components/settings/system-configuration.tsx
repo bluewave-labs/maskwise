@@ -241,16 +241,7 @@ export function SystemConfiguration({ className }: SystemConfigurationProps) {
   return (
     <div className={`space-y-6 ${className}`}>
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <SettingsIcon className="h-6 w-6 text-orange-600" />
-          <div>
-            <h3 className="text-lg font-semibold">System Configuration</h3>
-            <p className="text-muted-foreground text-sm">
-              Configure file upload limits, PII detection settings, and system behavior
-            </p>
-          </div>
-        </div>
+      <div className="flex items-center justify-end">
         <div className="flex items-center gap-2">
           {hasChanges && (
             <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
@@ -302,7 +293,7 @@ export function SystemConfiguration({ className }: SystemConfigurationProps) {
                 onChange={(e) => updateFileConfig('maxSize', parseInt(e.target.value) || 1)}
                 className="h-[36px]"
               />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[13px] text-muted-foreground">
                 Current limit: {config.file.maxSize}MB per file
               </p>
             </div>
@@ -317,7 +308,7 @@ export function SystemConfiguration({ className }: SystemConfigurationProps) {
                 onChange={(e) => updateFileConfig('retentionDays', parseInt(e.target.value) || 1)}
                 className="h-[36px]"
               />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[13px] text-muted-foreground">
                 Files will be deleted after {config.file.retentionDays} days
               </p>
             </div>
@@ -342,7 +333,7 @@ export function SystemConfiguration({ className }: SystemConfigurationProps) {
                 );
               })}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-[13px] text-muted-foreground">
               {config.file.allowedTypes.length} file types enabled
             </p>
           </div>
@@ -371,7 +362,7 @@ export function SystemConfiguration({ className }: SystemConfigurationProps) {
                 onChange={(e) => updatePiiConfig('defaultConfidenceThreshold', parseFloat(e.target.value) || 0)}
                 className="h-[36px]"
               />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[13px] text-muted-foreground">
                 Minimum confidence score: {(config.pii.defaultConfidenceThreshold * 100).toFixed(0)}%
               </p>
             </div>
@@ -414,7 +405,7 @@ export function SystemConfiguration({ className }: SystemConfigurationProps) {
                 );
               })}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-[13px] text-muted-foreground">
               {config.pii.enabledEntityTypes.length} entity types enabled for detection
             </p>
           </div>
@@ -526,22 +517,22 @@ export function SystemConfiguration({ className }: SystemConfigurationProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-[13px]">
             <div>
               <p className="text-muted-foreground">Max File Size</p>
-              <p className="font-medium">{config.file.maxSize}MB</p>
+              <p className="font-normal">{config.file.maxSize}MB</p>
             </div>
             <div>
               <p className="text-muted-foreground">File Types</p>
-              <p className="font-medium">{config.file.allowedTypes.length} enabled</p>
+              <p className="font-normal">{config.file.allowedTypes.length} enabled</p>
             </div>
             <div>
               <p className="text-muted-foreground">PII Confidence</p>
-              <p className="font-medium">{(config.pii.defaultConfidenceThreshold * 100).toFixed(0)}%</p>
+              <p className="font-normal">{(config.pii.defaultConfidenceThreshold * 100).toFixed(0)}%</p>
             </div>
             <div>
               <p className="text-muted-foreground">PII Entities</p>
-              <p className="font-medium">{config.pii.enabledEntityTypes.length} types</p>
+              <p className="font-normal">{config.pii.enabledEntityTypes.length} types</p>
             </div>
           </div>
         </CardContent>

@@ -88,18 +88,18 @@ function formatTimestamp(timestamp: string): string {
 }
 
 export function ActivityFeed() {
-  const { activities, isLoading, error, refetch } = useRecentActivity(5);
+  const { activities, isLoading, error, refetch } = useRecentActivity(10);
 
   if (error) {
     return (
       <div className="bg-card p-6 rounded-lg border shadow-sm">
         <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
         <div className="bg-destructive/15 border border-destructive/50 p-4 rounded-lg">
-          <p className="text-destructive font-medium">Failed to load recent activity</p>
-          <p className="text-destructive/80 text-sm mt-1">{error}</p>
+          <p className="text-destructive font-normal">Failed to load recent activity</p>
+          <p className="text-destructive/80 text-[13px] mt-1">{error}</p>
           <button
             onClick={refetch}
-            className="mt-2 text-sm text-destructive underline hover:no-underline"
+            className="mt-2 text-[13px] text-destructive underline hover:no-underline"
           >
             Try again
           </button>
@@ -122,56 +122,33 @@ export function ActivityFeed() {
         </div>
       ) : !activities || activities.length === 0 ? (
         <div className="text-center py-8">
-          <p className="text-muted-foreground">No recent activity to display</p>
+          <p className="text-[13px] text-muted-foreground">No recent activity to display</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {activities.map((activity) => {
-            const ActionIcon = actionIcons[activity.action];
+        <div className="space-y-0">
+          {activities.map((activity, index) => {
             const ResourceIcon = getResourceIcon(activity.resource);
-            const actionColor = actionColors[activity.action];
 
             return (
-              <div key={activity.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-accent/50 transition-colors">
-                <div className="flex-shrink-0">
-                  <div className={`p-2 rounded-full bg-accent ${actionColor}`}>
-                    <ActionIcon className="h-4 w-4" />
-                  </div>
-                </div>
-                
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center space-x-2">
+              <div key={activity.id}>
+                <div className="flex items-center justify-between py-3 hover:bg-accent/50 transition-colors">
+                  <div className="flex items-center space-x-2 flex-1 min-w-0">
                     <ResourceIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                    <p className="text-sm font-medium text-foreground truncate">
+                    <p className="text-[13px] font-normal text-foreground truncate">
                       {formatActionText(activity)}
                     </p>
                   </div>
                   
-                  <div className="flex items-center mt-1 space-x-4">
-                    <p className="text-xs text-muted-foreground">
+                  <div className="flex-shrink-0 ml-4">
+                    <p className="text-[13px] text-muted-foreground">
                       {formatTimestamp(activity.createdAt)}
                     </p>
-                    
-                    {activity.ipAddress && (
-                      <p className="text-xs text-muted-foreground">
-                        {activity.ipAddress}
-                      </p>
-                    )}
                   </div>
-                  
-                  {activity.details && Object.keys(activity.details).length > 0 && (
-                    <div className="mt-2">
-                      <details className="text-xs">
-                        <summary className="text-muted-foreground cursor-pointer hover:text-foreground">
-                          View details
-                        </summary>
-                        <pre className="mt-1 p-2 bg-accent rounded text-xs overflow-x-auto">
-                          {JSON.stringify(activity.details, null, 2)}
-                        </pre>
-                      </details>
-                    </div>
-                  )}
                 </div>
+                
+                {index < activities.length - 1 && (
+                  <div className="border-b border-border/50"></div>
+                )}
               </div>
             );
           })}

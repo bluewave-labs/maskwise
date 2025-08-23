@@ -172,53 +172,29 @@ export function EditUserForm({ user, onCancel, onUserUpdated }: EditUserFormProp
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onCancel}
-          className="flex items-center gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Users
-        </Button>
-      </div>
-
-      <div className="flex items-center gap-3 mb-6">
-        <User className="h-6 w-6 text-blue-600" />
-        <div>
-          <h3 className="text-lg font-semibold">Edit User</h3>
-          <p className="text-muted-foreground text-sm">
-            Update user profile information and role permissions
-          </p>
-        </div>
-      </div>
-
       {/* User Info Card */}
-      <Card className="p-4 bg-muted/50">
+      <div className="p-4 bg-muted/50 rounded-lg border">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
             <User className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <p className="font-medium">{user.firstName} {user.lastName}</p>
-            <p className="text-sm text-muted-foreground">{user.email}</p>
-            <p className="text-xs text-muted-foreground">
+            <p className="font-normal">{user.firstName} {user.lastName}</p>
+            <p className="text-[13px] text-muted-foreground">{user.email}</p>
+            <p className="text-[13px] text-muted-foreground">
               Member since {new Date(user.createdAt).toLocaleDateString()}
             </p>
           </div>
         </div>
-      </Card>
+      </div>
 
       {/* Edit User Form */}
-      <Card className="p-6">
+      <div className="p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Name Fields */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="firstName">
-                <User className="h-4 w-4 inline mr-2" />
                 First Name
               </Label>
               <Input
@@ -231,13 +207,12 @@ export function EditUserForm({ user, onCancel, onUserUpdated }: EditUserFormProp
                 disabled={loading}
               />
               {errors.firstName && (
-                <p className="text-sm text-red-600">{errors.firstName}</p>
+                <p className="text-[13px] text-red-600">{errors.firstName}</p>
               )}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="lastName">
-                <User className="h-4 w-4 inline mr-2" />
                 Last Name
               </Label>
               <Input
@@ -250,7 +225,7 @@ export function EditUserForm({ user, onCancel, onUserUpdated }: EditUserFormProp
                 disabled={loading}
               />
               {errors.lastName && (
-                <p className="text-sm text-red-600">{errors.lastName}</p>
+                <p className="text-[13px] text-red-600">{errors.lastName}</p>
               )}
             </div>
           </div>
@@ -258,7 +233,6 @@ export function EditUserForm({ user, onCancel, onUserUpdated }: EditUserFormProp
           {/* Email Field */}
           <div className="space-y-2">
             <Label htmlFor="email">
-              <Mail className="h-4 w-4 inline mr-2" />
               Email Address
             </Label>
             <Input
@@ -271,14 +245,13 @@ export function EditUserForm({ user, onCancel, onUserUpdated }: EditUserFormProp
               disabled={loading}
             />
             {errors.email && (
-              <p className="text-sm text-red-600">{errors.email}</p>
+              <p className="text-[13px] text-red-600">{errors.email}</p>
             )}
           </div>
 
           {/* Role Selection */}
           <div className="space-y-2">
             <Label htmlFor="role">
-              <Shield className="h-4 w-4 inline mr-2" />
               Role
             </Label>
             <Select 
@@ -294,22 +267,28 @@ export function EditUserForm({ user, onCancel, onUserUpdated }: EditUserFormProp
                   <SelectItem key={role.value} value={role.value}>
                     <div className="flex items-center gap-2">
                       <Shield className={`h-4 w-4 ${getRoleColor(role.value)}`} />
-                      <div>
-                        <div className="font-medium">{role.label}</div>
-                        <div className="text-xs text-muted-foreground">{role.description}</div>
-                      </div>
+                      <span className="font-normal">{role.label} ({role.description})</span>
                     </div>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             {errors.role && (
-              <p className="text-sm text-red-600">{errors.role}</p>
+              <p className="text-[13px] text-red-600">{errors.role}</p>
             )}
           </div>
 
           {/* Form Actions */}
-          <div className="flex items-center gap-3 pt-4">
+          <div className="flex items-center justify-end gap-3 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancel}
+              disabled={loading}
+            >
+              Cancel
+            </Button>
+            
             <Button
               type="submit"
               disabled={loading}
@@ -322,33 +301,22 @@ export function EditUserForm({ user, onCancel, onUserUpdated }: EditUserFormProp
               )}
               {loading ? 'Saving Changes...' : 'Save Changes'}
             </Button>
-            
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onCancel}
-              disabled={loading}
-              className="flex items-center gap-2"
-            >
-              <X className="h-4 w-4" />
-              Cancel
-            </Button>
           </div>
         </form>
-      </Card>
+      </div>
 
       {/* Info Card */}
-      <Card className="p-4 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
-        <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">
+      <div className="p-4 bg-slate-50 dark:bg-slate-900/20 border border-slate-200 dark:border-slate-800 rounded-lg">
+        <h4 className="font-normal text-slate-700 dark:text-slate-300 mb-2">
           User Update Guidelines
         </h4>
-        <ul className="text-sm text-blue-700 dark:text-blue-200 space-y-1">
+        <ul className="text-[13px] text-slate-600 dark:text-slate-400 space-y-1">
           <li>• Email changes will require the user to verify their new email address</li>
           <li>• Role changes take effect immediately and may affect user permissions</li>
           <li>• Users will receive a notification about profile changes</li>
           <li>• All changes are logged for audit and compliance purposes</li>
         </ul>
-      </Card>
+      </div>
     </div>
   );
 }

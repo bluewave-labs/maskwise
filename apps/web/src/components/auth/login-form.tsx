@@ -92,7 +92,7 @@ export function LoginForm() {
                 className={errors.email ? 'border-destructive' : ''}
               />
               {errors.email && (
-                <p className="text-sm text-destructive">{errors.email.message}</p>
+                <p className="text-[13px] text-destructive">{errors.email.message}</p>
               )}
             </div>
 
@@ -121,7 +121,7 @@ export function LoginForm() {
                 </Button>
               </div>
               {errors.password && (
-                <p className="text-sm text-destructive">{errors.password.message}</p>
+                <p className="text-[13px] text-destructive">{errors.password.message}</p>
               )}
             </div>
 
@@ -136,7 +136,7 @@ export function LoginForm() {
               )}
             </Button>
 
-            <div className="mt-4 text-center text-sm text-muted-foreground">
+            <div className="mt-4 text-center text-[13px] text-muted-foreground">
               <p>Demo credentials:</p>
               <p className="font-mono">admin@maskwise.com / admin123</p>
             </div>

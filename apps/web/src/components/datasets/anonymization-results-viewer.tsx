@@ -227,8 +227,8 @@ export function AnonymizationResultsViewer({
           onClick={() => setSelectedOperation(selectedOperation === op ? null : op)}
           title={`${op.entity_type} (${op.operator})`}
         >
-          <span className="text-xs">{entityIcon}</span>
-          <span className="font-medium">
+          <span className="text-[13px]">{entityIcon}</span>
+          <span className="font-normal">
             {text.substring(op.start, op.end)}
           </span>
         </span>
@@ -269,7 +269,7 @@ export function AnonymizationResultsViewer({
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="text-sm text-muted-foreground">Loading anonymization results...</p>
+          <p className="text-[13px] text-muted-foreground">Loading anonymization results...</p>
         </div>
       </div>
     );
@@ -282,7 +282,7 @@ export function AnonymizationResultsViewer({
           <div className="text-red-500 text-2xl">⚠️</div>
           <div>
             <h3 className="font-semibold text-foreground">Failed to Load Results</h3>
-            <p className="text-sm text-muted-foreground mt-1">{error}</p>
+            <p className="text-[13px] text-muted-foreground mt-1">{error}</p>
             <Button 
               onClick={fetchAnonymizationResults} 
               variant="outline" 
@@ -304,7 +304,7 @@ export function AnonymizationResultsViewer({
           <div className="text-yellow-500 text-2xl">📄</div>
           <div>
             <h3 className="font-semibold text-foreground">No Results Available</h3>
-            <p className="text-sm text-muted-foreground">Anonymization results not found for this dataset.</p>
+            <p className="text-[13px] text-muted-foreground">Anonymization results not found for this dataset.</p>
           </div>
         </div>
       </div>
@@ -340,7 +340,7 @@ export function AnonymizationResultsViewer({
           )}
           <div>
             <h1 className="text-2xl font-bold text-foreground">Anonymization Results</h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-[13px] text-muted-foreground">
               {data.metadata?.dataset.name || `Dataset ${datasetId}`}
             </p>
           </div>
@@ -420,7 +420,7 @@ export function AnonymizationResultsViewer({
               </CardHeader>
               <CardContent>
                 <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 max-h-96 overflow-auto">
-                  <pre className="whitespace-pre-wrap text-sm font-mono leading-relaxed">
+                  <pre className="whitespace-pre-wrap text-[13px] font-mono leading-relaxed">
                     {originalText}
                   </pre>
                 </div>
@@ -440,7 +440,7 @@ export function AnonymizationResultsViewer({
             </CardHeader>
             <CardContent>
               <div className="bg-green-50 border border-green-200 rounded-lg p-4 max-h-96 overflow-auto">
-                <div className="text-sm leading-relaxed">
+                <div className="text-[13px] leading-relaxed">
                   {highlightText(data.anonymizedText, data.operations)}
                 </div>
               </div>
@@ -466,10 +466,10 @@ export function AnonymizationResultsViewer({
                   
                   return (
                     <div key={entityType} className="flex items-center justify-between">
-                      <Badge variant="outline" className={cn('text-xs', color)}>
+                      <Badge variant="outline" className={cn('text-[13px]', color)}>
                         {icon} {entityType.replace('_', ' ')}
                       </Badge>
-                      <span className="text-sm font-medium">{count}</span>
+                      <span className="text-[13px] font-normal">{count}</span>
                     </div>
                   );
                 })}
@@ -484,9 +484,9 @@ export function AnonymizationResultsViewer({
               </CardHeader>
               <CardContent className="space-y-3">
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground">Entity Type</label>
+                  <label className="text-[13px] font-normal text-muted-foreground">Entity Type</label>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="text-sm">
+                    <span className="text-[13px]">
                       {ENTITY_ICONS[selectedOperation.entity_type as keyof typeof ENTITY_ICONS] || ENTITY_ICONS.DEFAULT}
                     </span>
                     <Badge className={ENTITY_COLORS[selectedOperation.entity_type as keyof typeof ENTITY_COLORS] || ENTITY_COLORS.DEFAULT}>
@@ -496,20 +496,20 @@ export function AnonymizationResultsViewer({
                 </div>
                 
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground">Anonymization Method</label>
-                  <p className="text-sm font-medium capitalize mt-1">{selectedOperation.operator}</p>
+                  <label className="text-[13px] font-normal text-muted-foreground">Anonymization Method</label>
+                  <p className="text-[13px] font-normal capitalize mt-1">{selectedOperation.operator}</p>
                 </div>
                 
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground">Anonymized Text</label>
-                  <p className="text-sm font-mono bg-gray-50 p-2 rounded border mt-1">
+                  <label className="text-[13px] font-normal text-muted-foreground">Anonymized Text</label>
+                  <p className="text-[13px] font-mono bg-gray-50 p-2 rounded border mt-1">
                     "{selectedOperation.text}"
                   </p>
                 </div>
                 
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground">Position</label>
-                  <p className="text-sm mt-1">
+                  <label className="text-[13px] font-normal text-muted-foreground">Position</label>
+                  <p className="text-[13px] mt-1">
                     Characters {selectedOperation.start} - {selectedOperation.end}
                   </p>
                 </div>
@@ -521,17 +521,17 @@ export function AnonymizationResultsViewer({
             <CardHeader>
               <CardTitle className="text-lg">Processing Info</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 text-sm">
+            <CardContent className="space-y-3 text-[13px]">
               <div>
-                <label className="font-medium text-muted-foreground">Job ID</label>
-                <p className="font-mono text-xs">{data.metadata?.jobId}</p>
+                <label className="font-normal text-muted-foreground">Job ID</label>
+                <p className="font-mono text-[13px]">{data.metadata?.jobId}</p>
               </div>
               <div>
-                <label className="font-medium text-muted-foreground">File Type</label>
+                <label className="font-normal text-muted-foreground">File Type</label>
                 <p>{data.metadata?.dataset.fileType}</p>
               </div>
               <div>
-                <label className="font-medium text-muted-foreground">Original Filename</label>
+                <label className="font-normal text-muted-foreground">Original Filename</label>
                 <p className="break-all">{data.metadata?.dataset.filename}</p>
               </div>
             </CardContent>
