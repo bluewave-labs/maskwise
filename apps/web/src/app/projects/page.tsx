@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ProtectedRoute } from '@/components/auth/protected-route';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
@@ -11,22 +11,45 @@ import { Project, CreateProjectRequest } from '@/types/project';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-
-type ViewMode = 'list' | 'create' | 'edit';
+import { Skeleton, PageSkeleton } from '@/components/ui/skeleton';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 export default function ProjectsPage() {
   const router = useRouter();
   const { projects, loading, createProject, updateProject, deleteProject } = useProjects();
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [pageLoading, setPageLoading] = useState(true);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+
+  useEffect(() => {
+    // Show content immediately after component mounts
+    setPageLoading(false);
+  }, []);
 
   const handleCreateProject = async (data: CreateProjectRequest) => {
     setActionLoading(true);
     try {
       await createProject(data);
-      setViewMode('list');
+      setCreateDialogOpen(false);
+      toast({
+        title: 'Project Created',
+        description: `Project "${data.name}" has been created successfully.`,
+      });
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Creation Failed',
+        description: 'Failed to create the project. Please try again.',
+      });
     } finally {
       setActionLoading(false);
     }
@@ -34,7 +57,7 @@ export default function ProjectsPage() {
 
   const handleEditProject = (project: Project) => {
     setEditingProject(project);
-    setViewMode('edit');
+    setEditDialogOpen(true);
   };
 
   const handleUpdateProject = async (data: CreateProjectRequest) => {
@@ -43,8 +66,18 @@ export default function ProjectsPage() {
     setActionLoading(true);
     try {
       await updateProject(editingProject.id, data);
-      setViewMode('list');
+      setEditDialogOpen(false);
       setEditingProject(null);
+      toast({
+        title: 'Project Updated',
+        description: `Project "${data.name}" has been updated successfully.`,
+      });
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Update Failed',
+        description: 'Failed to update the project. Please try again.',
+      });
     } finally {
       setActionLoading(false);
     }
@@ -76,9 +109,16 @@ export default function ProjectsPage() {
     router.push(`/datasets?projectId=${project.id}`);
   };
 
-  const cancelAction = () => {
-    setViewMode('list');
+  const handleCreateCancel = () => {
+    setCreateDialogOpen(false);
+  };
+
+  const handleEditCancel = () => {
+    setEditDialogOpen(false);
     setEditingProject(null);
+  };
+
+  const cancelAction = () => {
     setDeleteConfirm(null);
   };
 
@@ -88,29 +128,54 @@ export default function ProjectsPage() {
         <div className="p-8">
           {/* Header */}
           <div className="mb-8">
-            {viewMode !== 'list' && (
-              <Button
-                variant="ghost"
-                onClick={cancelAction}
-                className="mb-4"
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Projects
-              </Button>
-            )}
-            
-            <h1 className="text-3xl font-bold text-foreground">Projects</h1>
-            <p className="text-muted-foreground mt-2">
+            <h1 className="text-[15px] font-bold text-foreground">Projects</h1>
+            <p className="text-muted-foreground text-[13px] mt-2">
               Manage your PII detection projects and organize your datasets
             </p>
           </div>
 
           {/* Content */}
-          {viewMode === 'list' && (
+          {pageLoading ? (
+            <div className="space-y-6">
+              {/* Search and header skeleton */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <Skeleton className="h-8 w-48 mb-2" />
+                  <Skeleton className="h-4 w-96" />
+                </div>
+                <Skeleton className="h-10 w-32" />
+              </div>
+              
+              {/* Search bar skeleton */}
+              <div className="flex gap-4">
+                <Skeleton className="h-9 flex-1" />
+                <Skeleton className="h-9 w-32" />
+                <Skeleton className="h-9 w-24" />
+              </div>
+              
+              {/* Project cards skeleton */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="rounded-lg border bg-card p-6">
+                    <Skeleton className="h-5 w-32 mb-3" />
+                    <Skeleton className="h-4 w-full mb-2" />
+                    <Skeleton className="h-4 w-3/4 mb-4" />
+                    <div className="flex items-center justify-between">
+                      <Skeleton className="h-4 w-20" />
+                      <div className="flex gap-2">
+                        <Skeleton className="h-8 w-16" />
+                        <Skeleton className="h-8 w-16" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
             <ProjectList
               projects={projects}
               loading={loading}
-              onCreateProject={() => setViewMode('create')}
+              onCreateProject={() => setCreateDialogOpen(true)}
               onEditProject={handleEditProject}
               onDeleteProject={handleDeleteProject}
               onViewProject={handleViewProject}
@@ -118,26 +183,45 @@ export default function ProjectsPage() {
             />
           )}
 
-          {viewMode === 'create' && (
-            <CreateProjectForm
-              onSubmit={handleCreateProject}
-              onCancel={cancelAction}
-              loading={actionLoading}
-            />
-          )}
+          {/* Create Project Modal */}
+          <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Create New Project</DialogTitle>
+                <DialogDescription>
+                  Create a new PII detection project to organize your datasets
+                </DialogDescription>
+              </DialogHeader>
+              <CreateProjectForm
+                onSubmit={handleCreateProject}
+                onCancel={handleCreateCancel}
+                loading={actionLoading}
+              />
+            </DialogContent>
+          </Dialog>
 
-          {viewMode === 'edit' && editingProject && (
-            <CreateProjectForm
-              onSubmit={handleUpdateProject}
-              onCancel={cancelAction}
-              loading={actionLoading}
-              initialData={{
-                name: editingProject.name,
-                description: editingProject.description || '',
-                tags: editingProject.tags || []
-              }}
-            />
-          )}
+          {/* Edit Project Modal */}
+          <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Edit Project</DialogTitle>
+                <DialogDescription>
+                  Update your project information and settings
+                </DialogDescription>
+              </DialogHeader>
+              {editingProject && (
+                <CreateProjectForm
+                  onSubmit={handleUpdateProject}
+                  onCancel={handleEditCancel}
+                  loading={actionLoading}
+                  initialData={{
+                    name: editingProject.name,
+                    description: editingProject.description || ''
+                  }}
+                />
+              )}
+            </DialogContent>
+          </Dialog>
 
           {/* Delete Confirmation Modal */}
           {deleteConfirm && (

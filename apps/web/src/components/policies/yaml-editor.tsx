@@ -56,11 +56,9 @@ export function YAMLEditor({
   
   // Update content when initialYaml changes (for loading new policies)
   useEffect(() => {
-    if (initialYaml !== yamlContent && !hasUnsavedChanges) {
-      setYamlContent(initialYaml);
-      lastValidationRef.current = '';
-    }
-  }, [initialYaml, yamlContent, hasUnsavedChanges]);
+    setYamlContent(initialYaml);
+    lastValidationRef.current = '';
+  }, [initialYaml]);
   
   // Ref to track if we've already called onValidChange for the current result
   const lastValidationRef = useRef<string>('');
@@ -207,7 +205,7 @@ export function YAMLEditor({
               value={yamlContent}
               onChange={(e) => setYamlContent(e.target.value)}
               readOnly={readonly}
-              className={`w-full h-96 p-4 font-mono text-sm border rounded resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+              className={`w-full h-96 p-4 font-mono text-[13px] border rounded resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                 readonly ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'
               } ${
                 validationResult.isValid ? 'border-gray-300' : 'border-red-300'
@@ -223,10 +221,10 @@ export function YAMLEditor({
             <Alert className="border-red-200 bg-red-50">
               <AlertTriangle className="h-4 w-4 text-red-600" />
               <AlertDescription>
-                <div className="font-medium text-red-800 mb-2">YAML Validation Errors:</div>
+                <div className="font-normal text-red-800 mb-2">YAML Validation Errors:</div>
                 <ul className="list-disc list-inside space-y-1 text-red-700">
                   {validationResult.errors.map((error, index) => (
-                    <li key={index} className="text-sm">{error}</li>
+                    <li key={index} className="text-[13px]">{error}</li>
                   ))}
                 </ul>
               </AlertDescription>
@@ -238,8 +236,8 @@ export function YAMLEditor({
             <Alert className="border-green-200 bg-green-50">
               <CheckCircle className="h-4 w-4 text-green-600" />
               <AlertDescription className="text-green-800">
-                <div className="font-medium">YAML is valid!</div>
-                <div className="text-sm mt-1">
+                <div className="font-normal">YAML is valid!</div>
+                <div className="text-[13px] mt-1">
                   Your policy configuration has been successfully validated and is ready to use.
                 </div>
               </AlertDescription>
@@ -249,8 +247,8 @@ export function YAMLEditor({
           {/* YAML Help */}
           <Card className="bg-gray-50">
             <CardContent className="p-4">
-              <h4 className="font-medium text-gray-900 mb-2">YAML Policy Structure Help</h4>
-              <div className="text-sm text-gray-600 space-y-1">
+              <h4 className="font-normal text-gray-900 mb-2">YAML Policy Structure Help</h4>
+              <div className="text-[13px] text-gray-600 space-y-1">
                 <div><strong>name:</strong> Policy name (required)</div>
                 <div><strong>version:</strong> Semantic version like "1.0.0" (required)</div>
                 <div><strong>description:</strong> Policy description (required)</div>
@@ -258,7 +256,7 @@ export function YAMLEditor({
                 <div><strong>scope.file_types:</strong> Supported file types: txt, csv, pdf, docx, xlsx, etc.</div>
                 <div><strong>anonymization:</strong> Default anonymization settings</div>
               </div>
-              <div className="mt-3 text-xs text-gray-500">
+              <div className="mt-3 text-[13px] text-gray-500">
                 Supported entity types: EMAIL_ADDRESS, SSN, CREDIT_CARD, PHONE_NUMBER, PERSON, 
                 IP_ADDRESS, DATE_TIME, LOCATION, ORGANIZATION, MEDICAL_LICENSE, URL
               </div>

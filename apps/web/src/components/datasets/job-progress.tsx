@@ -209,7 +209,7 @@ export function JobProgress({
       <Card className={cn("p-4", className)}>
         <div className="flex items-center justify-center space-x-2">
           <Spinner size="sm" />
-          <span className="text-sm text-muted-foreground">Loading progress...</span>
+          <span className="text-[13px] text-muted-foreground">Loading progress...</span>
         </div>
       </Card>
     );
@@ -221,7 +221,7 @@ export function JobProgress({
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <XCircle className="h-4 w-4 text-red-600" />
-            <span className="text-sm text-red-600">Failed to load progress</span>
+            <span className="text-[13px] text-red-600">Failed to load progress</span>
           </div>
           <Button
             variant="outline"
@@ -233,7 +233,7 @@ export function JobProgress({
           </Button>
         </div>
         {retryCount < 3 && (
-          <p className="text-xs text-muted-foreground mt-2">
+          <p className="text-[13px] text-muted-foreground mt-2">
             Retrying in {Math.pow(2, retryCount)} seconds... ({retryCount + 1}/3)
           </p>
         )}
@@ -252,8 +252,8 @@ export function JobProgress({
           {/* Overall Progress */}
           <div className="flex-1">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-sm font-medium">{progressData.currentStage}</span>
-              <span className="text-sm text-muted-foreground">{progressData.overallProgress}%</span>
+              <span className="text-[13px] font-normal">{progressData.currentStage}</span>
+              <span className="text-[13px] text-muted-foreground">{progressData.overallProgress}%</span>
             </div>
             <Progress value={progressData.overallProgress} className="h-2" />
           </div>
@@ -288,7 +288,7 @@ export function JobProgress({
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-lg font-semibold">Processing Progress</h3>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-[13px] text-muted-foreground">
             {progressData.dataset.name}
           </p>
         </div>
@@ -305,16 +305,16 @@ export function JobProgress({
       {/* Overall Progress */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium">Overall Progress</span>
-          <span className="text-sm text-muted-foreground">{progressData.overallProgress}%</span>
+          <span className="text-[13px] font-normal">Overall Progress</span>
+          <span className="text-[13px] text-muted-foreground">{progressData.overallProgress}%</span>
         </div>
         <Progress value={progressData.overallProgress} className="h-3" />
-        <p className="text-sm text-muted-foreground mt-1">{progressData.currentStage}</p>
+        <p className="text-[13px] text-muted-foreground mt-1">{progressData.currentStage}</p>
       </div>
 
       {/* Individual Jobs */}
       <div className="space-y-4">
-        <h4 className="text-sm font-medium text-muted-foreground">Job Stages</h4>
+        <h4 className="text-[13px] font-normal text-muted-foreground">Job Stages</h4>
         {progressData.jobs.map((job, index) => (
           <div
             key={job.id}
@@ -328,8 +328,8 @@ export function JobProgress({
             {/* Job Details */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-sm font-medium">{job.stage}</span>
-                <Badge variant={getStatusVariant(job.status)} className="text-xs">
+                <span className="text-[13px] font-normal">{job.stage}</span>
+                <Badge variant={getStatusVariant(job.status)} className="text-[13px]">
                   {job.status.toLowerCase()}
                 </Badge>
               </div>
@@ -337,24 +337,24 @@ export function JobProgress({
               {/* Job Progress Bar */}
               <div className="flex items-center space-x-2">
                 <Progress value={job.progress} className="h-2 flex-1" />
-                <span className="text-xs text-muted-foreground min-w-[3rem]">
+                <span className="text-[13px] text-muted-foreground min-w-[3rem]">
                   {job.progress}%
                 </span>
               </div>
 
               {/* Additional Info */}
               {job.error && (
-                <p className="text-xs text-red-600 mt-1">{job.error}</p>
+                <p className="text-[13px] text-red-600 mt-1">{job.error}</p>
               )}
               
               {job.estimatedCompletion && (
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-[13px] text-muted-foreground mt-1">
                   Est. completion: {new Date(job.estimatedCompletion).toLocaleTimeString()}
                 </p>
               )}
 
               {job.metadata && job.status === 'COMPLETED' && (
-                <div className="text-xs text-muted-foreground mt-1">
+                <div className="text-[13px] text-muted-foreground mt-1">
                   {job.type === 'ANALYZE_PII' && job.metadata.entitiesFound && (
                     <span>Found {job.metadata.entitiesFound} PII entities</span>
                   )}
@@ -375,7 +375,7 @@ export function JobProgress({
 
       {/* Auto-refresh indicator */}
       {isPolling && (
-        <div className="flex items-center justify-center mt-4 text-xs text-muted-foreground">
+        <div className="flex items-center justify-center mt-4 text-[13px] text-muted-foreground">
           <Spinner size="sm" className="mr-2" />
           Auto-refreshing every 3 seconds
         </div>

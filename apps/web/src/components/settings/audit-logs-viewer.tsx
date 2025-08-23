@@ -255,7 +255,7 @@ export function AuditLogsViewer({ className }: AuditLogsViewerProps) {
           <ClipboardList className="h-6 w-6 text-green-600" />
           <div>
             <h3 className="text-lg font-semibold">Audit Logs</h3>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-muted-foreground text-[13px]">
               Loading audit logs and system activity...
             </p>
           </div>
@@ -304,7 +304,7 @@ export function AuditLogsViewer({ className }: AuditLogsViewerProps) {
           <Activity className="h-6 w-6 text-green-600" />
           <div>
             <h3 className="text-lg font-semibold">Audit Log Details</h3>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-muted-foreground text-[13px]">
               Detailed view of audit log entry
             </p>
           </div>
@@ -315,7 +315,7 @@ export function AuditLogsViewer({ className }: AuditLogsViewerProps) {
             {/* Header Info */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <Label className="text-sm font-medium">Action</Label>
+                <Label className="text-[13px] font-normal">Action</Label>
                 <div className="mt-1">
                   <Badge className={getActionBadgeColor(selectedLog.action)}>
                     {selectedLog.action}
@@ -323,26 +323,26 @@ export function AuditLogsViewer({ className }: AuditLogsViewerProps) {
                 </div>
               </div>
               <div>
-                <Label className="text-sm font-medium">Timestamp</Label>
-                <p className="text-sm text-muted-foreground mt-1">
+                <Label className="text-[13px] font-normal">Timestamp</Label>
+                <p className="text-[13px] text-muted-foreground mt-1">
                   {formatDate(selectedLog.createdAt)}
                 </p>
               </div>
               <div>
-                <Label className="text-sm font-medium">User</Label>
-                <p className="text-sm text-muted-foreground mt-1">
+                <Label className="text-[13px] font-normal">User</Label>
+                <p className="text-[13px] text-muted-foreground mt-1">
                   {selectedLog.user.firstName} {selectedLog.user.lastName} ({selectedLog.user.email})
                 </p>
               </div>
               <div>
-                <Label className="text-sm font-medium">Resource</Label>
-                <p className="text-sm text-muted-foreground mt-1">
+                <Label className="text-[13px] font-normal">Resource</Label>
+                <p className="text-[13px] text-muted-foreground mt-1">
                   {selectedLog.resource} {selectedLog.resourceId && `(ID: ${selectedLog.resourceId})`}
                 </p>
               </div>
               <div>
-                <Label className="text-sm font-medium">IP Address</Label>
-                <p className="text-sm text-muted-foreground mt-1">
+                <Label className="text-[13px] font-normal">IP Address</Label>
+                <p className="text-[13px] text-muted-foreground mt-1">
                   {selectedLog.ipAddress || 'N/A'}
                 </p>
               </div>
@@ -351,9 +351,9 @@ export function AuditLogsViewer({ className }: AuditLogsViewerProps) {
             {/* Details Section */}
             {selectedLog.details && Object.keys(selectedLog.details).length > 0 && (
               <div>
-                <Label className="text-sm font-medium">Details</Label>
+                <Label className="text-[13px] font-normal">Details</Label>
                 <Card className="mt-2 p-4 bg-muted/50">
-                  <pre className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  <pre className="text-[13px] text-muted-foreground whitespace-pre-wrap">
                     {JSON.stringify(selectedLog.details, null, 2)}
                   </pre>
                 </Card>
@@ -363,8 +363,8 @@ export function AuditLogsViewer({ className }: AuditLogsViewerProps) {
             {/* User Agent */}
             {selectedLog.userAgent && (
               <div>
-                <Label className="text-sm font-medium">User Agent</Label>
-                <p className="text-sm text-muted-foreground mt-1 break-all">
+                <Label className="text-[13px] font-normal">User Agent</Label>
+                <p className="text-[13px] text-muted-foreground mt-1 break-all">
                   {selectedLog.userAgent}
                 </p>
               </div>
@@ -377,22 +377,13 @@ export function AuditLogsViewer({ className }: AuditLogsViewerProps) {
 
   return (
     <div className={`space-y-6 ${className}`}>
-      <div className="flex items-center gap-3 mb-6">
-        <ClipboardList className="h-6 w-6 text-green-600" />
-        <div>
-          <h3 className="text-lg font-semibold">Audit Logs</h3>
-          <p className="text-muted-foreground text-sm">
-            Browse system activities and export compliance reports
-          </p>
-        </div>
-      </div>
 
       {/* Filters */}
       <Card className="p-6">
         <div className="space-y-4">
           <div className="flex items-center gap-2 mb-4">
             <Filter className="h-4 w-4" />
-            <h4 className="font-medium">Filters</h4>
+            <h4 className="font-normal">Filters</h4>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -462,7 +453,7 @@ export function AuditLogsViewer({ className }: AuditLogsViewerProps) {
       {/* Actions Bar */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <span className="text-sm text-muted-foreground">
+          <span className="text-[13px] text-muted-foreground">
             {totalLogs} total logs • Showing {((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, totalLogs)}
           </span>
         </div>
@@ -495,7 +486,7 @@ export function AuditLogsViewer({ className }: AuditLogsViewerProps) {
           {logs.length === 0 ? (
             <div className="text-center py-8">
               <ClipboardList className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">
+              <p className="text-[13px] text-muted-foreground">
                 No audit logs found matching your filters
               </p>
             </div>
@@ -514,15 +505,15 @@ export function AuditLogsViewer({ className }: AuditLogsViewerProps) {
                         <Badge className={getActionBadgeColor(log.action)}>
                           {log.action}
                         </Badge>
-                        <span className="text-sm font-medium">
+                        <span className="text-[13px] font-normal">
                           {log.user.firstName} {log.user.lastName}
                         </span>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-[13px] text-muted-foreground">
                           {log.resource} {log.resourceId && `(${log.resourceId})`}
                         </span>
                       </div>
                       
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-4 text-[13px] text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
                           {formatDate(log.createdAt)}
@@ -585,7 +576,7 @@ export function AuditLogsViewer({ className }: AuditLogsViewerProps) {
                   Previous
                 </Button>
                 
-                <span className="text-sm text-muted-foreground">
+                <span className="text-[13px] text-muted-foreground">
                   Page {currentPage} of {totalPages}
                 </span>
                 

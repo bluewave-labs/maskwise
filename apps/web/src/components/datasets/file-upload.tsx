@@ -534,7 +534,7 @@ export function FileUpload({
     };
     
     return (
-      <Badge className={`${variants[riskLevel]} text-xs`}>
+      <Badge className={`${variants[riskLevel]} text-[13px]`}>
         <Shield className="h-3 w-3 mr-1" />
         {riskLevel.toUpperCase()}
       </Badge>
@@ -589,7 +589,7 @@ export function FileUpload({
             <p className="text-muted-foreground mb-2">
               Support for TXT, CSV, PDF, DOCX, XLSX, JPEG, PNG, TIFF files up to {maxFileSize}MB
             </p>
-            <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground mb-4">
+            <div className="flex items-center justify-center gap-4 text-[13px] text-muted-foreground mb-4">
               <div className="flex items-center gap-1">
                 <Shield className="h-3 w-3" />
                 <span>Automatic security scanning</span>
@@ -627,22 +627,22 @@ export function FileUpload({
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-lg font-semibold flex items-center gap-2">
+              <h3 className="text-lg font-semibold">
                 Files ({files.length})
                 {hasWarnings && (
-                  <Badge variant="secondary" className="text-xs">
+                  <Badge variant="secondary" className="text-[13px]">
                     <AlertTriangle className="h-3 w-3 mr-1" />
                     Warnings
                   </Badge>
                 )}
                 {highRiskCount > 0 && (
-                  <Badge variant="destructive" className="text-xs">
+                  <Badge variant="destructive" className="text-[13px]">
                     <Shield className="h-3 w-3 mr-1" />
                     {highRiskCount} High Risk
                   </Badge>
                 )}
               </h3>
-              <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1">
+              <div className="flex items-center gap-4 text-[13px] text-muted-foreground mt-1">
                 {pendingCount > 0 && <span>Pending: {pendingCount}</span>}
                 {uploadingCount > 0 && <span>Uploading: {uploadingCount}</span>}
                 {completedCount > 0 && <span>Completed: {completedCount}</span>}
@@ -685,11 +685,11 @@ export function FileUpload({
                   
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
-                      <p className="text-sm font-medium truncate">
+                      <p className="text-[13px] font-normal truncate">
                         {uploadFile.file.name}
                       </p>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-[13px] text-muted-foreground">
                           {formatFileSize(uploadFile.file.size)}
                         </span>
                         {uploadFile.validation && (
@@ -700,7 +700,7 @@ export function FileUpload({
                     
                     {/* Status and Progress */}
                     {uploadFile.status === 'validating' && (
-                      <p className="text-xs text-blue-600">Validating file...</p>
+                      <p className="text-[13px] text-blue-600">Validating file...</p>
                     )}
                     
                     {uploadFile.status === 'uploading' && (
@@ -711,7 +711,7 @@ export function FileUpload({
                             style={{ width: `${uploadFile.progress}%` }}
                           />
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">
+                        <p className="text-[13px] text-muted-foreground mt-1">
                           {uploadFile.progress}% uploaded {uploadFile.retryCount ? `(Retry ${uploadFile.retryCount})` : ''}
                         </p>
                       </div>
@@ -721,7 +721,7 @@ export function FileUpload({
                     {uploadFile.validation?.warnings.length > 0 && (
                       <div className="mt-1 flex items-start gap-1">
                         <AlertTriangle className="h-3 w-3 text-yellow-500 flex-shrink-0 mt-0.5" />
-                        <div className="text-xs text-yellow-600">
+                        <div className="text-[13px] text-yellow-600">
                           {uploadFile.validation.warnings.map((warning, idx) => (
                             <div key={idx}>{warning}</div>
                           ))}
@@ -732,7 +732,7 @@ export function FileUpload({
                     {/* Error with Retry Option */}
                     {uploadFile.error && (
                       <div className="mt-1 flex items-center justify-between">
-                        <p className="text-xs text-red-500 flex-1">
+                        <p className="text-[13px] text-red-500 flex-1">
                           {uploadFile.error}
                         </p>
                         {uploadFile.retryCount !== undefined && uploadFile.retryCount < 3 && (
@@ -740,7 +740,7 @@ export function FileUpload({
                             variant="ghost"
                             size="sm"
                             onClick={() => retryUpload(uploadFile)}
-                            className="h-6 px-2 text-xs"
+                            className="h-6 px-2 text-[13px]"
                           >
                             <RefreshCw className="h-3 w-3 mr-1" />
                             Retry
@@ -753,7 +753,7 @@ export function FileUpload({
                     {uploadFile.status === 'completed' && uploadFile.result && (
                       <div className="mt-1 flex items-center gap-1">
                         <CheckCircle className="h-3 w-3 text-green-500" />
-                        <p className="text-xs text-green-600">
+                        <p className="text-[13px] text-green-600">
                           Job ID: {uploadFile.result.job?.id} - Analysis queued
                         </p>
                       </div>
@@ -790,12 +790,11 @@ export function FileUpload({
                 {uploadFile.status === 'preview' && uploadFile.preview && (
                   <div className="p-4 border-t bg-muted/10">
                     <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-sm font-medium flex items-center gap-2">
-                        <Eye className="h-4 w-4" />
+                      <h4 className="text-[13px] font-normal">
                         File Preview
                       </h4>
                       {!uploadFile.preview.isSecure && (
-                        <Badge variant="destructive" className="text-xs">
+                        <Badge variant="destructive" className="text-[13px]">
                           <AlertTriangle className="h-3 w-3 mr-1" />
                           Security Warning
                         </Badge>
@@ -806,10 +805,10 @@ export function FileUpload({
                       <div className="mb-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
                         <div className="flex items-start gap-2">
                           <Info className="h-4 w-4 text-yellow-600 flex-shrink-0 mt-0.5" />
-                          <div className="text-sm text-yellow-800 dark:text-yellow-200">
-                            <p className="font-medium mb-1">Preview Warnings:</p>
+                          <div className="text-[13px] text-yellow-800 dark:text-yellow-200">
+                            <p className="font-normal mb-1">Preview Warnings:</p>
                             {uploadFile.preview.warnings.map((warning, idx) => (
-                              <p key={idx} className="text-xs">• {warning}</p>
+                              <p key={idx} className="text-[13px]">• {warning}</p>
                             ))}
                           </div>
                         </div>
@@ -825,7 +824,7 @@ export function FileUpload({
                           style={{ maxHeight: '200px' }}
                         />
                       ) : (
-                        <pre className="text-xs whitespace-pre-wrap font-mono">
+                        <pre className="text-[13px] whitespace-pre-wrap font-mono">
                           {uploadFile.preview.content}
                         </pre>
                       )}

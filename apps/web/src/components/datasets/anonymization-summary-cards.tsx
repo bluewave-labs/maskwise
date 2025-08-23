@@ -96,7 +96,7 @@ export function AnonymizationSummaryCards({
       <Card className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-transparent opacity-50" />
         <CardHeader className="relative pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+          <CardTitle className="text-[13px] font-normal text-muted-foreground flex items-center gap-2">
             <Shield className="h-4 w-4 text-blue-600" />
             Protection Score
           </CardTitle>
@@ -105,13 +105,13 @@ export function AnonymizationSummaryCards({
           <div className="space-y-3">
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-bold">{protectionPercentage}%</span>
-              <Badge variant="outline" className={cn('text-xs', protectionLevel.color)}>
+              <Badge variant="outline" className={cn('text-[13px]', protectionLevel.color)}>
                 <ProtectionIcon className="h-3 w-3 mr-1" />
                 {protectionLevel.label}
               </Badge>
             </div>
             <Progress value={protectionPercentage} className="h-2" />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-[13px] text-muted-foreground">
               {entitiesProtected} entities protected
             </p>
           </div>
@@ -122,7 +122,7 @@ export function AnonymizationSummaryCards({
       <Card className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-green-50 to-transparent opacity-50" />
         <CardHeader className="relative pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+          <CardTitle className="text-[13px] font-normal text-muted-foreground flex items-center gap-2">
             <Activity className="h-4 w-4 text-green-600" />
             Operations Applied
           </CardTitle>
@@ -137,12 +137,12 @@ export function AnonymizationSummaryCards({
               {Object.entries(operatorBreakdown).map(([operator, count]) => {
                 const Icon = OPERATOR_ICONS[operator] || OPERATOR_ICONS.DEFAULT;
                 return (
-                  <div key={operator} className="flex items-center justify-between text-xs">
+                  <div key={operator} className="flex items-center justify-between text-[13px]">
                     <span className="flex items-center gap-1 text-muted-foreground">
                       <Icon className="h-3 w-3" />
                       {operator}
                     </span>
-                    <span className="font-medium">{count}</span>
+                    <span className="font-normal">{count}</span>
                   </div>
                 );
               })}
@@ -155,7 +155,7 @@ export function AnonymizationSummaryCards({
       <Card className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-purple-50 to-transparent opacity-50" />
         <CardHeader className="relative pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+          <CardTitle className="text-[13px] font-normal text-muted-foreground flex items-center gap-2">
             <BarChart3 className="h-4 w-4 text-purple-600" />
             Top Protected Entities
           </CardTitle>
@@ -164,13 +164,13 @@ export function AnonymizationSummaryCards({
           <div className="space-y-3">
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-bold">{Object.keys(entityBreakdown).length}</span>
-              <span className="text-xs text-muted-foreground">types</span>
+              <span className="text-[13px] text-muted-foreground">types</span>
             </div>
             <div className="space-y-2">
               {topEntities.map(([entity, count]) => (
                 <div key={entity} className="space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className={cn('font-medium', ENTITY_COLORS[entity] || ENTITY_COLORS.DEFAULT)}>
+                  <div className="flex items-center justify-between text-[13px]">
+                    <span className={cn('font-normal', ENTITY_COLORS[entity] || ENTITY_COLORS.DEFAULT)}>
                       {entity.replace(/_/g, ' ')}
                     </span>
                     <span className="text-muted-foreground">{count}</span>
@@ -190,7 +190,7 @@ export function AnonymizationSummaryCards({
       <Card className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-orange-50 to-transparent opacity-50" />
         <CardHeader className="relative pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+          <CardTitle className="text-[13px] font-normal text-muted-foreground flex items-center gap-2">
             <FileSearch className="h-4 w-4 text-orange-600" />
             Processing Metrics
           </CardTitle>
@@ -199,21 +199,21 @@ export function AnonymizationSummaryCards({
           <div className="space-y-3">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">Text Reduction</span>
-                <span className="text-sm font-bold">{textReduction}%</span>
+                <span className="text-[13px] text-muted-foreground">Text Reduction</span>
+                <span className="text-[13px] font-bold">{textReduction}%</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">Original Size</span>
-                <span className="text-sm font-medium">{originalLength.toLocaleString()} chars</span>
+                <span className="text-[13px] text-muted-foreground">Original Size</span>
+                <span className="text-[13px] font-normal">{originalLength.toLocaleString()} chars</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">Anonymized Size</span>
-                <span className="text-sm font-medium">{anonymizedLength.toLocaleString()} chars</span>
+                <span className="text-[13px] text-muted-foreground">Anonymized Size</span>
+                <span className="text-[13px] font-normal">{anonymizedLength.toLocaleString()} chars</span>
               </div>
               {processingTime > 0 && (
                 <div className="flex items-center justify-between pt-1 border-t">
-                  <span className="text-xs text-muted-foreground">Processing Time</span>
-                  <span className="text-sm font-medium">{(processingTime / 1000).toFixed(2)}s</span>
+                  <span className="text-[13px] text-muted-foreground">Processing Time</span>
+                  <span className="text-[13px] font-normal">{(processingTime / 1000).toFixed(2)}s</span>
                 </div>
               )}
             </div>

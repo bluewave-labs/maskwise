@@ -59,11 +59,11 @@
   
   /* Custom heading styles - Override any inline classes */
   h1 {
-    @apply text-xl font-normal text-muted-foreground !important;
+    @apply text-[15px] !important;
   }
   
   h2 {
-    @apply text-lg font-normal text-muted-foreground !important;
+    @apply text-[13px] !important;
   }
   
   /* Enhanced Metric Card Styles */

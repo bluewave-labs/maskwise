@@ -276,7 +276,6 @@ export function RecentUploads({ projectId, refreshTrigger }: RecentUploadsProps)
     <Card className="p-6">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Database className="h-5 w-5 text-blue-500" />
           <h3 className="text-lg font-semibold">Recent Uploads</h3>
           {projectId && datasets.length > 0 && (
             <Badge variant="outline">{datasets.length} datasets</Badge>
@@ -323,8 +322,8 @@ export function RecentUploads({ projectId, refreshTrigger }: RecentUploadsProps)
       {datasets.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
           <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
-          <p>No uploads found</p>
-          <p className="text-sm mt-1">
+          <p className="text-[13px]">No uploads found</p>
+          <p className="text-[13px] mt-1">
             {projectId 
               ? 'Upload some files to this project to see them here'
               : 'Select a project and upload files to see analysis results'
@@ -346,13 +345,13 @@ export function RecentUploads({ projectId, refreshTrigger }: RecentUploadsProps)
               
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <p className="font-medium truncate">{dataset.name}</p>
+                  <p className="font-normal truncate">{dataset.name}</p>
                   <Badge className={getStatusColor(dataset.status)}>
                     {dataset.status.toLowerCase()}
                   </Badge>
                 </div>
                 
-                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                <div className="flex items-center gap-4 text-[13px] text-muted-foreground">
                   <span>{dataset.filename}</span>
                   <span>{dataset.fileType}</span>
                   <span>{formatFileSize(Number(dataset.fileSize))}</span>
@@ -363,13 +362,13 @@ export function RecentUploads({ projectId, refreshTrigger }: RecentUploadsProps)
                 </div>
 
                 {dataset.status === 'COMPLETED' && dataset._count && (
-                  <div className="mt-1 text-xs">
+                  <div className="mt-1 text-[13px]">
                     {dataset._count.findings > 0 ? (
-                      <span className="text-red-600 font-medium">
+                      <span className="text-red-600 font-normal">
                         {dataset._count.findings} PII entities found
                       </span>
                     ) : (
-                      <span className="text-green-600 font-medium">
+                      <span className="text-green-600 font-normal">
                         No PII detected - Clean dataset
                       </span>
                     )}
@@ -377,7 +376,7 @@ export function RecentUploads({ projectId, refreshTrigger }: RecentUploadsProps)
                 )}
 
                 {!projectId && (
-                  <div className="mt-1 text-xs text-muted-foreground">
+                  <div className="mt-1 text-[13px] text-muted-foreground">
                     Project: {dataset.project.name}
                   </div>
                 )}

@@ -318,8 +318,41 @@ export class PoliciesService {
       throw new NotFoundException('Policy template not found');
     }
 
-    // Convert template config to YAML string
-    const yamlContent = this.yamlValidationService.toYAML(template.config as unknown as PolicyYAML);
+    // Convert template config to proper YAML format
+    const templateConfig = template.config as any;
+    const policyYAML: PolicyYAML = {
+      name: template.name,
+      version: '1.0.0',
+      description: template.description,
+      detection: {
+        entities: templateConfig.entities.map((entityType: string) => {
+          const action = templateConfig.anonymization?.default_anonymizer || 'redact';
+          const entity: any = {
+            type: entityType,
+            confidence_threshold: templateConfig.confidence_threshold || 0.8,
+            action: action
+          };
+          
+          // Add replacement if action is 'replace'
+          if (action === 'replace') {
+            entity.replacement = templateConfig.anonymization?.anonymizers?.replace?.new_value || '[REDACTED]';
+          }
+          
+          return entity;
+        })
+      },
+      scope: {
+        file_types: ['txt', 'csv', 'pdf', 'docx', 'xlsx'],
+        max_file_size: '100MB'
+      },
+      anonymization: {
+        default_action: templateConfig.anonymization?.default_anonymizer || 'redact',
+        preserve_format: true,
+        audit_trail: true
+      }
+    };
+    
+    const yamlContent = this.yamlValidationService.toYAML(policyYAML);
 
     return this.create(userId, {
       name,

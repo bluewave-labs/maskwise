@@ -2,7 +2,6 @@ export interface Project {
   id: string;
   name: string;
   description?: string;
-  tags: string[];
   createdAt: string;
   updatedAt: string;
   isActive: boolean;
@@ -20,13 +19,11 @@ export interface Project {
 export interface CreateProjectRequest {
   name: string;
   description?: string;
-  tags?: string[];
 }
 
 export interface UpdateProjectRequest {
   name?: string;
   description?: string;
-  tags?: string[];
   isActive?: boolean;
 }
 

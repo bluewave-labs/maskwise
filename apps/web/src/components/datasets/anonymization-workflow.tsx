@@ -161,7 +161,7 @@ export function AnonymizationWorkflow({ className, onComplete }: AnonymizationWo
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-sm font-medium mb-3">Select Project</h3>
+              <h3 className="text-[13px] font-normal mb-3">Select Project</h3>
               <ProjectSelector
                 value={selectedProjectId}
                 onChange={handleProjectSelect}
@@ -169,7 +169,7 @@ export function AnonymizationWorkflow({ className, onComplete }: AnonymizationWo
               />
             </div>
             <div>
-              <h3 className="text-sm font-medium mb-3">Select Anonymization Policy</h3>
+              <h3 className="text-[13px] font-normal mb-3">Select Anonymization Policy</h3>
               <PolicySelector
                 value={selectedPolicyId}
                 onChange={handlePolicySelect}
@@ -214,7 +214,7 @@ export function AnonymizationWorkflow({ className, onComplete }: AnonymizationWo
               <div className="text-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
                 <h3 className="font-semibold mb-2">Detecting PII...</h3>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-[13px] text-muted-foreground">
                   Analyzing your file for sensitive information
                 </p>
                 {processingJobId && (
@@ -272,7 +272,7 @@ export function AnonymizationWorkflow({ className, onComplete }: AnonymizationWo
               <div className="text-center py-12">
                 <Shield className="h-12 w-12 mx-auto mb-4 text-green-600" />
                 <h3 className="font-semibold mb-2">Ready to Anonymize</h3>
-                <p className="text-sm text-muted-foreground mb-6">
+                <p className="text-[13px] text-muted-foreground mb-6">
                   Apply the selected policy to anonymize detected PII
                 </p>
                 <Button 
@@ -362,14 +362,14 @@ export function AnonymizationWorkflow({ className, onComplete }: AnonymizationWo
                   </div>
                   <div className="mt-2 text-center">
                     <p className={cn(
-                      'text-sm font-medium',
+                      'text-[13px] font-normal',
                       isActive && 'text-blue-600',
                       isCompleted && 'text-green-600',
                       !isActive && !isCompleted && 'text-gray-400'
                     )}>
                       {step.title}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1 hidden sm:block">
+                    <p className="text-[13px] text-muted-foreground mt-1 hidden sm:block">
                       {step.description}
                     </p>
                   </div>

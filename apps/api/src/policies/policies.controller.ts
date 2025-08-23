@@ -84,9 +84,9 @@ export class PoliciesController {
   async createFromTemplate(
     @Request() req: any,
     @Param('templateId') templateId: string,
-    @Body('name') name: string
+    @Body() body: { name: string }
   ) {
-    return this.policiesService.createFromTemplate(req.user.id, templateId, name);
+    return this.policiesService.createFromTemplate(req.user.id, templateId, body.name);
   }
 
   @Put(':id')

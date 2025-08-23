@@ -160,8 +160,7 @@ export default function SystemHealthDashboard() {
   if (isLoading && !healthData) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-[13px] font-normal text-foreground">System Health Dashboard</h2>
+        <div className="flex items-center justify-end">
           <div className="animate-pulse">
             <div className="h-8 w-16 bg-gray-200 rounded"></div>
           </div>
@@ -182,8 +181,7 @@ export default function SystemHealthDashboard() {
   if (error) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-[13px] font-normal text-foreground">System Health Dashboard</h2>
+        <div className="flex items-center justify-end">
           <Button onClick={handleRefresh} size="sm" disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
@@ -209,7 +207,6 @@ export default function SystemHealthDashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h2 className="text-[13px] font-normal text-foreground">System Health Dashboard</h2>
           <div className="flex items-center space-x-4 text-[13px] text-muted-foreground">
             <span>Version: {healthData?.version || 'Unknown'}</span>
             <span>Uptime: {healthData ? formatUptime(healthData.uptime) : 'Unknown'}</span>

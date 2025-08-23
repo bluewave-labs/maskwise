@@ -135,10 +135,10 @@ Please describe what you were doing when this error occurred:
               
               {this.state.error && (
                 <details className="text-left mb-4">
-                  <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground">
+                  <summary className="cursor-pointer text-[13px] text-muted-foreground hover:text-foreground">
                     Technical Details
                   </summary>
-                  <div className="mt-2 p-3 bg-muted rounded-md text-xs font-mono break-all">
+                  <div className="mt-2 p-3 bg-muted rounded-md text-[13px] font-mono break-all">
                     <div className="mb-2">
                       <strong>Error ID:</strong> {this.state.errorId}
                     </div>
@@ -199,7 +199,7 @@ Please describe what you were doing when this error occurred:
               </div>
             </div>
 
-            <div className="mt-6 text-xs text-muted-foreground">
+            <div className="mt-6 text-[13px] text-muted-foreground">
               <p>Error ID: {this.state.errorId}</p>
               <p>If this problem persists, please contact support with the error ID.</p>
             </div>
