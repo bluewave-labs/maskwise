@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { ProtectedRoute } from '@/components/auth/protected-route';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import { usePolicies, usePolicyTemplates } from '@/hooks/usePolicies';
 import { Policy, STATUS_COLORS } from '@/types/policy';
 import { Search, Plus, FileText, Settings, Calendar, ChevronLeft, ChevronRight, Trash2, Copy } from 'lucide-react';
@@ -35,12 +36,43 @@ function PoliciesContent() {
   const [pageSize, setPageSize] = useState(20);
   const [showTemplates, setShowTemplates] = useState(false);
   const [creatingFromTemplate, setCreatingFromTemplate] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [policyToDelete, setPolicyToDelete] = useState<Policy | null>(null);
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [selectedTemplateForCreation, setSelectedTemplateForCreation] = useState<any>(null);
+  const [templatePolicyName, setTemplatePolicyName] = useState('');
+  const [totalStats, setTotalStats] = useState({
+    totalPolicies: 0,
+    activePolicies: 0,
+    recentUpdates: 0
+  });
+
+  // Fetch total statistics (unfiltered)
+  const fetchTotalStats = useCallback(async () => {
+    try {
+      const totalResponse = await fetchPolicies({ page: 1, limit: 1000 }); // Get all policies for stats
+      if (totalResponse) {
+        const allPolicies = totalResponse.policies || [];
+        const now = Date.now();
+        const sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000);
+        
+        setTotalStats({
+          totalPolicies: totalResponse.total || 0,
+          activePolicies: allPolicies.filter(p => p.isActive).length,
+          recentUpdates: allPolicies.filter(p => new Date(p.updatedAt).getTime() > sevenDaysAgo).length
+        });
+      }
+    } catch (error) {
+      console.error('Failed to fetch total stats:', error);
+    }
+  }, [fetchPolicies]);
 
   // Fetch policies and templates on mount
   useEffect(() => {
     fetchPolicies({ page: currentPage, limit: pageSize });
     fetchTemplates();
-  }, [fetchPolicies, fetchTemplates, currentPage, pageSize]);
+    fetchTotalStats(); // Load unfiltered stats
+  }, [fetchPolicies, fetchTemplates, fetchTotalStats, currentPage, pageSize]);
 
   // Filter policies when search or status changes
   useEffect(() => {
@@ -58,15 +90,54 @@ function PoliciesContent() {
     fetchPolicies(filters);
   }, [searchTerm, statusFilter, pageSize, fetchPolicies]);
 
-  const handleDeletePolicy = async (policy: Policy) => {
-    if (window.confirm(`Are you sure you want to delete the policy \"${policy.name}\"?`)) {
-      const success = await deletePolicy(policy.id);
-      if (success) {
+  const handleDeletePolicy = (policy: Policy) => {
+    setPolicyToDelete(policy);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeletePolicy = async () => {
+    if (!policyToDelete) return;
+    
+    const success = await deletePolicy(policyToDelete.id);
+    if (success) {
+      toast({
+        title: 'Policy deleted',
+        description: `Policy \"${policyToDelete.name}\" has been deleted successfully.`,
+      });
+      fetchTotalStats();
+    }
+    setDeleteDialogOpen(false);
+    setPolicyToDelete(null);
+  };
+
+  const handleCreateFromTemplate = async () => {
+    if (!selectedTemplateForCreation || !templatePolicyName.trim()) return;
+    
+    setCreatingFromTemplate(selectedTemplateForCreation.id);
+    try {
+      const newPolicy = await createFromTemplate(selectedTemplateForCreation.id, templatePolicyName.trim());
+      
+      if (newPolicy) {
+        setShowTemplates(false);
+        setTemplateDialogOpen(false);
+        await fetchPolicies({ page: currentPage, limit: pageSize });
+        fetchTotalStats();
         toast({
-          title: 'Policy deleted',
-          description: `Policy \"${policy.name}\" has been deleted successfully.`,
+          title: 'Policy created',
+          description: `Policy \"${templatePolicyName}\" created successfully from template.`,
         });
       }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to create policy from template. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setCreatingFromTemplate(null);
+      setTemplateDialogOpen(false);
+      setSelectedTemplateForCreation(null);
+      setTemplatePolicyName('');
     }
   };
 
@@ -215,7 +286,7 @@ function PoliciesContent() {
               <FileText className="h-4 w-4 text-muted-foreground" style={{strokeWidth: 1.5}} />
               <div className="ml-4">
                 <p className="text-[13px] font-normal text-gray-600">Total Policies</p>
-                <p className="text-xl font-semibold">{total}</p>
+                <p className="text-xl font-semibold">{totalStats.totalPolicies}</p>
               </div>
             </div>
           </CardContent>
@@ -227,7 +298,7 @@ function PoliciesContent() {
               <Settings className="h-4 w-4 text-muted-foreground" style={{strokeWidth: 1.5}} />
               <div className="ml-4">
                 <p className="text-[13px] font-normal text-gray-600">Active Policies</p>
-                <p className="text-xl font-semibold">{policies.filter(p => p.isActive).length}</p>
+                <p className="text-xl font-semibold">{totalStats.activePolicies}</p>
               </div>
             </div>
           </CardContent>
@@ -251,7 +322,7 @@ function PoliciesContent() {
               <Calendar className="h-4 w-4 text-muted-foreground" style={{strokeWidth: 1.5}} />
               <div className="ml-4">
                 <p className="text-[13px] font-normal text-gray-600">Recent Updates</p>
-                <p className="text-xl font-semibold">{policies.filter(p => new Date(p.updatedAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length}</p>
+                <p className="text-xl font-semibold">{totalStats.recentUpdates}</p>
               </div>
             </div>
           </CardContent>
@@ -482,42 +553,10 @@ function PoliciesContent() {
                     </div>
                     <div className="ml-4">
                       <Button
-                        onClick={async () => {
-                          const name = prompt(`Enter name for new policy from "${template.name}" template:`);
-                          if (name && name.trim()) {
-                            setCreatingFromTemplate(template.id);
-                            console.log('Creating policy from template:', template.id, 'with name:', name.trim());
-                            try {
-                              const newPolicy = await createFromTemplate(template.id, name.trim());
-                              console.log('New policy result:', newPolicy);
-                              
-                              if (newPolicy) {
-                                setShowTemplates(false);
-                                await fetchPolicies({ page: currentPage, limit: pageSize });
-                                toast({
-                                  title: 'Policy created',
-                                  description: `Policy "${name}" created successfully from template.`,
-                                });
-                              } else {
-                                console.error('CreateFromTemplate returned null');
-                                toast({
-                                  title: 'Error',
-                                  description: 'Failed to create policy from template. Please try again.',
-                                  variant: 'destructive',
-                                });
-                              }
-                            } catch (error) {
-                              console.error('Error creating from template:', error);
-                              console.error('Error response:', error.response?.data);
-                              toast({
-                                title: 'Error',
-                                description: `Failed to create policy from template: ${error.response?.data?.message || error.message || 'Unknown error'}`,
-                                variant: 'destructive',
-                              });
-                            } finally {
-                              setCreatingFromTemplate(null);
-                            }
-                          }
+                        onClick={() => {
+                          setSelectedTemplateForCreation(template);
+                          setTemplatePolicyName(`${template.name} - Custom`);
+                          setTemplateDialogOpen(true);
                         }}
                         disabled={creatingFromTemplate === template.id}
                         className="h-[34px]"
@@ -544,6 +583,77 @@ function PoliciesContent() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Template Policy Name Dialog */}
+      <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Policy from Template</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-[13px] text-muted-foreground mb-4">
+              Creating policy from template: <strong>{selectedTemplateForCreation?.name}</strong>
+            </p>
+            <div className="space-y-2">
+              <label htmlFor="templatePolicyName" className="text-[13px] font-medium">
+                Policy Name *
+              </label>
+              <Input
+                id="templatePolicyName"
+                value={templatePolicyName}
+                onChange={(e) => setTemplatePolicyName(e.target.value)}
+                placeholder="Enter policy name"
+                className="h-[34px]"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && templatePolicyName.trim()) {
+                    handleCreateFromTemplate();
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setTemplateDialogOpen(false);
+                setSelectedTemplateForCreation(null);
+                setTemplatePolicyName('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateFromTemplate}
+              disabled={!templatePolicyName.trim() || creatingFromTemplate === selectedTemplateForCreation?.id}
+            >
+              {creatingFromTemplate === selectedTemplateForCreation?.id ? (
+                <>
+                  <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2" />
+                  Creating...
+                </>
+              ) : (
+                'Create Policy'
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Policy Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={deleteDialogOpen}
+        onClose={() => {
+          setDeleteDialogOpen(false);
+          setPolicyToDelete(null);
+        }}
+        onConfirm={confirmDeletePolicy}
+        title="Delete Policy"
+        description={`Are you sure you want to delete the policy \"${policyToDelete?.name}\"? This action cannot be undone.`}
+        confirmText="Delete Policy"
+        cancelText="Cancel"
+        variant="destructive"
+      />
     </div>
   );
 }

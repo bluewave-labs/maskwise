@@ -10,6 +10,11 @@ async function bootstrap() {
     logger: ['error', 'warn', 'log', 'debug', 'verbose'],
   });
 
+  // Fix BigInt serialization globally
+  (BigInt.prototype as any).toJSON = function() {
+    return Number(this);
+  };
+
   // Security middleware
   app.use(helmet());
   app.use(compression());
