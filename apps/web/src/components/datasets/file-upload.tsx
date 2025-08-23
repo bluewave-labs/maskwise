@@ -23,6 +23,7 @@ import {
   AlertTriangle,
   Info
 } from 'lucide-react';
+import Cookies from 'js-cookie';
 
 interface FileUploadProps {
   projectId?: string;
@@ -281,7 +282,7 @@ export function FileUpload({
     setFiles(prev => prev.filter(f => f.id !== id));
   };
 
-  const uploadFile = async (uploadFile: UploadFile): Promise<void> => {
+  const uploadSingleFile = async (uploadFile: UploadFile): Promise<void> => {
     if (!projectId) {
       throw new Error('Project ID is required for upload');
     }
@@ -296,7 +297,7 @@ export function FileUpload({
       formData.append('description', description.trim());
     }
 
-    const token = localStorage.getItem('authToken');
+    const token = Cookies.get('access_token');
     if (!token) {
       throw new Error('Authentication required');
     }
@@ -408,7 +409,7 @@ export function FileUpload({
           : f
       ));
       
-      await uploadFile(uploadFile);
+      await uploadSingleFile(uploadFile);
     } catch (error: any) {
       const errorMessage = error instanceof Error ? error.message : 'Upload failed';
       const isRetryable = error.isRetryable !== false;
@@ -465,7 +466,7 @@ export function FileUpload({
           f.id === uploadFile.id ? { ...f, status: 'uploading' as const } : f
         ));
         
-        await uploadFile(uploadFile);
+        await uploadSingleFile(uploadFile);
       } catch (error: any) {
         const errorMessage = error instanceof Error ? error.message : 'Upload failed';
         const isRetryable = error.isRetryable !== false;
