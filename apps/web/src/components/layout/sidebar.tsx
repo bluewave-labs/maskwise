@@ -50,9 +50,9 @@ export function Sidebar({ className }: SidebarProps) {
   };
 
   return (
-    <div className={`flex flex-col bg-card border-r border-border w-64 ${className}`}>
+    <div className={`flex flex-col bg-card border-r border-border w-64 relative ${className}`}>
       {/* Header */}
-      <div className="flex items-center px-4 py-4 border-b border-border">
+      <div className="flex items-center px-4 py-3 relative min-h-[60px]">
         <span className="text-xl font-bold tracking-wide text-foreground font-sans uppercase ml-3">MASKWISE</span>
       </div>
 

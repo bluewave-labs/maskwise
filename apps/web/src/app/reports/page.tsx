@@ -2,22 +2,42 @@
 
 import { ProtectedRoute } from '@/components/auth/protected-route';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
+import { SimpleAnimatedTabs } from '@/components/ui/simple-animated-tabs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function ReportsPage() {
   return (
     <ProtectedRoute>
-      <DashboardLayout>
-        <div className="p-8">
-          <div className="mb-8">
-            <h1 className="text-[15px] font-bold text-foreground">Reports</h1>
-            <p className="text-muted-foreground text-[13px] mt-2">
-              View PII detection reports and analytics
-            </p>
-          </div>
+      <DashboardLayout 
+        pageTitle="Reports & Analytics"
+        pageDescription="Generate comprehensive reports and analyze PII detection trends"
+      >
+        <div className="space-y-6">
+          <SimpleAnimatedTabs 
+            tabs={[
+              { label: 'Overview', value: 'overview' },
+              { label: 'PII Detection', value: 'detection' },
+              { label: 'Compliance', value: 'compliance' },
+              { label: 'Risk Analysis', value: 'risk' },
+              { label: 'Export', value: 'export' }
+            ]}
+            defaultTab="overview"
+            className="mb-6"
+          />
           
-          <div className="bg-card p-6 rounded-lg border shadow-sm">
-            <p className="text-muted-foreground">Reports interface coming soon...</p>
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Reports Dashboard</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">
+                Animated tabs are now working! Click the tabs above to see the smooth animations.
+              </p>
+              <p className="text-muted-foreground mt-4">
+                This is a demonstration of the new animated tabs component that has replaced the standard shadcn tabs throughout the dashboard.
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </DashboardLayout>
     </ProtectedRoute>

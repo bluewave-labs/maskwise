@@ -4,13 +4,18 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ProtectedRoute } from '@/components/auth/protected-route';
+import { RoleGate } from '@/components/auth/role-gate';
+import { useAuth } from '@/hooks/useAuth';
+import { isAdmin } from '@/types/auth';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
+import { SimpleAnimatedTabs } from '@/components/ui/simple-animated-tabs';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { UserManagement } from '@/components/settings/user-management';
 import { AuditLogsViewer } from '@/components/settings/audit-logs-viewer';
 import { SystemConfiguration } from '@/components/settings/system-configuration';
 import SystemHealthDashboard from '@/components/settings/system-health-dashboard';
+import { ApiKeyManagement } from '@/components/settings/api-key-management';
 import { 
   Users, 
   FileText, 
@@ -19,11 +24,12 @@ import {
   User,
   ClipboardList,
   Sliders,
-  Monitor
+  Monitor,
+  Key
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
-type SettingsTab = 'users' | 'audit' | 'system' | 'health';
+type SettingsTab = 'users' | 'audit' | 'system' | 'health' | 'api-keys';
 
 interface TabConfig {
   id: SettingsTab;
@@ -56,6 +62,12 @@ const SETTINGS_TABS: TabConfig[] = [
     name: 'System Health',
     description: 'Monitor service status and resource usage',
     icon: Monitor
+  },
+  {
+    id: 'api-keys',
+    name: 'API Keys',
+    description: 'Generate and manage API keys for programmatic access',
+    icon: Key
   }
 ];
 
@@ -68,7 +80,7 @@ export default function SettingsPage() {
   useEffect(() => {
     // Check URL parameters for tab selection
     const tabParam = searchParams.get('tab') as SettingsTab;
-    if (tabParam && ['users', 'audit', 'system', 'health'].includes(tabParam)) {
+    if (tabParam && ['users', 'audit', 'system', 'health', 'api-keys'].includes(tabParam)) {
       setActiveTab(tabParam);
     }
     // Show content immediately after component mounts
@@ -78,16 +90,31 @@ export default function SettingsPage() {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'users':
-        return <UserManagement />;
+        return (
+          <RoleGate adminOnly fallback={<div className="text-center py-12"><p className="text-muted-foreground">Only administrators can manage users.</p></div>}>
+            <UserManagement />
+          </RoleGate>
+        );
 
       case 'audit':
         return <AuditLogsViewer />;
 
       case 'system':
-        return <SystemConfiguration />;
+        return (
+          <RoleGate adminOnly fallback={<div className="text-center py-12"><p className="text-muted-foreground">Only administrators can manage system configuration.</p></div>}>
+            <SystemConfiguration />
+          </RoleGate>
+        );
 
       case 'health':
         return <SystemHealthDashboard />;
+
+      case 'api-keys':
+        return (
+          <RoleGate adminOnly fallback={<div className="text-center py-12"><p className="text-muted-foreground">Only administrators can manage API keys.</p></div>}>
+            <ApiKeyManagement />
+          </RoleGate>
+        );
 
       default:
         return null;
@@ -96,15 +123,13 @@ export default function SettingsPage() {
 
   return (
     <ProtectedRoute>
-      <DashboardLayout>
-        <div className="p-8 max-w-6xl">
+      <DashboardLayout 
+        pageTitle="Settings"
+        pageDescription="Configure your Maskwise instance and manage system preferences"
+      >
+        <div className="max-w-6xl">
           {loading ? (
             <div className="space-y-6">
-              {/* Header skeleton */}
-              <div className="mb-8">
-                <Skeleton className="h-8 w-32 mb-2" />
-                <Skeleton className="h-4 w-96" />
-              </div>
 
               {/* Tab navigation skeleton */}
               <div className="mb-8">
@@ -169,40 +194,18 @@ export default function SettingsPage() {
             </div>
           ) : (
             <>
-              {/* Header */}
-              <div className="mb-8">
-                <h1 className="text-[15px] font-bold text-foreground">
-                  Settings
-                </h1>
-                <p className="text-muted-foreground text-[13px] mt-2">
-                  Configure system settings, manage users, and monitor platform health
-                </p>
-              </div>
 
           {/* Tab Navigation */}
           <div className="mb-8">
-            <div className="border-b border-border">
-              <nav className="flex space-x-8">
-                {SETTINGS_TABS.map((tab) => {
-                  const Icon = tab.icon;
-                  const isActive = activeTab === tab.id;
-                  
-                  return (
-                    <Link
-                      key={tab.id}
-                      href={`/settings?tab=${tab.id}`}
-                      className={`inline-flex items-center justify-center py-4 px-0 h-auto border-b-2 rounded-none hover:bg-transparent transition-colors text-[13px] font-normal ${
-                        isActive
-                          ? 'border-primary text-primary'
-                          : 'border-transparent text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      {tab.name}
-                    </Link>
-                  );
-                })}
-              </nav>
-            </div>
+            <SimpleAnimatedTabs 
+              tabs={SETTINGS_TABS.map(tab => ({ label: tab.name, value: tab.id }))}
+              defaultTab={activeTab}
+              onTabChange={(value) => {
+                setActiveTab(value as SettingsTab);
+                router.push(`/settings?tab=${value}`);
+              }}
+              className="w-full"
+            />
           </div>
 
               {/* Tab Content */}

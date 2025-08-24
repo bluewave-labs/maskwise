@@ -1,11 +1,19 @@
 'use client';
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { 
   Upload, 
@@ -24,12 +32,11 @@ import {
   Info
 } from 'lucide-react';
 import Cookies from 'js-cookie';
+import { api as apiClient } from '@/lib/api';
 
 interface FileUploadProps {
   projectId?: string;
-  policyId?: string;
   onUploadComplete?: (result: any) => void;
-  onPolicySelect?: (policyId: string) => void;
   maxFileSize?: number; // in MB
   acceptedTypes?: string[];
 }
@@ -58,9 +65,7 @@ interface UploadFile {
 
 export function FileUpload({ 
   projectId, 
-  policyId,
   onUploadComplete, 
-  onPolicySelect,
   maxFileSize = 100,
   acceptedTypes = [
     'text/plain',
@@ -78,9 +83,44 @@ export function FileUpload({
   const [files, setFiles] = useState<UploadFile[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const [description, setDescription] = useState('');
+  const [selectedPolicyId, setSelectedPolicyId] = useState<string>('');
+  const [processImmediately, setProcessImmediately] = useState(false);
+  const [policies, setPolicies] = useState<any[]>([]);
+  const [loadingPolicies, setLoadingPolicies] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const generateId = () => Math.random().toString(36).substr(2, 9);
+
+  // Fetch policies when component mounts
+  useEffect(() => {
+    fetchPolicies();
+  }, []);
+
+  const fetchPolicies = async () => {
+    try {
+      setLoadingPolicies(true);
+      const response = await apiClient.get('/policies');
+      if (response.data) {
+        console.log('Policies API response:', response.data);
+        setPolicies(response.data.policies || []);
+        // Auto-select default policy if available
+        const defaultPolicy = response.data.policies?.find((p: any) => p.isDefault);
+        if (defaultPolicy) {
+          setSelectedPolicyId(defaultPolicy.id);
+        }
+        console.log('Loaded policies:', response.data.policies?.length || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching policies:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load policies. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoadingPolicies(false);
+    }
+  };
 
   const validateFile = (file: File): { error: string | null; warnings: string[]; riskLevel: 'low' | 'medium' | 'high' } => {
     const warnings: string[] = [];
@@ -290,12 +330,14 @@ export function FileUpload({
     const formData = new FormData();
     formData.append('file', uploadFile.file);
     formData.append('projectId', projectId);
-    if (policyId) {
-      formData.append('policyId', policyId);
+    if (selectedPolicyId) {
+      formData.append('policyId', selectedPolicyId);
     }
     if (description.trim()) {
       formData.append('description', description.trim());
     }
+    // Add the processImmediately flag
+    formData.append('processImmediately', processImmediately.toString());
 
     const token = Cookies.get('access_token');
     if (!token) {
@@ -336,7 +378,9 @@ export function FileUpload({
             
             toast({
               title: 'Upload successful',
-              description: `${uploadFile.file.name} has been uploaded and queued for analysis`,
+              description: processImmediately 
+                ? `${uploadFile.file.name} has been uploaded and queued for analysis`
+                : `${uploadFile.file.name} has been uploaded and stored (not processed)`,
             });
 
             if (onUploadComplete) {
@@ -444,6 +488,15 @@ export function FileUpload({
       toast({
         title: 'Project required',
         description: 'Please select a project before uploading files',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (processImmediately && !selectedPolicyId) {
+      toast({
+        title: 'Policy required',
+        description: 'Please select a PII detection policy for immediate processing',
         variant: 'destructive'
       });
       return;
@@ -573,6 +626,56 @@ export function FileUpload({
             />
           </div>
 
+          {/* Policy Selector */}
+          <div>
+            <Label htmlFor="policy">PII Detection Policy</Label>
+            <Select
+              value={selectedPolicyId}
+              onValueChange={setSelectedPolicyId}
+              disabled={loadingPolicies}
+            >
+              <SelectTrigger className="mt-1">
+                <SelectValue 
+                  placeholder={loadingPolicies ? "Loading policies..." : "Select a policy..."} 
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {policies.map((policy) => (
+                  <SelectItem key={policy.id} value={policy.id}>
+                    {policy.name} {policy.isDefault ? '(Default)' : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedPolicyId && (
+              <p className="text-[13px] text-muted-foreground mt-1">
+                Policy will be applied when files are processed for PII detection
+              </p>
+            )}
+          </div>
+
+          {/* Process Immediately Option */}
+          <div className="flex items-center space-x-2">
+            <Checkbox 
+              id="processImmediately"
+              checked={processImmediately}
+              onCheckedChange={setProcessImmediately}
+            />
+            <Label htmlFor="processImmediately" className="text-[13px]">
+              Process files immediately after upload
+            </Label>
+          </div>
+          {processImmediately && selectedPolicyId && (
+            <p className="text-[13px] text-blue-600 ml-6">
+              Files will be automatically queued for PII analysis using the selected policy
+            </p>
+          )}
+          {!processImmediately && (
+            <p className="text-[13px] text-muted-foreground ml-6">
+              Files will be stored only. You can process them later from the datasets page
+            </p>
+          )}
+
           <div
             className={`
               border-2 border-dashed rounded-lg p-8 text-center transition-colors
@@ -585,25 +688,11 @@ export function FileUpload({
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
           >
-            <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Drop files here or click to upload</h3>
-            <p className="text-muted-foreground mb-2">
+            <Upload className="h-4 w-4 text-muted-foreground mx-auto mb-4" style={{strokeWidth: 1.5, width: '16px', height: '16px'}} />
+            <h3 className="text-[13px] font-semibold mb-2">Drop files here or click to upload</h3>
+            <p className="text-muted-foreground mb-4 text-[13px]">
               Support for TXT, CSV, PDF, DOCX, XLSX, JPEG, PNG, TIFF files up to {maxFileSize}MB
             </p>
-            <div className="flex items-center justify-center gap-4 text-[13px] text-muted-foreground mb-4">
-              <div className="flex items-center gap-1">
-                <Shield className="h-3 w-3" />
-                <span>Automatic security scanning</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Eye className="h-3 w-3" />
-                <span>File preview available</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <RefreshCw className="h-3 w-3" />
-                <span>Auto-retry on failure</span>
-              </div>
-            </div>
             <Button 
               type="button" 
               variant="outline"
@@ -659,13 +748,13 @@ export function FileUpload({
               {pendingCount > 0 && (
                 <Button 
                   onClick={uploadAllFiles}
-                  disabled={uploadingCount > 0 || !projectId}
+                  disabled={uploadingCount > 0 || !projectId || (processImmediately && !selectedPolicyId)}
                   size="sm"
                   className={highRiskCount > 0 ? 'bg-orange-600 hover:bg-orange-700' : ''}
                 >
                   {uploadingCount > 0 
                     ? `Uploading... (${uploadingCount})` 
-                    : `Upload All (${pendingCount})${highRiskCount > 0 ? ' ⚠️' : ''}`
+                    : `${processImmediately ? 'Upload & Process' : 'Upload Only'} (${pendingCount})${highRiskCount > 0 ? ' ⚠️' : ''}`
                   }
                 </Button>
               )}

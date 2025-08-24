@@ -23,6 +23,8 @@ import * as fs from 'fs';
 
 import { DatasetsService } from './datasets.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { AdminOnly, MemberAccess } from '../auth/decorators/roles.decorator';
 import { CreateDatasetDto } from './dto/create-dataset.dto';
 import { UploadFileDto } from './dto/upload-file.dto';
 
@@ -167,12 +169,13 @@ const fileFilter = (req: any, file: Express.Multer.File, cb: any) => {
 
 @ApiTags('Datasets')
 @Controller('datasets')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth('JWT-auth')
 export class DatasetsController {
   constructor(private readonly datasetsService: DatasetsService) {}
 
   @Post('upload')
+  @AdminOnly() // Only admins can upload files
   @ApiOperation({ summary: 'Upload file and create dataset' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -400,7 +403,17 @@ export class DatasetsController {
     return this.datasetsService.getJobProgress(id, req.user.id);
   }
 
+  @Post(':id/retry')
+  @ApiOperation({ summary: 'Retry failed dataset processing' })
+  @ApiResponse({ status: 200, description: 'Dataset processing restarted successfully' })
+  @ApiResponse({ status: 400, description: 'Dataset cannot be retried (not in failed state)' })
+  @ApiResponse({ status: 404, description: 'Dataset not found' })
+  async retryProcessing(@Param('id') id: string, @Request() req) {
+    return this.datasetsService.retryProcessing(id, req.user.id);
+  }
+
   @Delete(':id')
+  @AdminOnly() // Only admins can delete datasets
   @ApiOperation({ summary: 'Delete dataset' })
   @ApiResponse({ status: 200, description: 'Dataset deleted successfully' })
   @ApiResponse({ status: 404, description: 'Dataset not found' })

@@ -14,17 +14,20 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { AdminOnly, MemberAccess } from '../auth/decorators/roles.decorator';
 import { PoliciesService, CreatePolicyDto, UpdatePolicyDto } from './services/policies.service';
 import { ValidationResult } from './services/yaml-validation.service';
 
 @ApiTags('policies')
 @Controller('policies')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class PoliciesController {
   constructor(private readonly policiesService: PoliciesService) {}
 
   @Get()
+  @MemberAccess() // Both admins and members can view policies
   @ApiOperation({ summary: 'Get all policies (global policies, not user-specific)' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -53,6 +56,7 @@ export class PoliciesController {
   }
 
   @Post('validate')
+  @AdminOnly() // Only admins can validate policies
   @ApiOperation({ summary: 'Validate YAML policy content' })
   @ApiResponse({ status: 200, description: 'YAML validation result' })
   @HttpCode(HttpStatus.OK)
@@ -69,6 +73,7 @@ export class PoliciesController {
   }
 
   @Post()
+  @AdminOnly() // Only admins can create policies
   @ApiOperation({ summary: 'Create a new policy' })
   @ApiResponse({ status: 201, description: 'Policy created successfully' })
   @ApiResponse({ status: 400, description: 'Invalid policy data or YAML' })
@@ -78,6 +83,7 @@ export class PoliciesController {
   }
 
   @Post('from-template/:templateId')
+  @AdminOnly() // Only admins can create from templates
   @ApiOperation({ summary: 'Create a policy from a template' })
   @ApiResponse({ status: 201, description: 'Policy created from template successfully' })
   @ApiResponse({ status: 404, description: 'Template not found' })
@@ -90,6 +96,7 @@ export class PoliciesController {
   }
 
   @Put(':id')
+  @AdminOnly() // Only admins can update policies
   @ApiOperation({ summary: 'Update a policy' })
   @ApiResponse({ status: 200, description: 'Policy updated successfully' })
   @ApiResponse({ status: 400, description: 'Invalid policy data or YAML' })
@@ -104,6 +111,7 @@ export class PoliciesController {
   }
 
   @Delete(':id')
+  @AdminOnly() // Only admins can delete policies
   @ApiOperation({ summary: 'Delete a policy (soft delete)' })
   @ApiResponse({ status: 204, description: 'Policy deleted successfully' })
   @ApiResponse({ status: 404, description: 'Policy not found' })

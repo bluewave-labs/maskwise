@@ -43,9 +43,7 @@ interface UpdateUserData {
 }
 
 const USER_ROLES = [
-  { value: 'DATA_ENGINEER', label: 'Data Engineer', description: 'Data processing and analysis access' },
-  { value: 'ML_ENGINEER', label: 'ML Engineer', description: 'Machine learning model management' },
-  { value: 'COMPLIANCE_OFFICER', label: 'Compliance Officer', description: 'Audit and compliance monitoring' },
+  { value: 'MEMBER', label: 'Member', description: 'Read-only access to view data and reports' },
   { value: 'ADMIN', label: 'Admin', description: 'Full system administrator access' }
 ];
 

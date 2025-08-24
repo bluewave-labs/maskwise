@@ -35,10 +35,6 @@ export function LoginForm() {
     formState: { errors },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: 'admin@maskwise.com',
-      password: 'admin123',
-    },
   });
 
   const onSubmit = async (data: LoginFormData) => {
@@ -135,11 +131,6 @@ export function LoginForm() {
                 'Sign in'
               )}
             </Button>
-
-            <div className="mt-4 text-center text-[13px] text-muted-foreground">
-              <p>Demo credentials:</p>
-              <p className="font-mono">admin@maskwise.com / admin123</p>
-            </div>
           </form>
         </CardContent>
       </Card>

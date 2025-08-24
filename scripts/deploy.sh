@@ -55,7 +55,7 @@ done
 echo "🎉 Maskwise is ready!"
 echo ""
 echo "📱 Access the application:"
-echo "   Frontend: http://localhost:3000"
+echo "   Frontend: http://localhost:4200"
 echo "   API: http://localhost:3001"
 echo "   API Docs: http://localhost:3001/api/docs"
 echo ""

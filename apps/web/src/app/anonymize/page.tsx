@@ -48,8 +48,11 @@ export default function AnonymizePage() {
 
   if (workflowCompleted) {
     return (
-      <DashboardLayout>
-        <div className="p-8 flex items-center justify-center min-h-[600px]">
+      <DashboardLayout 
+        pageTitle="Anonymization Complete"
+        pageDescription="Your file has been successfully processed and anonymized"
+      >
+        <div className="flex items-center justify-center min-h-[600px]">
           <div className="text-center space-y-6 max-w-md">
             <div className="mx-auto w-20 h-20 flex items-center justify-center">
               <CheckCircle2 className="h-10 w-10 text-muted-foreground" />
@@ -76,15 +79,11 @@ export default function AnonymizePage() {
 
   if (showWorkflow) {
     return (
-      <DashboardLayout>
-        <div className="p-8 space-y-6">
-          <div>
-            <h1 className="text-[15px] font-bold">Anonymization Workflow</h1>
-            <p className="text-muted-foreground text-[13px] mt-1">
-              Follow the guided steps to detect and anonymize PII in your files
-            </p>
-          </div>
-
+      <DashboardLayout 
+        pageTitle="Anonymization Workflow"
+        pageDescription="Follow the guided steps to detect and anonymize PII in your files"
+      >
+        <div className="space-y-6">
           <AnonymizationWorkflow 
             onComplete={handleWorkflowComplete}
           />
@@ -94,13 +93,12 @@ export default function AnonymizePage() {
   }
 
   return (
-    <DashboardLayout>
+    <DashboardLayout 
+      pageTitle="Data Anonymization"
+      pageDescription="Protect sensitive information with our guided anonymization workflow"
+    >
       {loading ? (
-        <div className="p-8 space-y-6">
-          <div>
-            <Skeleton className="h-8 w-64 mb-2" />
-            <Skeleton className="h-4 w-96" />
-          </div>
+        <div className="space-y-6">
           
           <div className="rounded-lg border bg-card p-4">
             <div className="flex items-start space-x-3">
@@ -134,13 +132,7 @@ export default function AnonymizePage() {
           </div>
         </div>
       ) : (
-        <div className="p-8 space-y-6">
-          <div>
-            <h1 className="text-[15px] font-bold">Data Anonymization</h1>
-            <p className="text-muted-foreground text-[13px] mt-1">
-              Protect sensitive information with our guided anonymization workflow
-            </p>
-          </div>
+        <div className="space-y-6">
 
         <Alert>
           <Info className="h-4 w-4" />

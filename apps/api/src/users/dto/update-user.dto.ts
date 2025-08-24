@@ -40,7 +40,7 @@ export class UpdateUserDto {
   isActive?: boolean;
 
   @ApiProperty({
-    example: 'DATA_ENGINEER',
+    example: 'MEMBER',
     description: 'User role',
     enum: UserRole,
     required: false,

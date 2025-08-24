@@ -3,6 +3,9 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { ProtectedRoute } from '@/components/auth/protected-route';
+import { RoleGate } from '@/components/auth/role-gate';
+import { useAuth } from '@/hooks/useAuth';
+import { isAdmin } from '@/types/auth';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,10 +19,12 @@ import { Policy, STATUS_COLORS } from '@/types/policy';
 import { Search, Plus, FileText, Settings, Calendar, ChevronLeft, ChevronRight, Trash2, Copy } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { Skeleton } from '@/components/ui/skeleton';
+import Counter from '@/components/ui/counter';
 import { useToast } from '@/hooks/use-toast';
 
 function PoliciesContent() {
   const router = useRouter();
+  const { user } = useAuth();
   const { policies, total, pages, loading, error, fetchPolicies, deletePolicy } = usePolicies();
   const { templates, fetchTemplates, createFromTemplate } = usePolicyTemplates();
   const { toast } = useToast();
@@ -252,30 +257,24 @@ function PoliciesContent() {
   }
 
   return (
-    <div className="p-8 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-[15px] font-bold text-gray-900">Policies</h1>
-          <p className="text-gray-600 text-[13px]">Manage PII detection and anonymization policies</p>
-        </div>
-        <div className="flex items-center space-x-3">
-          <Button 
-            variant="outline" 
-            className="h-[34px]"
-            onClick={() => setShowTemplates(true)}
-          >
-            <FileText className="w-4 h-4 mr-2" />
-            Templates ({templates.length})
-          </Button>
-          <Button 
-            onClick={() => router.push('/policies/create')}
-            className="h-[34px]"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            New Policy
-          </Button>
-        </div>
+    <div className="space-y-6">
+      {/* Actions */}
+      <div className="flex items-center justify-end space-x-3">
+        <Button 
+          variant="outline" 
+          className="h-[34px]"
+          onClick={() => setShowTemplates(true)}
+        >
+          <FileText className="w-4 h-4 mr-2" />
+          Templates ({templates.length})
+        </Button>
+        <Button 
+          onClick={() => router.push('/policies/create')}
+          className="h-[34px]"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          New Policy
+        </Button>
       </div>
 
       {/* Stats Cards */}
@@ -286,7 +285,11 @@ function PoliciesContent() {
               <FileText className="h-4 w-4 text-muted-foreground" style={{strokeWidth: 1.5}} />
               <div className="ml-4">
                 <p className="text-[13px] font-normal text-gray-600">Total Policies</p>
-                <p className="text-xl font-semibold">{totalStats.totalPolicies}</p>
+                <Counter 
+                  value={totalStats.totalPolicies} 
+                  className="text-xl font-semibold"
+                  delay={0}
+                />
               </div>
             </div>
           </CardContent>
@@ -298,7 +301,11 @@ function PoliciesContent() {
               <Settings className="h-4 w-4 text-muted-foreground" style={{strokeWidth: 1.5}} />
               <div className="ml-4">
                 <p className="text-[13px] font-normal text-gray-600">Active Policies</p>
-                <p className="text-xl font-semibold">{totalStats.activePolicies}</p>
+                <Counter 
+                  value={totalStats.activePolicies} 
+                  className="text-xl font-semibold"
+                  delay={0.05}
+                />
               </div>
             </div>
           </CardContent>
@@ -310,7 +317,11 @@ function PoliciesContent() {
               <Copy className="h-4 w-4 text-muted-foreground" style={{strokeWidth: 1.5}} />
               <div className="ml-4">
                 <p className="text-[13px] font-normal text-gray-600">Templates</p>
-                <p className="text-xl font-semibold">{templates.length}</p>
+                <Counter 
+                  value={templates.length} 
+                  className="text-xl font-semibold"
+                  delay={0.1}
+                />
               </div>
             </div>
           </CardContent>
@@ -322,7 +333,11 @@ function PoliciesContent() {
               <Calendar className="h-4 w-4 text-muted-foreground" style={{strokeWidth: 1.5}} />
               <div className="ml-4">
                 <p className="text-[13px] font-normal text-gray-600">Recent Updates</p>
-                <p className="text-xl font-semibold">{totalStats.recentUpdates}</p>
+                <Counter 
+                  value={totalStats.recentUpdates} 
+                  className="text-xl font-semibold"
+                  delay={0.15}
+                />
               </div>
             </div>
           </CardContent>
@@ -388,7 +403,7 @@ function PoliciesContent() {
                   : 'Get started by creating your first policy.'
                 }
               </p>
-              {!searchTerm && statusFilter === 'all' && (
+              {!searchTerm && statusFilter === 'all' && isAdmin(user) && (
                 <div className="mt-6">
                   <Button onClick={() => router.push('/policies/create')}>
                     <Plus className="w-4 h-4 mr-2" />
@@ -457,20 +472,22 @@ function PoliciesContent() {
                             {formatDate(policy.updatedAt)}
                           </td>
                           <td className="p-4">
-                            <div onClick={(e) => e.stopPropagation()}>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeletePolicy(policy);
-                                }}
-                                disabled={policy.isDefault}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
+                            {isAdmin(user) && (
+                              <div onClick={(e) => e.stopPropagation()}>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeletePolicy(policy);
+                                  }}
+                                  disabled={policy.isDefault}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
                           </td>
                         </tr>
                       );
@@ -661,7 +678,10 @@ function PoliciesContent() {
 export default function PoliciesPage() {
   return (
     <ProtectedRoute>
-      <DashboardLayout>
+      <DashboardLayout 
+        pageTitle="Policies"
+        pageDescription="Manage your PII detection policies and configure data protection rules"
+      >
         <PoliciesContent />
       </DashboardLayout>
     </ProtectedRoute>
