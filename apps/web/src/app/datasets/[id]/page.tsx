@@ -313,6 +313,13 @@ export default function DatasetDetailsPage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
+                  {/* Show original file option for PDFs and DOCs */}
+                  {(['PDF', 'DOC', 'DOCX'].includes(dataset.fileType.toUpperCase())) && (
+                    <DropdownMenuItem onClick={() => handleDownload('original')}>
+                      <Shield className="h-4 w-4 mr-2" />
+                      Anonymized {dataset.fileType.toUpperCase()} (.{dataset.fileType.toLowerCase()})
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={() => handleDownload('txt')}>
                     <FileText className="h-4 w-4 mr-2" />
                     Anonymized Text (.txt)

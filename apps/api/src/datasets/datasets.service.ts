@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { QueueService } from '../queue/queue.service';
 import { CreateDatasetDto } from './dto/create-dataset.dto';
@@ -570,20 +570,25 @@ export class DatasetsService {
    * @param format - Download format (txt, json, csv)
    * @returns File content with proper headers for download
    */
-  async downloadAnonymizedContent(id: string, userId: string, format: string = 'txt') {
-    // Get the anonymized content first
-    const contentResult = await this.getAnonymizedContent(id, userId, 'json');
-    const data = contentResult.data;
-
-    // Validate format
-    const validFormats = ['txt', 'json', 'csv'];
-    if (!validFormats.includes(format.toLowerCase())) {
-      throw new BadRequestException(`Invalid format. Supported formats: ${validFormats.join(', ')}`);
-    }
-
+  async downloadAnonymizedContent(id: string, userId: string, format: string = 'original') {
     const dataset = await this.verifyDatasetOwnership(id, userId);
     const baseFilename = `${dataset.name.replace(/[^a-zA-Z0-9-_]/g, '_')}_anonymized`;
     const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+    // If format is 'original' and we have an outputPath, serve the actual anonymized file
+    if (format === 'original' && dataset.outputPath) {
+      return await this.downloadOriginalAnonymizedFile(dataset, userId);
+    }
+
+    // Otherwise, get the anonymized content for text-based formats
+    const contentResult = await this.getAnonymizedContent(id, userId, 'json');
+    const data = contentResult.data;
+
+    // Validate format for text-based outputs
+    const validFormats = ['txt', 'json', 'csv'];
+    if (!validFormats.includes(format.toLowerCase())) {
+      throw new BadRequestException(`Invalid format. Supported formats: ${validFormats.join(', ')}, original`);
+    }
 
     let content: string;
     let contentType: string;
@@ -666,6 +671,82 @@ export class DatasetsService {
       contentType,
       filename,
     };
+  }
+
+  /**
+   * Download the actual anonymized file (PDF, DOCX, etc.) from storage
+   */
+  private async downloadOriginalAnonymizedFile(dataset: any, userId: string) {
+    const fs = await import('fs/promises');
+    const path = await import('path');
+    const mime = await import('mime-types');
+
+    try {
+      // Resolve the correct file path
+      // Worker stores files relative to project root, but API runs from apps/api/
+      const resolvedPath = path.isAbsolute(dataset.outputPath) 
+        ? dataset.outputPath 
+        : path.resolve(process.cwd(), '..', '..', 'apps', 'worker', dataset.outputPath);
+      
+      // Verify the file exists
+      await fs.access(resolvedPath);
+      
+      // Read the file
+      const fileContent = await fs.readFile(resolvedPath);
+      
+      // Determine content type from file extension
+      const ext = path.extname(dataset.outputPath).toLowerCase();
+      let contentType = mime.lookup(ext) || 'application/octet-stream';
+      
+      // Override for specific file types to ensure proper handling
+      const contentTypeMap = {
+        '.pdf': 'application/pdf',
+        '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        '.doc': 'application/msword',
+        '.txt': 'text/plain',
+        '.json': 'application/json'
+      };
+      
+      if (contentTypeMap[ext]) {
+        contentType = contentTypeMap[ext];
+      }
+      
+      // Generate appropriate filename
+      const timestamp = new Date().toISOString().split('T')[0];
+      const baseName = dataset.name.replace(/[^a-zA-Z0-9-_]/g, '_');
+      const originalExt = path.extname(dataset.filename).toLowerCase();
+      const filename = `${baseName}_anonymized_${timestamp}${originalExt}`;
+
+      // Log the download action
+      await this.prisma.auditLog.create({
+        data: {
+          userId,
+          action: 'DOWNLOAD',
+          resource: 'dataset',
+          resourceId: dataset.id,
+          details: {
+            action: 'download_anonymized_original_file',
+            filename,
+            fileType: dataset.fileType,
+            originalFilename: dataset.filename,
+            outputPath: path.basename(dataset.outputPath)
+          },
+        },
+      });
+
+      return {
+        content: fileContent,
+        contentType,
+        filename,
+        isBuffer: true // Flag to indicate this is binary data
+      };
+
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        throw new NotFoundException('Anonymized file not found. The file may have been deleted or the anonymization process may have failed.');
+      }
+      throw new InternalServerErrorException(`Failed to read anonymized file: ${error.message}`);
+    }
   }
 
   /**

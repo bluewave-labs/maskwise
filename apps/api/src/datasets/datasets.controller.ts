@@ -307,7 +307,7 @@ export class DatasetsController {
   @ApiResponse({ status: 400, description: 'Invalid format or anonymization not completed' })
   async downloadAnonymizedContent(
     @Param('id') id: string,
-    @Query('format') format: string = 'txt',
+    @Query('format') format: string = 'original',
     @Request() req,
     @Res() res: Response,
   ) {
@@ -315,9 +315,15 @@ export class DatasetsController {
     
     res.setHeader('Content-Type', result.contentType);
     res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
-    res.setHeader('Content-Length', result.content.length);
     
-    return res.send(result.content);
+    // Handle binary data (like PDFs) vs text data differently
+    if ('isBuffer' in result && result.isBuffer) {
+      res.setHeader('Content-Length', (result.content as Buffer).length);
+      return res.end(result.content);
+    } else {
+      res.setHeader('Content-Length', (result.content as string).length);
+      return res.send(result.content);
+    }
   }
 
   @Get(':id/download')

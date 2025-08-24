@@ -2,6 +2,7 @@ import axios from 'axios';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import FormData from 'form-data';
+import pdfParse from 'pdf-parse';
 import { logger } from '../utils/logger.js';
 import { tesseractService, OCRExtractionResult } from './tesseract.service.js';
 
@@ -76,6 +77,9 @@ export class TextExtractionService {
       switch (strategy) {
         case 'direct':
           result = await this.extractDirectText(filePath);
+          break;
+        case 'pdf':
+          result = await this.extractViaPDF(filePath);
           break;
         case 'tika':
           result = await this.extractViaTika(filePath);
@@ -210,8 +214,13 @@ export class TextExtractionService {
       return 'direct';
     }
 
-    // Documents - use Tika
-    const documentTypes = ['PDF', 'DOC', 'DOCX', 'XLS', 'XLSX', 'PPT', 'PPTX', 'ODT', 'ODS', 'ODP', 'RTF'];
+    // PDFs - use direct PDF extraction for better coordinate mapping
+    if (fileType === 'PDF') {
+      return 'pdf';
+    }
+    
+    // Other documents - use Tika
+    const documentTypes = ['DOC', 'DOCX', 'XLS', 'XLSX', 'PPT', 'PPTX', 'ODT', 'ODS', 'ODP', 'RTF'];
     if (documentTypes.includes(fileType)) {
       return 'tika';
     }
@@ -294,20 +303,17 @@ export class TextExtractionService {
       // Check Tika service availability
       await this.checkTikaHealth();
 
-      // Create form data with file
-      const formData = new FormData();
+      // Read file as binary data
       const fileBuffer = await fs.readFile(filePath);
       const fileName = path.basename(filePath);
       
-      formData.append('file', fileBuffer, {
-        filename: fileName,
-        contentType: 'application/octet-stream'
-      });
+      // Detect MIME type from file extension
+      const mimeType = this.getMimeTypeFromPath(filePath);
 
-      // Send request to Tika
-      const response = await axios.post(`${this.tikaUrl}/tika`, formData, {
+      // Send PUT request to Tika with raw binary data (correct Tika API usage)
+      const response = await axios.put(`${this.tikaUrl}/tika`, fileBuffer, {
         headers: {
-          ...formData.getHeaders(),
+          'Content-Type': mimeType,
           'Accept': 'text/plain'
         },
         timeout: 60000, // 60 second timeout for large files
@@ -320,14 +326,15 @@ export class TextExtractionService {
       let metadata: any = {
         timestamp: new Date().toISOString(),
         tikaVersion: await this.getTikaVersion(),
-        originalFileName: fileName
+        originalFileName: fileName,
+        detectedMimeType: mimeType
       };
 
       try {
-        // Try to get document metadata
-        const metadataResponse = await axios.post(`${this.tikaUrl}/meta`, formData, {
+        // Try to get document metadata using PUT method with correct headers
+        const metadataResponse = await axios.put(`${this.tikaUrl}/meta`, fileBuffer, {
           headers: {
-            ...formData.getHeaders(),
+            'Content-Type': mimeType,
             'Accept': 'application/json'
           },
           timeout: 30000
@@ -489,6 +496,74 @@ export class TextExtractionService {
   }
 
   /**
+   * Extract Text via PDF Parser
+   * 
+   * Uses pdf-parse library to extract text directly from PDF files.
+   * This provides better text positioning information compared to Tika
+   * for coordinate-based redaction in PDF anonymization.
+   */
+  private async extractViaPDF(filePath: string): Promise<TextExtractionResult> {
+    try {
+      logger.info('Starting PDF text extraction', {
+        filePath: path.basename(filePath)
+      });
+
+      // Read PDF file
+      const pdfBuffer = await fs.readFile(filePath);
+      
+      // Parse PDF and extract text
+      const pdfData = await pdfParse(pdfBuffer);
+      
+      logger.info('PDF text extraction completed', {
+        filePath: path.basename(filePath),
+        textLength: pdfData.text.length,
+        pageCount: pdfData.numpages,
+        metadata: pdfData.metadata ? 'present' : 'absent'
+      });
+
+      // Calculate confidence based on text extraction success
+      const confidence = pdfData.text.length > 0 ? 0.9 : 0.1;
+      
+      return {
+        text: pdfData.text,
+        confidence,
+        extractionMethod: 'pdf',
+        metadata: {
+          pageCount: pdfData.numpages,
+          info: pdfData.info || {},
+          metadata: pdfData.metadata || {},
+          version: pdfData.version,
+          textLength: pdfData.text.length,
+          extractionLibrary: 'pdf-parse'
+        },
+        warnings: []
+      };
+
+    } catch (error) {
+      logger.error('PDF text extraction failed', {
+        filePath: path.basename(filePath),
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+
+      // Fallback to Tika extraction if PDF parsing fails
+      logger.info('Falling back to Tika extraction for PDF', {
+        filePath: path.basename(filePath)
+      });
+      
+      try {
+        const tikaResult = await this.extractViaTika(filePath);
+        return {
+          ...tikaResult,
+          extractionMethod: 'pdf-fallback-tika',
+          warnings: ['PDF direct extraction failed, used Tika fallback']
+        };
+      } catch (tikaError) {
+        throw new Error(`PDF extraction failed with both methods: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+  }
+
+  /**
    * Extract Text via Hybrid Method
    * 
    * Uses multiple extraction methods and combines results.
@@ -633,14 +708,15 @@ export class TextExtractionService {
   }
 
   /**
-   * Get MIME Type from File Extension
+   * Get MIME Type from File Path
    * 
    * @param filePath - Path to file
    * @returns MIME type string
    */
-  private getMimeTypeFromExtension(filePath: string): string {
+  private getMimeTypeFromPath(filePath: string): string {
     const ext = path.extname(filePath).toLowerCase();
     const mimeTypes: Record<string, string> = {
+      // Image types
       '.jpg': 'image/jpeg',
       '.jpeg': 'image/jpeg',
       '.png': 'image/png',
@@ -648,9 +724,42 @@ export class TextExtractionService {
       '.tif': 'image/tiff',
       '.bmp': 'image/bmp',
       '.gif': 'image/gif',
-      '.webp': 'image/webp'
+      '.webp': 'image/webp',
+      
+      // Document types
+      '.pdf': 'application/pdf',
+      '.doc': 'application/msword',
+      '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      '.xls': 'application/vnd.ms-excel',
+      '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      '.ppt': 'application/vnd.ms-powerpoint',
+      '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      
+      // Text types
+      '.txt': 'text/plain',
+      '.csv': 'text/csv',
+      '.json': 'application/json',
+      '.html': 'text/html',
+      '.htm': 'text/html',
+      '.xml': 'application/xml',
+      '.rtf': 'application/rtf',
+      
+      // Archive types
+      '.zip': 'application/zip',
+      '.tar': 'application/x-tar',
+      '.gz': 'application/gzip'
     };
     return mimeTypes[ext] || 'application/octet-stream';
+  }
+
+  /**
+   * Get MIME Type from File Extension (legacy method)
+   * 
+   * @param filePath - Path to file
+   * @returns MIME type string
+   */
+  private getMimeTypeFromExtension(filePath: string): string {
+    return this.getMimeTypeFromPath(filePath);
   }
 
   /**
@@ -693,7 +802,7 @@ export interface TextExtractionResult {
 /**
  * Extraction Strategy Types
  */
-export type ExtractionStrategy = 'direct' | 'tika' | 'ocr' | 'hybrid';
+export type ExtractionStrategy = 'direct' | 'pdf' | 'tika' | 'ocr' | 'hybrid';
 
 // Export singleton instance
 export const textExtractionService = new TextExtractionService();
