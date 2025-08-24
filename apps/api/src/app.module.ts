@@ -8,6 +8,7 @@ import { DatasetsModule } from './datasets/datasets.module';
 import { ProjectsModule } from './projects/projects.module';
 import { PoliciesModule } from './policies/policies.module';
 import { JobsModule } from './jobs/jobs.module';
+import { ReportsModule } from './reports/reports.module';
 import { ApiKeysModule } from './api-keys/api-keys.module';
 import { SystemModule } from './system/system.module';
 import { DatabaseModule } from './common/database.module';
@@ -33,6 +34,7 @@ import { V1Module } from './v1/v1.module';
     ProjectsModule,
     PoliciesModule,
     JobsModule,
+    ReportsModule,
     ApiKeysModule,
     SystemModule,
     V1Module,
