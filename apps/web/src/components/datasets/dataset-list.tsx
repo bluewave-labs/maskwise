@@ -24,6 +24,7 @@ import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import { ErrorDetailsModal } from '@/components/datasets/error-details-modal';
 import { formatFileSize, formatRelativeTime } from '@/lib/utils';
 import { useBackgroundRefreshWithMount } from '@/hooks/useBackgroundRefresh';
+import { toast } from '@/hooks/use-toast';
 import { 
   Search, 
   Eye, 
@@ -322,6 +323,52 @@ export function DatasetList({ refreshTrigger = 0 }: DatasetListProps) {
     setIsDeleting(false);
   };
 
+  const handleDownload = async (dataset: Dataset) => {
+    try {
+      toast({
+        title: 'Download Starting',
+        description: `Preparing ${dataset.filename}...`,
+      });
+
+      const response = await apiClient.get(`/datasets/${dataset.id}/download`, {
+        responseType: 'blob',
+      });
+
+      // Create blob link to download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Extract filename from response headers or use dataset filename
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = dataset.filename;
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+      
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: 'Download Complete',
+        description: `${filename} has been downloaded successfully.`,
+      });
+    } catch (err: any) {
+      console.error('Download error:', err);
+      toast({
+        variant: 'destructive',
+        title: 'Download Failed',
+        description: err.response?.data?.message || 'Failed to download file. Please try again.',
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -543,17 +590,12 @@ export function DatasetList({ refreshTrigger = 0 }: DatasetListProps) {
                               </Link>
                             </DropdownMenuItem>
                           )}
-                          {dataset.status === 'COMPLETED' && (
-                            <DropdownMenuItem 
-                              onClick={() => {
-                                // TODO: Implement download functionality
-                                console.log('Download dataset:', dataset.id);
-                              }}
-                            >
-                              <Download className="h-4 w-4 mr-2" />
-                              Download
-                            </DropdownMenuItem>
-                          )}
+                          <DropdownMenuItem 
+                            onClick={() => handleDownload(dataset)}
+                          >
+                            <Download className="h-4 w-4 mr-2" />
+                            Download Original File
+                          </DropdownMenuItem>
                           {isAdmin(user) && (
                             <DropdownMenuItem 
                               onClick={() => handleDeleteClick(dataset)}

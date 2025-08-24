@@ -226,4 +226,44 @@ export class UsersController {
     const { password, ...userWithoutPassword } = deactivatedUser;
     return userWithoutPassword;
   }
+
+  @Delete(':id/permanent')
+  @AdminOnly() // Only admins can permanently delete users
+  @ApiOperation({ summary: 'Permanently delete user by ID (Admin only)' })
+  @ApiResponse({ status: 200, description: 'User permanently deleted' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  @ApiResponse({ status: 403, description: 'Cannot delete this user' })
+  async permanentDelete(@Param('id') id: string, @Request() req) {
+    // Prevent users from deleting themselves
+    if (req.user.id === id) {
+      throw new Error('Cannot delete your own account');
+    }
+
+    // Get user details before deletion for logging
+    const userToDelete = await this.usersService.findById(id);
+    if (!userToDelete) {
+      throw new Error('User not found');
+    }
+
+    // Perform permanent deletion
+    await this.usersService.permanentDelete(id);
+    
+    // Log the permanent deletion
+    await this.usersService.logAuditAction(
+      req.user.id,
+      'DELETE',
+      'user',
+      id,
+      { action: 'permanent_delete', deletedUser: { email: userToDelete.email, name: `${userToDelete.firstName} ${userToDelete.lastName}` } },
+    );
+
+    return { 
+      message: 'User permanently deleted',
+      deletedUser: { 
+        id: userToDelete.id,
+        email: userToDelete.email,
+        name: `${userToDelete.firstName} ${userToDelete.lastName}`
+      }
+    };
+  }
 }

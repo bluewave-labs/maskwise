@@ -320,6 +320,32 @@ export class DatasetsController {
     return res.send(result.content);
   }
 
+  @Get(':id/download')
+  @ApiOperation({ summary: 'Download original uploaded file' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Original file downloaded successfully',
+    headers: {
+      'Content-Type': { description: 'MIME type of the file' },
+      'Content-Disposition': { description: 'Attachment filename' }
+    }
+  })
+  @ApiResponse({ status: 404, description: 'Dataset or file not found' })
+  @ApiResponse({ status: 400, description: 'Failed to read original file' })
+  async downloadOriginalContent(
+    @Param('id') id: string,
+    @Request() req,
+    @Res() res: Response,
+  ) {
+    const result = await this.datasetsService.downloadOriginalContent(id, req.user.id);
+    
+    res.setHeader('Content-Type', result.contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
+    res.setHeader('Content-Length', result.content.length);
+    
+    return res.send(result.content);
+  }
+
   @Get(':id/anonymized')
   @ApiOperation({ summary: 'Get anonymized content for dataset' })
   @ApiResponse({ 

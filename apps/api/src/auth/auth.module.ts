@@ -8,6 +8,8 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
 import { RefreshJwtStrategy } from './strategies/refresh-jwt.strategy';
 import { UsersModule } from '../users/users.module';
+import { ProjectsModule } from '../projects/projects.module';
+import { DatasetsModule } from '../datasets/datasets.module';
 
 @Module({
   imports: [
@@ -22,6 +24,8 @@ import { UsersModule } from '../users/users.module';
       }),
     }),
     UsersModule,
+    ProjectsModule,
+    DatasetsModule,
   ],
   providers: [AuthService, LocalStrategy, JwtStrategy, RefreshJwtStrategy],
   controllers: [AuthController],

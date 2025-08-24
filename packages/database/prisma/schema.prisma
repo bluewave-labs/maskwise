@@ -64,6 +64,11 @@ model Dataset {
   columnCount Int?
   schema      Json?
   
+  // Text extraction metadata
+  extractionMethod    String?  // 'direct', 'tika', 'ocr', 'hybrid'
+  extractionConfidence Float?   // Overall extraction confidence (0-1)
+  ocrMetadata         Json?    // OCR-specific metadata (confidence, quality warnings, etc.)
+  
   // Processing results
   outputPath  String?
   reportPath  String?

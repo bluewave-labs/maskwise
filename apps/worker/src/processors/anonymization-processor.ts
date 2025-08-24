@@ -37,10 +37,20 @@ export class AnonymizationProcessor extends BaseProcessor {
     try {
       await this.updateJobStatus(job.data.jobId, JobStatus.PROCESSING, 10, 'Starting anonymization process');
 
+      // Get dataset information to determine file type
+      const dataset = await db.client.dataset.findUnique({
+        where: { id: datasetId }
+      });
+
+      if (!dataset) {
+        throw new Error(`Dataset not found: ${datasetId}`);
+      }
+
       logger.info('Starting anonymization processing', {
         jobId: job.id,
         datasetId,
         policyId,
+        fileType: dataset.fileType,
         findingsCount: findingsData?.length || 0,
         outputType: outputType || 'json'
       });
@@ -82,7 +92,10 @@ export class AnonymizationProcessor extends BaseProcessor {
         datasetId || '',
         anonymizationResult,
         outputType || 'json',
-        originalText.length
+        originalText.length,
+        dataset.fileType,
+        dataset.filename,
+        sourceFilePath || ''
       );
 
       // Step 7: Update database with anonymization results
@@ -332,18 +345,25 @@ export class AnonymizationProcessor extends BaseProcessor {
    * Store Anonymized Content
    * 
    * Saves the anonymized output to secure storage with proper formatting.
+   * For images, creates a comprehensive anonymization report instead of trying to modify the image.
    * 
    * @param datasetId - Dataset identifier
    * @param anonymizationResult - Result from Presidio anonymization
    * @param outputType - Output format (json, text, csv)
    * @param originalLength - Original text length for metrics
+   * @param fileType - Original file type (PNG, JPEG, TXT, etc.)
+   * @param originalFilename - Original filename
+   * @param sourceFilePath - Path to original file
    * @returns Path to stored anonymized content
    */
   private async storeAnonymizedContent(
     datasetId: string,
     anonymizationResult: AnonymizationResult,
     outputType: string,
-    originalLength: number
+    originalLength: number,
+    fileType: string,
+    originalFilename: string,
+    sourceFilePath: string
   ): Promise<string> {
     const storageDir = process.env.STORAGE_DIR || './storage';
     const outputDir = path.join(storageDir, 'anonymized');
@@ -352,48 +372,85 @@ export class AnonymizationProcessor extends BaseProcessor {
     await fs.mkdir(outputDir, { recursive: true });
     
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = `${datasetId}_anonymized_${timestamp}.${outputType}`;
-    const outputPath = path.join(outputDir, filename);
-
+    const isImageFile = ['PNG', 'JPEG', 'JPG', 'TIFF', 'BMP', 'GIF'].includes(fileType.toUpperCase());
+    
+    // For images, create a comprehensive report instead of just text
+    let filename: string;
     let content: string;
     
-    switch (outputType.toLowerCase()) {
-      case 'json':
-        content = JSON.stringify({
-          anonymizedText: anonymizationResult.text,
-          originalLength,
-          anonymizedLength: anonymizationResult.text.length,
+    if (isImageFile) {
+      // For images, always create a JSON report with image information
+      filename = `${datasetId}_anonymized_report_${timestamp}.json`;
+      content = JSON.stringify({
+        reportType: 'IMAGE_ANONYMIZATION_REPORT',
+        originalFile: {
+          name: originalFilename,
+          type: fileType,
+          path: path.basename(sourceFilePath), // Only store the filename for security
+        },
+        extractedText: {
+          original: anonymizationResult.text, // This is actually the anonymized text from Presidio
+          length: anonymizationResult.text.length
+        },
+        anonymizationSummary: {
           operationsApplied: anonymizationResult.items?.length || 0,
           operations: anonymizationResult.items || [],
-          timestamp: new Date().toISOString(),
-          datasetId
-        }, null, 2);
-        break;
-        
-      case 'text':
-      case 'txt':
-        content = anonymizationResult.text;
-        break;
-        
-      default:
-        // Default to JSON format
-        content = JSON.stringify({
-          anonymizedText: anonymizationResult.text,
-          metadata: {
+          piiEntitiesProcessed: [...new Set((anonymizationResult.items || []).map(item => item.entity_type))],
+        },
+        metadata: {
+          originalTextLength: originalLength,
+          anonymizedTextLength: anonymizationResult.text.length,
+          processingTimestamp: new Date().toISOString(),
+          datasetId,
+          note: 'This report contains the PII-anonymized text extracted from the image. The original image remains unchanged.'
+        }
+      }, null, 2);
+    } else {
+      // For text-based files, use the original logic
+      filename = `${datasetId}_anonymized_${timestamp}.${outputType}`;
+      
+      switch (outputType.toLowerCase()) {
+        case 'json':
+          content = JSON.stringify({
+            anonymizedText: anonymizationResult.text,
             originalLength,
             anonymizedLength: anonymizationResult.text.length,
-            operationsCount: anonymizationResult.items?.length || 0
-          }
-        }, null, 2);
-        break;
+            operationsApplied: anonymizationResult.items?.length || 0,
+            operations: anonymizationResult.items || [],
+            timestamp: new Date().toISOString(),
+            datasetId
+          }, null, 2);
+          break;
+          
+        case 'text':
+        case 'txt':
+          content = anonymizationResult.text;
+          break;
+          
+        default:
+          // Default to JSON format
+          content = JSON.stringify({
+            anonymizedText: anonymizationResult.text,
+            metadata: {
+              originalLength,
+              anonymizedLength: anonymizationResult.text.length,
+              operationsCount: anonymizationResult.items?.length || 0
+            }
+          }, null, 2);
+          break;
+      }
     }
+
+    const outputPath = path.join(outputDir, filename);
 
     await fs.writeFile(outputPath, content, 'utf-8');
     
     logger.info('Anonymized content stored', {
       datasetId,
       outputPath: filename, // Store relative path only in logs
-      outputType,
+      outputType: isImageFile ? 'json_report' : outputType,
+      fileType,
+      isImageFile,
       fileSize: content.length
     });
 

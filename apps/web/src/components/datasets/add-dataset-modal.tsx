@@ -126,10 +126,9 @@ export function AddDatasetModal({ isOpen, onClose, onUploadComplete }: AddDatase
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className={currentStep === 'project' ? '' : 'flex items-center gap-2'}>
-            {currentStep !== 'project' && <Upload className="h-5 w-5" />}
+          <DialogTitle>
             {getStepTitle()}
           </DialogTitle>
           <DialogDescription>
@@ -137,38 +136,6 @@ export function AddDatasetModal({ isOpen, onClose, onUploadComplete }: AddDatase
           </DialogDescription>
         </DialogHeader>
 
-        {/* Progress Steps */}
-        <div className="flex items-center justify-center py-4">
-          <div className="flex items-center gap-4">
-            {/* Step 1: Project */}
-            <div className="flex items-center gap-2">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                currentStep === 'project' 
-                  ? 'bg-blue-100 text-blue-700 border-2 border-blue-300'
-                  : selectedProject
-                  ? 'bg-green-100 text-green-700 border-2 border-green-300'
-                  : 'bg-gray-100 text-gray-500 border-2 border-gray-300'
-              }`}>
-                {selectedProject ? <CheckCircle2 className="h-4 w-4" /> : '1'}
-              </div>
-              <span className="text-sm font-medium text-muted-foreground">Project</span>
-            </div>
-
-            <div className="w-8 h-px bg-border"></div>
-
-            {/* Step 2: Upload */}
-            <div className="flex items-center gap-2">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                currentStep === 'upload'
-                  ? 'bg-blue-100 text-blue-700 border-2 border-blue-300'
-                  : 'bg-gray-100 text-gray-500 border-2 border-gray-300'
-              }`}>
-                2
-              </div>
-              <span className="text-sm font-medium text-muted-foreground">Upload</span>
-            </div>
-          </div>
-        </div>
 
         <Separator />
 
@@ -248,7 +215,12 @@ export function AddDatasetModal({ isOpen, onClose, onUploadComplete }: AddDatase
         </div>
 
         <DialogFooter className="flex items-center justify-between">
-          <div>
+          <div className="flex items-center gap-4">
+            {currentStep === 'upload' && (
+              <p className="text-[11px] text-muted-foreground">
+                Upload files above to complete the process
+              </p>
+            )}
             {currentStep !== 'project' && (
               <Button variant="outline" onClick={handleBack}>
                 Back
@@ -260,12 +232,6 @@ export function AddDatasetModal({ isOpen, onClose, onUploadComplete }: AddDatase
             <Button variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            
-            {currentStep === 'upload' && (
-              <p className="text-sm text-muted-foreground">
-                Upload files above to complete the process
-              </p>
-            )}
           </div>
         </DialogFooter>
       </DialogContent>

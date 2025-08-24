@@ -79,7 +79,8 @@ export class PIIAnalysisProcessor extends BaseProcessor {
 
       // Extract text content based on file type
       const jobData = job.data as PIIAnalysisJobData;
-      const textContent = await this.extractTextContent(dataset, jobData.filePath);
+      const extractionResult = await this.extractTextContentWithMetadata(dataset, jobData.filePath);
+      const textContent = extractionResult.text;
       
       if (!textContent || textContent.trim().length === 0) {
         logger.warn('No text content found in file', { datasetId, filename: dataset.filename });
@@ -126,13 +127,16 @@ export class PIIAnalysisProcessor extends BaseProcessor {
       // Update progress
       await this.updateJobStatus(job.data.jobId, JobStatus.PROCESSING, 80);
 
-      // Update dataset status
+      // Update dataset status with extraction metadata
       await db.client.dataset.update({
         where: { id: datasetId! },
         data: {
           status: 'COMPLETED',
           rowCount: this.countTextLines(textContent),
           columnCount: this.estimateColumns(textContent, dataset.fileType),
+          extractionMethod: extractionResult.extractionMethod,
+          extractionConfidence: extractionResult.confidence,
+          ocrMetadata: extractionResult.extractionMethod === 'ocr' ? extractionResult.metadata : null,
           updatedAt: new Date()
         }
       });
@@ -172,16 +176,16 @@ export class PIIAnalysisProcessor extends BaseProcessor {
   }
 
   /**
-   * Extract Text Content from Dataset
+   * Extract Text Content with Metadata from Dataset
    * 
    * Extracts text content from uploaded files using the enhanced text extraction service.
-   * Supports multiple file types with intelligent routing and fallback mechanisms.
+   * Returns complete extraction result including OCR confidence and quality metadata.
    * 
    * @param dataset - Dataset record with file information
    * @param absoluteFilePath - Absolute path to the file from job data
-   * @returns Extracted text content
+   * @returns Complete extraction result with metadata
    */
-  private async extractTextContent(dataset: any, absoluteFilePath?: string): Promise<string> {
+  private async extractTextContentWithMetadata(dataset: any, absoluteFilePath?: string): Promise<TextExtractionResult> {
     try {
       // Use absolute path from job data if provided, fallback to dataset sourcePath
       const filePath = absoluteFilePath || dataset.sourcePath;
@@ -221,8 +225,8 @@ export class PIIAnalysisProcessor extends BaseProcessor {
         });
       }
 
-      // Return extracted text
-      return extractionResult.text;
+      // Return complete extraction result with metadata
+      return extractionResult;
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';

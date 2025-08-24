@@ -3,6 +3,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import FormData from 'form-data';
 import { logger } from '../utils/logger.js';
+import { tesseractService, OCRExtractionResult } from './tesseract.service.js';
 
 /**
  * Text Extraction Service
@@ -367,103 +368,117 @@ export class TextExtractionService {
   /**
    * Extract Text via OCR (Tesseract)
    * 
+   * Uses the dedicated TesseractService for enhanced OCR processing with
+   * confidence scoring, quality metrics, and low-confidence warnings.
+   * 
    * @param filePath - Path to image file
    * @returns Extraction result
    */
   private async extractViaOCR(filePath: string): Promise<TextExtractionResult> {
     try {
       // Check if OCR service is available
-      const ocrAvailable = await this.checkOCRHealth();
+      const ocrAvailable = await tesseractService.healthCheck();
       
       if (!ocrAvailable) {
         logger.warn('OCR service unavailable, falling back to Tika');
         return await this.extractViaTika(filePath);
       }
 
-      logger.info('Starting OCR extraction', {
+      // Validate image format support
+      if (!tesseractService.isSupportedImageFormat(filePath)) {
+        logger.warn('Unsupported image format for OCR, falling back to Tika', {
+          filePath: path.basename(filePath),
+          supportedFormats: tesseractService.getSupportedFormats()
+        });
+        return await this.extractViaTika(filePath);
+      }
+
+      logger.info('Starting enhanced OCR extraction', {
         filePath: path.basename(filePath),
         tesseractUrl: this.tesseractUrl
       });
 
-      // Read file and create form data for OCR service
-      const FormData = require('form-data');
-      const formData = new FormData();
-      
-      // Add file to form data
-      formData.append('file', require('fs').createReadStream(filePath), {
-        filename: path.basename(filePath),
-        contentType: this.getMimeTypeFromExtension(filePath)
-      });
-      
-      // Add OCR options
-      formData.append('lang', 'eng'); // English language
-      formData.append('psm', '3');    // Fully automatic page segmentation
-      formData.append('oem', '3');    // Default OCR Engine Mode
-
-      // Make OCR request
-      const response = await axios.post(`${this.tesseractUrl}/tesseract`, formData, {
-        headers: {
-          ...formData.getHeaders(),
-          'Accept': 'application/json'
-        },
-        timeout: 120000, // 2 minutes timeout for OCR processing
-        maxContentLength: 50 * 1024 * 1024, // 50MB
-        maxBodyLength: 50 * 1024 * 1024
-      });
-
-      // Extract text from OCR response
-      let extractedText = '';
-      let confidence = 0.7; // Default confidence for OCR
-
-      if (response.data && response.data.text) {
-        extractedText = response.data.text;
-        confidence = response.data.confidence || 0.7;
-      } else if (typeof response.data === 'string') {
-        extractedText = response.data;
-      } else {
-        throw new Error('Unexpected OCR response format');
-      }
-
-      // Create initial result object
-      const initialResult: TextExtractionResult = {
-        text: extractedText,
-        extractionMethod: 'ocr',
-        confidence: Math.max(0.1, Math.min(1.0, confidence)),
-        metadata: {
-          originalLength: extractedText.length,
-          cleanedLength: extractedText.length,
+      // Use the enhanced Tesseract service
+      const ocrResult: OCRExtractionResult = await tesseractService.extractTextFromImage(
+        filePath,
+        {
           language: 'eng',
-          processingTime: Date.now(),
-          ocrVersion: 'tesseract-server'
+          minConfidence: 60 // As requested - 60% confidence threshold
+        }
+      );
+
+      // Convert OCR result to TextExtractionResult format
+      const result: TextExtractionResult = {
+        text: ocrResult.text,
+        confidence: ocrResult.confidence / 100, // Convert percentage to decimal
+        extractionMethod: 'ocr',
+        metadata: {
+          // Core OCR metadata
+          originalLength: ocrResult.text.length,
+          wordCount: ocrResult.wordCount,
+          language: ocrResult.language,
+          processingTimeMs: ocrResult.processingTimeMs,
+          extractedAt: ocrResult.extractedAt.toISOString(),
+          
+          // Quality metrics from OCR
+          ocrConfidence: ocrResult.confidence,
+          imageFormat: ocrResult.metadata.imageFormat,
+          wordsDetected: ocrResult.metadata.wordsDetected,
+          averageWordConfidence: ocrResult.metadata.averageWordConfidence,
+          lowConfidenceWords: ocrResult.metadata.lowConfidenceWords,
+          
+          // Quality indicators
+          qualityWarnings: ocrResult.confidence < 60 ? ['Low OCR confidence'] : [],
+          hasLowConfidenceWords: ocrResult.metadata.lowConfidenceWords > 0,
+          
+          // Service info
+          ocrVersion: 'tesseract-server-enhanced'
         }
       };
 
       // Post-process the extracted text
-      const result = await this.postProcessText(initialResult);
+      const processedResult = await this.postProcessText(result);
       
-      if (!result.text || result.text.length < 10) {
-        logger.warn('OCR produced little/no text, falling back to Tika');
+      // Check text quality - if very poor, fallback to Tika
+      if (!processedResult.text || processedResult.text.trim().length < 5) {
+        logger.warn('OCR produced very little text, falling back to Tika', {
+          textLength: processedResult.text?.length || 0,
+          confidence: ocrResult.confidence
+        });
         return await this.extractViaTika(filePath);
       }
 
-      logger.info('OCR extraction completed', {
+      // Log quality warnings for monitoring
+      if (ocrResult.confidence < 60) {
+        logger.warn('OCR extraction completed with low confidence - results may need review', {
+          filePath: path.basename(filePath),
+          confidence: ocrResult.confidence,
+          textLength: processedResult.text.length,
+          wordsDetected: ocrResult.metadata.wordsDetected,
+          lowConfidenceWords: ocrResult.metadata.lowConfidenceWords
+        });
+      }
+
+      logger.info('Enhanced OCR extraction completed successfully', {
         filePath: path.basename(filePath),
-        textLength: result.text.length,
-        confidence: result.confidence,
-        extractionMethod: result.extractionMethod
+        textLength: processedResult.text.length,
+        confidence: ocrResult.confidence,
+        wordsDetected: ocrResult.metadata.wordsDetected,
+        processingTimeMs: ocrResult.processingTimeMs,
+        qualityLevel: ocrResult.confidence >= 80 ? 'high' : ocrResult.confidence >= 60 ? 'medium' : 'low'
       });
 
-      return result;
+      return processedResult;
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      logger.error('OCR extraction failed', {
+      logger.error('Enhanced OCR extraction failed', {
         filePath: path.basename(filePath),
         error: errorMessage,
         tesseractUrl: this.tesseractUrl
       });
       
-      // Fallback to Tika
+      // Fallback to Tika for document-style processing
       try {
         logger.info('Falling back to Tika for image processing');
         return await this.extractViaTika(filePath);
@@ -609,20 +624,12 @@ export class TextExtractionService {
   /**
    * Check OCR Service Health
    * 
+   * Uses the enhanced TesseractService health check for better reliability.
+   * 
    * @returns True if OCR service is available
    */
   private async checkOCRHealth(): Promise<boolean> {
-    try {
-      // hertzg/tesseract-server doesn't have a health endpoint, check root page
-      const response = await axios.get(`${this.tesseractUrl}/`, { timeout: 5000 });
-      return response.status === 200 && response.data.includes('tesseract-server');
-    } catch (error) {
-      logger.debug('OCR service health check failed', {
-        tesseractUrl: this.tesseractUrl,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-      return false;
-    }
+    return await tesseractService.healthCheck();
   }
 
   /**
@@ -663,12 +670,24 @@ export class TextExtractionService {
 
 /**
  * Text Extraction Result Interface
+ * 
+ * Enhanced to support OCR confidence metadata and quality indicators
  */
 export interface TextExtractionResult {
   text: string;
   confidence: number;
   extractionMethod: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, any> & {
+    // OCR-specific metadata (optional)
+    ocrConfidence?: number;
+    imageFormat?: string;
+    wordsDetected?: number;
+    averageWordConfidence?: number;
+    lowConfidenceWords?: number;
+    qualityWarnings?: string[];
+    hasLowConfidenceWords?: boolean;
+    processingTimeMs?: number;
+  };
 }
 
 /**

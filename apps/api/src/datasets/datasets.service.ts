@@ -304,7 +304,7 @@ export class DatasetsService {
           fileSize: file.size,
           mimeType: file.mimetype,
           projectId: sanitizedDto.projectId,
-          jobId: job.id,
+          jobId: job?.id || null,
           securityValidation: {
             riskLevel: fileValidation.riskLevel,
             validationPassed: true
@@ -669,6 +669,65 @@ export class DatasetsService {
   }
 
   /**
+   * Download original uploaded file content
+   * 
+   * @param id - Dataset ID
+   * @param userId - Current user ID
+   * @returns File content with proper headers for download
+   */
+  async downloadOriginalContent(id: string, userId: string) {
+    // Verify dataset ownership
+    const dataset = await this.verifyDatasetOwnership(id, userId);
+
+    try {
+      // Check if original file exists
+      const fileExists = await fs.access(dataset.sourcePath).then(() => true).catch(() => false);
+      if (!fileExists) {
+        throw new NotFoundException('Original file not found on server');
+      }
+
+      // Read the original file content
+      const content = await fs.readFile(dataset.sourcePath);
+      
+      // Get the MIME type based on file extension or default to octet-stream
+      const contentType = mimeTypes.lookup(dataset.filename) || 'application/octet-stream';
+      
+      // Create download filename with original name
+      const filename = dataset.filename;
+
+      // Log the download action
+      await this.prisma.auditLog.create({
+        data: {
+          userId: userId,
+          action: 'DOWNLOAD',
+          resource: 'dataset',
+          resourceId: id,
+          details: {
+            datasetName: dataset.name,
+            filename: dataset.filename,
+            fileType: dataset.fileType,
+            fileSize: dataset.fileSize.toString(),
+            type: 'original_content',
+          },
+        },
+      });
+
+      return {
+        content,
+        contentType,
+        filename,
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      
+      console.error('Error reading original file:', error);
+      throw new BadRequestException('Failed to read original file');
+    }
+  }
+
+  /**
    * Get job progress for dataset
    * 
    * @param id - Dataset ID
@@ -834,7 +893,7 @@ export class DatasetsService {
   private async getDefaultPolicyId(): Promise<string> {
     const defaultPolicy = await this.prisma.policy.findFirst({
       where: {
-        name: 'GDPR Compliance',
+        name: 'Default PII Detection Policy',
       },
     });
 
@@ -1070,6 +1129,130 @@ export class DatasetsService {
         status: 'PENDING',
         newJobId: newJob.id,
       },
+    };
+  }
+
+  /**
+   * Create Demo Dataset
+   * 
+   * Creates a sample dataset with PII content for new user onboarding.
+   * This method is used by the authentication service to provide users
+   * with immediate access to sample data for testing and experimentation.
+   * 
+   * @param params - Demo dataset creation parameters
+   * @returns Dataset and job creation details
+   */
+  async createDemoDataset(params: {
+    projectId: string;
+    userId: string;
+    name: string;
+    description: string;
+    content: string;
+    policyId?: string;
+    processImmediately: boolean;
+  }) {
+    const { projectId, userId, name, description, content, policyId, processImmediately } = params;
+
+    // Create temporary file with demo content
+    const uploadsDir = path.resolve('./uploads');
+    await fs.mkdir(uploadsDir, { recursive: true });
+
+    const demoFilename = `demo-dataset-${Date.now()}.txt`;
+    const demoFilePath = path.join(uploadsDir, demoFilename);
+    
+    // Write sample content to file
+    await fs.writeFile(demoFilePath, content, 'utf8');
+
+    // Calculate file stats and hash
+    const fileStats = await fs.stat(demoFilePath);
+    const fileBuffer = await fs.readFile(demoFilePath);
+    const contentHash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+
+    // Create dataset record
+    const dataset = await this.prisma.dataset.create({
+      data: {
+        name: this.inputSanitizer.sanitizeText(name, {
+          maxLength: 200,
+          allowHtml: false,
+          allowSpecialCharacters: true
+        }),
+        filename: demoFilename,
+        fileType: 'TXT',
+        fileSize: BigInt(fileStats.size),
+        sourcePath: demoFilePath,
+        sourceType: 'UPLOAD',
+        contentHash,
+        metadataHash: contentHash,
+        status: processImmediately ? 'PENDING' : 'UPLOADED',
+        projectId: projectId,
+      },
+    });
+
+    // Create processing job if requested
+    let job = null;
+    if (processImmediately) {
+      const defaultPolicyId = policyId || await this.getDefaultPolicyId();
+      
+      job = await this.prisma.job.create({
+        data: {
+          type: 'ANALYZE_PII',
+          status: 'QUEUED',
+          datasetId: dataset.id,
+          createdById: userId,
+          policyId: defaultPolicyId,
+          metadata: {
+            fileName: demoFilename,
+            originalFileName: demoFilename,
+            fileSize: fileStats.size,
+            mimeType: 'text/plain',
+            contentHash,
+            isDemoDataset: true,
+            securityValidation: {
+              riskLevel: 'low',
+              detectedFileType: 'text/plain',
+              validationPassed: true
+            }
+          },
+        },
+      });
+
+      // Queue the job for processing
+      await this.queueService.addPiiAnalysisJob({
+        datasetId: dataset.id,
+        projectId: projectId,
+        filePath: path.resolve(demoFilePath),
+        userId,
+        policyId: defaultPolicyId,
+        jobId: job.id,
+      });
+    }
+
+    // Log audit action
+    await this.prisma.auditLog.create({
+      data: {
+        userId,
+        action: 'CREATE',
+        resource: 'dataset',
+        resourceId: dataset.id,
+        details: {
+          name: dataset.name,
+          filename: demoFilename,
+          projectId,
+          processImmediately,
+          jobId: job?.id,
+          fileSize: fileStats.size,
+          isDemoDataset: true
+        },
+      },
+    });
+
+    return {
+      dataset: {
+        ...dataset,
+        fileSize: Number(dataset.fileSize),
+      },
+      job,
+      message: 'Demo dataset created successfully'
     };
   }
 }

@@ -84,6 +84,16 @@ export default function AnonymizePage() {
         pageDescription="Follow the guided steps to detect and anonymize PII in your files"
       >
         <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowWorkflow(false)}
+              className="gap-2"
+            >
+              <ArrowRight className="h-4 w-4 rotate-180" />
+              Back to Anonymization
+            </Button>
+          </div>
           <AnonymizationWorkflow 
             onComplete={handleWorkflowComplete}
           />
@@ -134,61 +144,12 @@ export default function AnonymizePage() {
       ) : (
         <div className="space-y-6">
 
-        <Alert>
-          <Info className="h-4 w-4" />
-          <AlertTitle>Guided Workflow</AlertTitle>
-          <AlertDescription>
-            Our step-by-step process will help you upload files, detect PII, review findings, 
-            and apply anonymization policies to protect sensitive data.
-          </AlertDescription>
-        </Alert>
-
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {/* Feature Cards */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Shield className="h-5 w-5 text-muted-foreground" />
-                <CardTitle className="text-[15px]">PII Detection</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Automatically identify 15+ types of sensitive information including names, 
-                emails, phone numbers, SSNs, and credit cards.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <FileText className="h-5 w-5 text-muted-foreground" />
-                <CardTitle className="text-[15px]">Policy-Based Rules</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Apply pre-configured policies like GDPR, HIPAA, or Financial Services 
-                to ensure compliance with regulations.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-muted-foreground" />
-                <CardTitle className="text-[15px]">Smart Anonymization</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Choose from multiple anonymization techniques including redaction, 
-                masking, replacement, and encryption.
-              </p>
-            </CardContent>
-          </Card>
+        <div className="bg-card p-6 rounded-lg border">
+          <p className="text-muted-foreground text-[14px] leading-relaxed">
+            Our comprehensive data anonymization platform automatically identifies 15+ types of sensitive information including names, emails, phone numbers, SSNs, and credit cards. 
+            Apply pre-configured compliance policies like GDPR, HIPAA, or Financial Services to ensure regulatory compliance, and choose from multiple anonymization techniques 
+            including redaction, masking, replacement, and encryption to protect your sensitive data.
+          </p>
         </div>
 
         {/* Workflow Steps Preview */}

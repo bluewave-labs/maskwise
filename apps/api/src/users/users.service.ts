@@ -89,6 +89,23 @@ export class UsersService {
     });
   }
 
+  async permanentDelete(id: string): Promise<void> {
+    const user = await this.findById(id);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Use a transaction to ensure all related data is cleaned up
+    await this.prisma.$transaction(async (tx) => {
+      // Delete related audit logs first (if we want to keep audit trail, we can skip this)
+      // Note: We might want to keep audit logs for compliance, so commenting this out
+      // await tx.auditLog.deleteMany({ where: { userId: id } });
+
+      // Delete the user record
+      await tx.user.delete({ where: { id } });
+    });
+  }
+
   async logAuditAction(
     userId: string,
     action: AuditAction,

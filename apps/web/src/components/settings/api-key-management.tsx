@@ -18,7 +18,9 @@ import {
   EyeOff,
   AlertCircle,
   Calendar,
-  Activity
+  Activity,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -43,6 +45,8 @@ export function ApiKeyManagement() {
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [newKeyData, setNewKeyData] = useState<NewApiKey | null>(null);
   const [keyName, setKeyName] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(5);
   const { toast } = useToast();
 
   // Fetch API keys from backend
@@ -169,6 +173,16 @@ export function ApiKeyManagement() {
     return `${Math.floor(diffInSeconds / 86400)}d ago`;
   };
 
+  // Pagination calculations
+  const totalPages = Math.ceil(apiKeys.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentKeys = apiKeys.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -209,16 +223,38 @@ export function ApiKeyManagement() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">API Keys</h2>
-          <p className="text-[13px] text-muted-foreground">
-            Generate and manage API keys for programmatic access to Maskwise
-          </p>
-        </div>
+      <div>
+        <h2 className="text-lg font-semibold">API Keys</h2>
+        <p className="text-[13px] text-muted-foreground">
+          Generate and manage API keys for programmatic access to Maskwise
+        </p>
+      </div>
+
+      {/* Top Section: API Documentation and Generate Button */}
+      <div className="flex items-start justify-between gap-6">
+        {/* API Documentation Box */}
+        <Card className="flex-1 border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-[13px] font-medium text-blue-800 dark:text-blue-200 mb-1">
+                  API Documentation
+                </h3>
+                <p className="text-[13px] text-blue-600 dark:text-blue-300">
+                  Learn how to authenticate and use the Maskwise API endpoints
+                </p>
+              </div>
+              <Button variant="outline" size="sm" className="text-blue-700 border-blue-300 flex-shrink-0">
+                View Docs
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Generate New Key Button */}
         <Dialog open={showGenerateModal} onOpenChange={setShowGenerateModal}>
           <DialogTrigger asChild>
-            <Button className="h-[34px]">
+            <Button className="h-[34px] flex-shrink-0">
               <Plus className="h-4 w-4 mr-2" />
               Generate New Key
             </Button>
@@ -324,89 +360,119 @@ export function ApiKeyManagement() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4">
-          {apiKeys.map((apiKey) => (
-            <Card key={apiKey.id}>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                      <Key className="h-4 w-4 text-gray-600" />
-                    </div>
-                    <div>
-                      <div className="flex items-center space-x-3">
-                        <h3 className="text-[13px] font-medium text-gray-900 dark:text-gray-100">
-                          {apiKey.name}
-                        </h3>
-                        <Badge 
-                          variant={apiKey.isActive ? "default" : "secondary"}
-                          className="text-xs"
-                        >
-                          {apiKey.isActive ? "Active" : "Inactive"}
-                        </Badge>
+        <div className="space-y-4">
+          {/* API Keys Grid */}
+          <div className="grid gap-4">
+            {currentKeys.map((apiKey) => (
+              <Card key={apiKey.id}>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                        <Key className="h-4 w-4 text-gray-600" />
                       </div>
-                      <div className="flex items-center space-x-4 mt-1">
-                        <code className="text-[13px] font-mono text-gray-600 dark:text-gray-400">
-                          {apiKey.prefix}••••••••••••••••••••
-                        </code>
-                        <div className="flex items-center space-x-3 text-[13px] text-gray-500">
-                          <div className="flex items-center space-x-1">
-                            <Calendar className="h-3 w-3" />
-                            <span>Created {formatRelativeTime(apiKey.createdAt)}</span>
-                          </div>
-                          {apiKey.lastUsedAt && (
+                      <div>
+                        <div className="flex items-center space-x-3">
+                          <h3 className="text-[13px] font-medium text-gray-900 dark:text-gray-100">
+                            {apiKey.name}
+                          </h3>
+                          <Badge 
+                            variant={apiKey.isActive ? "default" : "secondary"}
+                            className="text-xs"
+                          >
+                            {apiKey.isActive ? "Active" : "Inactive"}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center space-x-4 mt-1">
+                          <code className="text-[13px] font-mono text-gray-600 dark:text-gray-400">
+                            {apiKey.prefix}••••••••••••••••••••
+                          </code>
+                          <div className="flex items-center space-x-3 text-[13px] text-gray-500">
                             <div className="flex items-center space-x-1">
-                              <Activity className="h-3 w-3" />
-                              <span>Used {formatRelativeTime(apiKey.lastUsedAt)}</span>
+                              <Calendar className="h-3 w-3" />
+                              <span>Created {formatRelativeTime(apiKey.createdAt)}</span>
                             </div>
-                          )}
+                            {apiKey.lastUsedAt && (
+                              <div className="flex items-center space-x-1">
+                                <Activity className="h-3 w-3" />
+                                <span>Used {formatRelativeTime(apiKey.lastUsedAt)}</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleToggleStatus(apiKey.id)}
+                        className="h-8"
+                      >
+                        {apiKey.isActive ? 'Disable' : 'Enable'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeleteKey(apiKey.id, apiKey.name)}
+                        className="h-8 text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-2">
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between">
+              <p className="text-[13px] text-gray-600">
+                Showing {startIndex + 1}-{Math.min(endIndex, apiKeys.length)} of {apiKeys.length} keys
+              </p>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="h-8"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
+                </Button>
+                
+                <div className="flex items-center space-x-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                     <Button
-                      variant="outline"
+                      key={page}
+                      variant={currentPage === page ? "default" : "outline"}
                       size="sm"
-                      onClick={() => handleToggleStatus(apiKey.id)}
-                      className="h-8"
+                      onClick={() => handlePageChange(page)}
+                      className="h-8 w-8 p-0"
                     >
-                      {apiKey.isActive ? 'Disable' : 'Enable'}
+                      {page}
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDeleteKey(apiKey.id, apiKey.name)}
-                      className="h-8 text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  ))}
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="h-8"
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
-
-      {/* API Documentation Link */}
-      <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-[13px] font-medium text-blue-800 dark:text-blue-200 mb-1">
-                API Documentation
-              </h3>
-              <p className="text-[13px] text-blue-600 dark:text-blue-300">
-                Learn how to authenticate and use the Maskwise API endpoints
-              </p>
-            </div>
-            <Button variant="outline" size="sm" className="text-blue-700 border-blue-300">
-              View Docs
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

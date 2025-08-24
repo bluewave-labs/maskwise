@@ -678,10 +678,10 @@ export function FileUpload({
 
           <div
             className={`
-              border-2 border-dashed rounded-lg p-8 text-center transition-colors
+              rounded-lg p-8 text-center transition-colors
               ${isDragOver 
-                ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20' 
-                : 'border-muted-foreground/25 hover:border-muted-foreground/50'
+                ? 'bg-blue-50 dark:bg-blue-950/20' 
+                : ''
               }
             `}
             onDrop={handleDrop}
