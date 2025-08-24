@@ -306,6 +306,7 @@ enum AuditAction {
   UPLOAD
   LOGIN
   LOGOUT
+  DATASET_ANONYMIZED
 }
 
 enum PolicyTemplateCategory {

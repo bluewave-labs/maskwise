@@ -4,6 +4,8 @@ import * as fs from 'fs/promises';
 import { BaseProcessor } from './base-processor.js';
 import { presidioService, AnonymizationRequest, AnonymizationResult } from '../services/presidio.service.js';
 import { policyService, PolicyConfig } from '../services/policy.service.js';
+import { pdfAnonymizationService, PDFPIIFinding } from '../services/pdf-anonymization.service.js';
+import { docxAnonymizationService, DOCXPIIFinding } from '../services/docx-anonymization.service.js';
 import { db } from '../database/prisma.js';
 import { logger } from '../utils/logger.js';
 import { JobStatus, AnonymizationJobData, PIIFinding } from '../types/jobs.js';
@@ -55,7 +57,17 @@ export class AnonymizationProcessor extends BaseProcessor {
         outputType: outputType || 'json'
       });
 
-      // Step 1: Retrieve original text content
+      // Check if this is a PDF file - use direct PDF anonymization
+      if (dataset.fileType.toUpperCase() === 'PDF') {
+        return await this.processPDFAnonymization(job, dataset, findingsData || [], sourceFilePath || '');
+      }
+
+      // Check if this is a DOCX file - use direct DOCX anonymization to preserve format
+      if (dataset.fileType.toUpperCase() === 'DOCX') {
+        return await this.processDOCXAnonymization(job, dataset, findingsData || [], sourceFilePath || '');
+      }
+
+      // Step 1: Retrieve original text content (for other file types)
       await this.updateJobStatus(job.data.jobId, JobStatus.PROCESSING, 20, 'Retrieving original content');
       const originalText = await this.getOriginalText(sourceFilePath || '', datasetId || '');
       
@@ -142,6 +154,243 @@ export class AnonymizationProcessor extends BaseProcessor {
 
       await this.updateJobStatus(job.data.jobId, JobStatus.FAILED, 0, `Anonymization failed: ${errorMessage}`);
 
+      throw error;
+    }
+  }
+
+  /**
+   * Process PDF Anonymization
+   * 
+   * Handles PDF-specific anonymization using PDF-lib for direct document
+   * modification while preserving format and structure.
+   * 
+   * @param job - BullMQ job with anonymization data  
+   * @param dataset - Dataset information
+   * @param findings - PII findings to anonymize
+   * @param sourceFilePath - Path to original PDF file
+   * @returns Processing result
+   */
+  private async processPDFAnonymization(
+    job: Job<AnonymizationJobData>,
+    dataset: any,
+    findings: PIIFinding[],
+    sourceFilePath: string
+  ): Promise<any> {
+    try {
+      await this.updateJobStatus(job.data.jobId, JobStatus.PROCESSING, 30, 'Starting PDF anonymization');
+      
+      logger.info('Processing PDF anonymization', {
+        datasetId: dataset.id,
+        filename: dataset.filename,
+        findingsCount: findings.length
+      });
+
+      // Convert PII findings to PDF format
+      const pdfFindings: PDFPIIFinding[] = findings.map(finding => ({
+        entityType: finding.entityType,
+        text: finding.text,
+        start: finding.start,
+        end: finding.end,
+        confidence: finding.confidence,
+        action: finding.action || 'redact',
+        replacement: finding.replacement
+      }));
+
+      // Resolve absolute path for the source file
+      let absoluteSourcePath: string;
+      if (path.isAbsolute(sourceFilePath)) {
+        absoluteSourcePath = sourceFilePath;
+      } else {
+        // Resolve relative to the project root where uploads directory is located
+        const projectRoot = path.resolve(process.cwd(), '..');
+        const apiRoot = path.join(projectRoot, 'api');
+        absoluteSourcePath = path.resolve(apiRoot, sourceFilePath);
+      }
+      
+      logger.info('Resolved PDF source path', {
+        originalPath: sourceFilePath,
+        absolutePath: absoluteSourcePath.replace(/^.*\/([^\/]+)$/, '***/$1'), // Hide sensitive path info
+        exists: await this.fileExists(absoluteSourcePath)
+      });
+
+      // Generate output path for anonymized PDF
+      const storageDir = process.env.STORAGE_DIR || './storage';
+      const outputDir = path.join(storageDir, 'anonymized');
+      await fs.mkdir(outputDir, { recursive: true });
+      
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const outputPath = path.join(
+        outputDir, 
+        `${dataset.id}_anonymized_${timestamp}.pdf`
+      );
+
+      await this.updateJobStatus(job.data.jobId, JobStatus.PROCESSING, 60, 'Applying PDF anonymization');
+
+      // Use PDF anonymization service with absolute path
+      const result = await pdfAnonymizationService.anonymizePDF(
+        absoluteSourcePath,
+        pdfFindings,
+        outputPath
+      );
+
+      await this.updateJobStatus(job.data.jobId, JobStatus.PROCESSING, 90, 'Updating database records');
+
+      // Update dataset with anonymization results
+      await this.updateDatasetWithAnonymization(dataset.id, {
+        outputPath: result.outputPath,
+        originalLength: result.originalSize,
+        anonymizedLength: result.anonymizedSize,
+        operationsCount: result.operationsCount,
+        outputType: 'pdf'
+      });
+
+      await this.updateJobStatus(job.data.jobId, JobStatus.COMPLETED, 100, 'PDF anonymization completed');
+
+      logger.info('PDF anonymization completed', {
+        datasetId: dataset.id,
+        originalSize: result.originalSize,
+        anonymizedSize: result.anonymizedSize,
+        operationsCount: result.operationsCount,
+        outputPath: result.outputPath.replace(/^.*\/([^\/]+)$/, '***/$1')
+      });
+
+      return {
+        success: true,
+        anonymizationResult: {
+          originalLength: result.originalSize,
+          anonymizedLength: result.anonymizedSize,
+          operationsCount: result.operationsCount,
+          outputPath: result.outputPath,
+          outputType: 'pdf',
+          piiEntitiesProcessed: result.piiEntitiesProcessed
+        }
+      };
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown PDF anonymization error';
+      
+      logger.error('PDF anonymization failed', {
+        datasetId: dataset.id,
+        filename: dataset.filename,
+        error: errorMessage
+      });
+
+      await this.updateJobStatus(job.data.jobId, JobStatus.FAILED, 0, `PDF anonymization failed: ${errorMessage}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Process DOCX Anonymization
+   * 
+   * Handles direct DOCX anonymization while preserving document format.
+   * Uses edit-office-files library to perform search and replace operations
+   * on PII entities within the DOCX structure.
+   * 
+   * @param job - BullMQ job data
+   * @param dataset - Dataset information
+   * @param findings - PII findings to anonymize
+   * @param sourceFilePath - Path to original DOCX file
+   * @returns Processing result
+   */
+  private async processDOCXAnonymization(
+    job: Job<AnonymizationJobData>,
+    dataset: any,
+    findings: PIIFinding[],
+    sourceFilePath: string
+  ): Promise<any> {
+    try {
+      await this.updateJobStatus(job.data.jobId, JobStatus.PROCESSING, 30, 'Processing DOCX anonymization');
+
+      logger.info('Processing DOCX anonymization', {
+        datasetId: dataset.id,
+        filename: dataset.filename,
+        findingsCount: findings.length
+      });
+
+      // Convert PIIFindings to DOCXPIIFindings format
+      const docxFindings: DOCXPIIFinding[] = await this.convertPIIFindingsToDOCXFindings(findings);
+
+      // Resolve absolute path to source DOCX file
+      let absoluteSourcePath: string;
+      if (path.isAbsolute(sourceFilePath)) {
+        absoluteSourcePath = sourceFilePath;
+      } else {
+        // Resolve relative to project root or API service location
+        const projectRoot = process.cwd();
+        const apiRoot = path.join(projectRoot, 'api');
+        absoluteSourcePath = path.resolve(apiRoot, sourceFilePath);
+      }
+      
+      logger.info('Resolved DOCX source path', {
+        originalPath: sourceFilePath,
+        absolutePath: absoluteSourcePath.replace(/^.*\/([^\/]+)$/, '***/$1'), // Hide sensitive path info
+        exists: await this.fileExists(absoluteSourcePath)
+      });
+
+      // Generate output path for anonymized DOCX
+      const storageDir = process.env.STORAGE_DIR || './storage';
+      const outputDir = path.join(storageDir, 'anonymized');
+      await fs.mkdir(outputDir, { recursive: true });
+      
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const outputPath = path.join(
+        outputDir, 
+        `${dataset.id}_anonymized_${timestamp}.docx`
+      );
+
+      await this.updateJobStatus(job.data.jobId, JobStatus.PROCESSING, 60, 'Applying DOCX anonymization');
+
+      // Use DOCX anonymization service
+      const result = await docxAnonymizationService.anonymizeDOCX(
+        absoluteSourcePath,
+        docxFindings,
+        outputPath
+      );
+
+      await this.updateJobStatus(job.data.jobId, JobStatus.PROCESSING, 90, 'Updating database records');
+
+      // Update dataset with anonymization results
+      await this.updateDatasetWithAnonymization(dataset.id, {
+        outputPath: result.outputPath,
+        originalLength: result.originalSize,
+        anonymizedLength: result.anonymizedSize,
+        operationsCount: result.operationsCount,
+        outputType: 'docx'
+      });
+
+      await this.updateJobStatus(job.data.jobId, JobStatus.COMPLETED, 100, 'DOCX anonymization completed');
+
+      logger.info('DOCX anonymization completed', {
+        datasetId: dataset.id,
+        originalSize: result.originalSize,
+        anonymizedSize: result.anonymizedSize,
+        operationsCount: result.operationsCount,
+        outputPath: result.outputPath.replace(/^.*\/([^\/]+)$/, '***/$1')
+      });
+
+      return {
+        success: true,
+        anonymizationResult: {
+          originalLength: result.originalSize,
+          anonymizedLength: result.anonymizedSize,
+          operationsCount: result.operationsCount,
+          outputPath: result.outputPath,
+          outputType: 'docx',
+          piiEntitiesProcessed: result.piiEntitiesProcessed
+        }
+      };
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown DOCX anonymization error';
+      
+      logger.error('DOCX anonymization failed', {
+        datasetId: dataset.id,
+        filename: dataset.filename,
+        error: errorMessage
+      });
+
+      await this.updateJobStatus(job.data.jobId, JobStatus.FAILED, 0, `DOCX anonymization failed: ${errorMessage}`);
       throw error;
     }
   }
@@ -476,9 +725,8 @@ export class AnonymizationProcessor extends BaseProcessor {
       await db.client.dataset.update({
         where: { id: datasetId },
         data: {
-          // Store anonymization metadata in a JSON field or create related records
-          // For now, we'll update the status and add audit logging
           status: 'COMPLETED',
+          outputPath: results.outputPath, // Store the full path to anonymized file
           updatedAt: new Date()
         }
       });
@@ -511,6 +759,66 @@ export class AnonymizationProcessor extends BaseProcessor {
       });
       // Don't throw - this is not critical for the anonymization process
     }
+  }
+
+  /**
+   * Convert PII Findings to DOCX PII Findings
+   * 
+   * Converts our PIIFinding format to DOCXPIIFinding format required by 
+   * the DOCX anonymization service. This includes generating anonymized text
+   * based on the detected entity type and the configured policy action.
+   * 
+   * @param findings - Array of PII findings from analysis
+   * @returns Array of DOCX findings with original and anonymized text
+   */
+  private async convertPIIFindingsToDOCXFindings(findings: PIIFinding[]): Promise<DOCXPIIFinding[]> {
+    const docxFindings: DOCXPIIFinding[] = [];
+    
+    for (const finding of findings) {
+      // Extract original text from the context if available, or use the text property
+      const originalText = finding.text || finding.context?.substring(
+        finding.startOffset, 
+        finding.endOffset
+      ) || '[UNKNOWN_TEXT]';
+      
+      // Generate anonymized text based on entity type
+      // Use the DOCX anonymization service's text generation logic
+      const anonymizedText = docxAnonymizationService.generateAnonymizedText(
+        originalText,
+        finding.entityType,
+        'mask' // Default action - in future this should come from policy configuration
+      );
+      
+      // Create DOCX finding with all required properties from PIIFinding
+      const docxFinding: DOCXPIIFinding = {
+        // Base PIIFinding properties
+        id: finding.id,
+        datasetId: finding.datasetId,
+        entityType: finding.entityType,
+        text: finding.text,
+        confidence: finding.confidence,
+        startOffset: finding.startOffset,
+        endOffset: finding.endOffset,
+        lineNumber: finding.lineNumber,
+        columnNumber: finding.columnNumber,
+        context: finding.context,
+        createdAt: finding.createdAt,
+        
+        // Additional DOCX-specific properties
+        originalText,
+        anonymizedText
+      };
+      
+      docxFindings.push(docxFinding);
+    }
+    
+    logger.info('Converted PII findings to DOCX findings', {
+      originalCount: findings.length,
+      convertedCount: docxFindings.length,
+      entityTypes: [...new Set(findings.map(f => f.entityType))]
+    });
+    
+    return docxFindings;
   }
 
   /**
