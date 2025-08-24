@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { Project } from '@/types/project';
+import { useAuth } from '@/hooks/useAuth';
+import { isAdmin } from '@/types/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -45,6 +47,7 @@ export function ProjectList({
   onViewProject,
   onManageFiles
 }: ProjectListProps) {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<SortField>('updatedAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -139,10 +142,12 @@ export function ProjectList({
         <p className="text-[13px] text-muted-foreground mb-6">
           Create your first project to get started with PII detection and data management.
         </p>
-        <Button onClick={onCreateProject} size="lg">
-          <Plus className="h-5 w-5 mr-2" />
-          Create Your First Project
-        </Button>
+        {isAdmin(user) && (
+          <Button onClick={onCreateProject} size="lg">
+            <Plus className="h-5 w-5 mr-2" />
+            Create Your First Project
+          </Button>
+        )}
       </div>
     );
   }
@@ -160,10 +165,12 @@ export function ProjectList({
             className="pl-9 h-[34px]"
           />
         </div>
-        <Button onClick={onCreateProject} className="h-[34px]">
-          <Plus className="h-4 w-4 mr-2" />
-          New Project
-        </Button>
+        {isAdmin(user) && (
+          <Button onClick={onCreateProject} className="h-[34px]">
+            <Plus className="h-4 w-4 mr-2" />
+            New Project
+          </Button>
+        )}
       </div>
 
       {/* Results Info */}
@@ -271,19 +278,23 @@ export function ProjectList({
                           <DropdownMenuContent align="end" className="w-[160px]">
                             <DropdownMenuItem onClick={() => onManageFiles(project)}>
                               <FileText className="h-4 w-4 mr-2" />
-                              Manage Files
+                              Manage Datasets
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => onEditProject(project)}>
-                              <Edit2 className="h-4 w-4 mr-2" />
-                              Edit Project
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => onDeleteProject(project)}
-                              className="text-red-600 focus:text-red-600"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete Project
-                            </DropdownMenuItem>
+                            {isAdmin(user) && (
+                              <>
+                                <DropdownMenuItem onClick={() => onEditProject(project)}>
+                                  <Edit2 className="h-4 w-4 mr-2" />
+                                  Edit Project
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => onDeleteProject(project)}
+                                  className="text-red-600 focus:text-red-600"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete Project
+                                </DropdownMenuItem>
+                              </>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>

@@ -13,16 +13,19 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagg
 
 import { ProjectsService } from './projects.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { AdminOnly, MemberAccess } from '../auth/decorators/roles.decorator';
 import { CreateProjectDto } from './dto/create-project.dto';
 
 @ApiTags('Projects')
 @Controller('projects')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth('JWT-auth')
 export class ProjectsController {
   constructor(private readonly projectsService: ProjectsService) {}
 
   @Post()
+  @AdminOnly() // Only admins can create projects
   @ApiOperation({ summary: 'Create new project' })
   @ApiResponse({ status: 201, description: 'Project created successfully' })
   async create(@Body() createProjectDto: CreateProjectDto, @Request() req) {
@@ -30,6 +33,7 @@ export class ProjectsController {
   }
 
   @Get()
+  @MemberAccess() // Both admins and members can view projects
   @ApiOperation({ summary: 'Get all projects for current user' })
   @ApiResponse({ status: 200, description: 'Projects retrieved successfully' })
   async findAll(@Request() req) {
@@ -37,6 +41,7 @@ export class ProjectsController {
   }
 
   @Get(':id')
+  @MemberAccess() // Both admins and members can view project details
   @ApiOperation({ summary: 'Get project by ID' })
   @ApiResponse({ status: 200, description: 'Project retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Project not found' })
@@ -45,6 +50,7 @@ export class ProjectsController {
   }
 
   @Put(':id')
+  @AdminOnly() // Only admins can update projects
   @ApiOperation({ summary: 'Update project' })
   @ApiResponse({ status: 200, description: 'Project updated successfully' })
   @ApiResponse({ status: 404, description: 'Project not found' })
@@ -53,6 +59,7 @@ export class ProjectsController {
   }
 
   @Delete(':id')
+  @AdminOnly() // Only admins can delete projects
   @ApiOperation({ summary: 'Delete project' })
   @ApiResponse({ status: 200, description: 'Project deleted successfully' })
   @ApiResponse({ status: 404, description: 'Project not found' })

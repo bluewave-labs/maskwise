@@ -2,12 +2,14 @@ import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Request, Qu
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { AdminOnly, MemberAccess } from '../auth/decorators/roles.decorator';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 
 @ApiTags('Users')
 @Controller('users')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth('JWT-auth')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
@@ -64,6 +66,7 @@ export class UsersController {
   }
 
   @Get('audit-logs/all')
+  @AdminOnly() // Only admins can view all audit logs
   @ApiOperation({ summary: 'Get all audit logs (Admin only)' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -98,6 +101,7 @@ export class UsersController {
   }
 
   @Post()
+  @AdminOnly() // Only admins can create users
   @ApiOperation({ summary: 'Create new user (Admin only)' })
   @ApiResponse({ status: 201, description: 'User created successfully' })
   @ApiResponse({ status: 400, description: 'Invalid input data' })
@@ -119,6 +123,7 @@ export class UsersController {
   }
 
   @Get()
+  @AdminOnly() // Only admins can list all users
   @ApiOperation({ summary: 'Get all users (Admin only)' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -144,6 +149,7 @@ export class UsersController {
   }
 
   @Get(':id')
+  @AdminOnly() // Only admins can view other users
   @ApiOperation({ summary: 'Get user by ID (Admin only)' })
   @ApiResponse({ status: 200, description: 'User retrieved' })
   @ApiResponse({ status: 404, description: 'User not found' })
@@ -157,6 +163,7 @@ export class UsersController {
   }
 
   @Put(':id')
+  @AdminOnly() // Only admins can update other users
   @ApiOperation({ summary: 'Update user by ID (Admin only)' })
   @ApiResponse({ status: 200, description: 'User updated successfully' })
   @ApiResponse({ status: 404, description: 'User not found' })
@@ -201,6 +208,7 @@ export class UsersController {
   }
 
   @Delete(':id')
+  @AdminOnly() // Only admins can deactivate users
   @ApiOperation({ summary: 'Deactivate user by ID (Admin only)' })
   @ApiResponse({ status: 200, description: 'User deactivated successfully' })
   @ApiResponse({ status: 404, description: 'User not found' })

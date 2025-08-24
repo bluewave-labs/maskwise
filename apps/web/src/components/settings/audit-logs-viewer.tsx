@@ -23,8 +23,16 @@ import {
   Eye,
   MoreVertical,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  SortAsc,
+  SortDesc
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface AuditLog {
   id: string;
@@ -56,6 +64,8 @@ interface FilterOptions {
   userId: string;
 }
 
+type SortField = 'createdAt' | 'action' | 'user' | 'resource';
+
 const AUDIT_ACTIONS = [
   { value: 'ALL', label: 'All Actions' },
   { value: 'LOGIN', label: 'Login' },
@@ -77,6 +87,8 @@ export function AuditLogsViewer({ className }: AuditLogsViewerProps) {
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
   const [showLogDetails, setShowLogDetails] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [sortField, setSortField] = useState<SortField>('createdAt');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   
   const [filters, setFilters] = useState<FilterOptions>({
     search: '',
@@ -125,6 +137,54 @@ export function AuditLogsViewer({ className }: AuditLogsViewerProps) {
       fetchAuditLogs();
     }
   }, [isAuthenticated, authLoading, currentPage, pageSize, filters]);
+
+  // Sort logs locally (since API doesn't support sorting)
+  const sortedLogs = [...logs].sort((a, b) => {
+    let aValue: any, bValue: any;
+    
+    switch (sortField) {
+      case 'createdAt':
+        aValue = new Date(a.createdAt).getTime();
+        bValue = new Date(b.createdAt).getTime();
+        break;
+      case 'action':
+        aValue = a.action.toLowerCase();
+        bValue = b.action.toLowerCase();
+        break;
+      case 'user':
+        aValue = `${a.user.firstName} ${a.user.lastName}`.toLowerCase();
+        bValue = `${b.user.firstName} ${b.user.lastName}`.toLowerCase();
+        break;
+      case 'resource':
+        aValue = a.resource.toLowerCase();
+        bValue = b.resource.toLowerCase();
+        break;
+      default:
+        return 0;
+    }
+
+    if (sortDirection === 'asc') {
+      return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+    } else {
+      return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+    }
+  });
+
+  const handleSort = (field: SortField) => {
+    if (field === sortField) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('desc');
+    }
+  };
+
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) return null;
+    return sortDirection === 'asc' ? 
+      <SortAsc className="h-4 w-4" /> : 
+      <SortDesc className="h-4 w-4" />;
+  };
 
   const handleFilterChange = (key: keyof FilterOptions, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -221,28 +281,27 @@ export function AuditLogsViewer({ className }: AuditLogsViewerProps) {
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-      second: '2-digit',
     });
   };
 
   const getActionBadgeColor = (action: string) => {
     switch (action.toLowerCase()) {
       case 'login':
-        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+        return 'bg-green-100 text-green-800 hover:bg-green-200/50 dark:bg-green-900 dark:text-green-200 dark:hover:bg-green-800/50';
       case 'logout':
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+        return 'bg-gray-100 text-gray-800 hover:bg-gray-200/50 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800/50';
       case 'create':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+        return 'bg-blue-100 text-blue-800 hover:bg-blue-200/50 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800/50';
       case 'update':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+        return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200/50 dark:bg-yellow-900 dark:text-yellow-200 dark:hover:bg-yellow-800/50';
       case 'delete':
-        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+        return 'bg-red-100 text-red-800 hover:bg-red-200/50 dark:bg-red-900 dark:text-red-200 dark:hover:bg-red-800/50';
       case 'upload':
-        return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
+        return 'bg-purple-100 text-purple-800 hover:bg-purple-200/50 dark:bg-purple-900 dark:text-purple-200 dark:hover:bg-purple-800/50';
       case 'download':
-        return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200';
+        return 'bg-indigo-100 text-indigo-800 hover:bg-indigo-200/50 dark:bg-indigo-900 dark:text-indigo-200 dark:hover:bg-indigo-800/50';
       default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+        return 'bg-gray-100 text-gray-800 hover:bg-gray-200/50 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800/50';
     }
   };
 
@@ -380,73 +439,55 @@ export function AuditLogsViewer({ className }: AuditLogsViewerProps) {
 
       {/* Filters */}
       <Card className="p-6">
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 mb-4">
-            <Filter className="h-4 w-4" />
-            <h4 className="font-normal">Filters</h4>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="search">Search</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="search"
-                  placeholder="Search logs..."
-                  value={filters.search}
-                  onChange={(e) => handleFilterChange('search', e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="action">Action</Label>
-              <Select value={filters.action} onValueChange={(value) => handleFilterChange('action', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select action" />
-                </SelectTrigger>
-                <SelectContent>
-                  {AUDIT_ACTIONS.map((action) => (
-                    <SelectItem key={action.value} value={action.value}>
-                      {action.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="dateFrom">From Date</Label>
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex-1 min-w-[200px]">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                id="dateFrom"
-                type="date"
-                value={filters.dateFrom}
-                onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="dateTo">To Date</Label>
-              <Input
-                id="dateTo"
-                type="date"
-                value={filters.dateTo}
-                onChange={(e) => handleFilterChange('dateTo', e.target.value)}
+                placeholder="Search logs..."
+                value={filters.search}
+                onChange={(e) => handleFilterChange('search', e.target.value)}
+                className="pl-10"
               />
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={resetFilters}>
-              Clear Filters
-            </Button>
-            <Button variant="outline" size="sm" onClick={fetchAuditLogs}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
-            </Button>
+          <div className="min-w-[150px]">
+            <Select value={filters.action} onValueChange={(value) => handleFilterChange('action', value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select action" />
+              </SelectTrigger>
+              <SelectContent>
+                {AUDIT_ACTIONS.map((action) => (
+                  <SelectItem key={action.value} value={action.value}>
+                    {action.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
+
+          <div className="min-w-[140px]">
+            <Input
+              type="date"
+              value={filters.dateFrom}
+              onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
+              placeholder="From Date"
+            />
+          </div>
+
+          <div className="min-w-[140px]">
+            <Input
+              type="date"
+              value={filters.dateTo}
+              onChange={(e) => handleFilterChange('dateTo', e.target.value)}
+              placeholder="To Date"
+            />
+          </div>
+
+          <Button variant="outline" size="sm" onClick={resetFilters}>
+            Clear
+          </Button>
         </div>
       </Card>
 
@@ -459,141 +500,192 @@ export function AuditLogsViewer({ className }: AuditLogsViewerProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleExport('csv')}
-            disabled={exporting}
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Export CSV
+          <Button variant="outline" size="sm" onClick={fetchAuditLogs}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleExport('json')}
-            disabled={exporting}
-          >
-            <FileText className="h-4 w-4 mr-2" />
-            Export JSON
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={exporting}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[140px]">
+              <DropdownMenuItem onClick={() => handleExport('csv')}>
+                <Download className="h-4 w-4 mr-2" />
+                Export CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('json')}>
+                <FileText className="h-4 w-4 mr-2" />
+                Export JSON
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
       {/* Audit Logs Table */}
-      <Card>
-        <div className="p-6">
-          {logs.length === 0 ? (
-            <div className="text-center py-8">
-              <ClipboardList className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-[13px] text-muted-foreground">
-                No audit logs found matching your filters
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {logs.map((log) => (
-                <div
-                  key={log.id}
-                  className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors"
-                >
-                  <div className="flex items-center gap-3 flex-1">
-                    <div className="w-2 h-2 rounded-full bg-primary" />
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Badge className={getActionBadgeColor(log.action)}>
-                          {log.action}
-                        </Badge>
-                        <span className="text-[13px] font-normal">
-                          {log.user.firstName} {log.user.lastName}
-                        </span>
-                        <span className="text-[13px] text-muted-foreground">
-                          {log.resource} {log.resourceId && `(${log.resourceId})`}
-                        </span>
-                      </div>
-                      
-                      <div className="flex items-center gap-4 text-[13px] text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {formatDate(log.createdAt)}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <User className="h-3 w-3" />
-                          {log.user.email}
-                        </span>
-                        {log.ipAddress && (
-                          <span>IP: {log.ipAddress}</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedLog(log);
-                        setShowLogDetails(true);
-                      }}
-                    >
-                      <Eye className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+      {sortedLogs.length === 0 ? (
+        <div className="text-center py-12">
+          <ClipboardList className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-normal text-foreground mb-2">No Audit Logs Found</h3>
+          <p className="text-[13px] text-muted-foreground mb-6">
+            No audit logs match your current filters.
+          </p>
+          <Button onClick={resetFilters} variant="outline">
+            Clear Filters
+          </Button>
         </div>
+      ) : (
+        <div className="bg-card rounded-lg border">
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th 
+                    className="text-left p-4 font-normal text-[13px] cursor-pointer hover:bg-muted/80 transition-colors"
+                    onClick={() => handleSort('createdAt')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Timestamp
+                      {getSortIcon('createdAt')}
+                    </div>
+                  </th>
+                  <th 
+                    className="text-left p-4 font-normal text-[13px] cursor-pointer hover:bg-muted/80 transition-colors"
+                    onClick={() => handleSort('user')}
+                  >
+                    <div className="flex items-center gap-2">
+                      User
+                      {getSortIcon('user')}
+                    </div>
+                  </th>
+                  <th 
+                    className="text-left p-4 font-normal text-[13px] cursor-pointer hover:bg-muted/80 transition-colors"
+                    onClick={() => handleSort('action')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Action
+                      {getSortIcon('action')}
+                    </div>
+                  </th>
+                  <th 
+                    className="text-left p-4 font-normal text-[13px] cursor-pointer hover:bg-muted/80 transition-colors"
+                    onClick={() => handleSort('resource')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Resource
+                      {getSortIcon('resource')}
+                    </div>
+                  </th>
+                  <th className="text-left p-4 font-normal text-[13px]">IP Address</th>
+                  <th className="text-left p-4 font-normal text-[13px]">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedLogs.map((log) => (
+                  <tr 
+                    key={log.id} 
+                    className="border-b hover:bg-muted/25 transition-colors"
+                  >
+                    <td className="p-4 text-[13px] text-muted-foreground">
+                      {formatDate(log.createdAt)}
+                    </td>
+                    <td className="p-4">
+                      <div className="text-[13px] font-normal">
+                        {log.user.firstName} {log.user.lastName}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <Badge className={getActionBadgeColor(log.action)}>
+                        {log.action}
+                      </Badge>
+                    </td>
+                    <td className="p-4 text-[13px] text-muted-foreground">
+                      {log.resource}
+                      {log.resourceId && ` (ID: ${log.resourceId})`}
+                    </td>
+                    <td className="p-4 text-[13px] text-muted-foreground">
+                      {log.ipAddress || 'N/A'}
+                    </td>
+                    <td className="p-4">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-[140px]">
+                          <DropdownMenuItem onClick={() => {
+                            setSelectedLog(log);
+                            setShowLogDetails(true);
+                          }}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Details
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="border-t px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Label>Page size:</Label>
-                <Select value={pageSize.toString()} onValueChange={(value) => setPageSize(Number(value))}>
-                  <SelectTrigger className="w-20">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="25">25</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
-                    <SelectItem value="100">100</SelectItem>
-                  </SelectContent>
-                </Select>
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t">
+              <div className="text-[13px] text-muted-foreground">
+                Showing {((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, totalLogs)} of {totalLogs} logs
               </div>
-
               <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 mr-4">
+                  <span className="text-[13px] text-muted-foreground">Rows per page:</span>
+                  <select 
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="text-[13px] border rounded px-2 py-1"
+                  >
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                </div>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                   disabled={currentPage === 1}
+                  className="h-8"
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  Previous
                 </Button>
-                
-                <span className="text-[13px] text-muted-foreground">
-                  Page {currentPage} of {totalPages}
+                <span className="text-[13px] px-3">
+                  {currentPage} of {totalPages}
                 </span>
-                
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                   disabled={currentPage === totalPages}
+                  className="h-8"
                 >
-                  Next
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
             </div>
-          </div>
-        )}
-      </Card>
+          )}
+        </div>
+      )}
     </div>
   );
 }

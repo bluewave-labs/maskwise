@@ -1,13 +1,22 @@
 export interface User {
   id: string;
   email: string;
-  role: 'ADMIN' | 'DATA_ENGINEER' | 'ML_ENGINEER' | 'COMPLIANCE_OFFICER';
+  role: 'ADMIN' | 'MEMBER';
   firstName?: string;
   lastName?: string;
   createdAt: string;
   updatedAt: string;
   isActive: boolean;
 }
+
+// Helper functions for role checking
+export const isAdmin = (user: User | null): boolean => {
+  return user?.role === 'ADMIN';
+};
+
+export const isMember = (user: User | null): boolean => {
+  return user?.role === 'MEMBER';
+};
 
 export interface LoginRequest {
   email: string;

@@ -21,7 +21,7 @@ export class UsersService {
         password: data.password,
         firstName: data.firstName,
         lastName: data.lastName,
-        role: data.role || UserRole.DATA_ENGINEER,
+        role: data.role || UserRole.MEMBER,
       },
     });
   }

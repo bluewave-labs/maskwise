@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import Counter from '@/components/ui/counter';
 import { api } from '@/lib/api';
 import { 
   Activity, 
@@ -124,6 +125,32 @@ const formatBytes = (bytes: number): string => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
+// Traffic Light System color scheme
+const getUsageColor = (percentage: number) => {
+  if (percentage <= 60) {
+    return {
+      bgColor: 'bg-green-500/20',
+      borderColor: 'border-green-500',
+      barColor: 'bg-green-500',
+      textColor: 'text-green-600'
+    };
+  } else if (percentage <= 80) {
+    return {
+      bgColor: 'bg-yellow-500/20', 
+      borderColor: 'border-yellow-500',
+      barColor: 'bg-yellow-500',
+      textColor: 'text-yellow-600'
+    };
+  } else {
+    return {
+      bgColor: 'bg-red-500/20',
+      borderColor: 'border-red-500', 
+      barColor: 'bg-red-500',
+      textColor: 'text-red-600'
+    };
+  }
+};
+
 export default function SystemHealthDashboard() {
   const [healthData, setHealthData] = useState<SystemHealthData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -208,14 +235,14 @@ export default function SystemHealthDashboard() {
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <div className="flex items-center space-x-4 text-[13px] text-muted-foreground">
-            <span>Version: <span className="font-mono font-medium">{healthData?.version || 'Unknown'}</span></span>
-            <span>Uptime: <span className="font-mono font-medium">{healthData ? formatUptime(healthData.uptime) : 'Unknown'}</span></span>
+            <span>Version: <span className="font-mono font-normal text-foreground">{healthData?.version || 'Unknown'}</span></span>
+            <span>Uptime: <span className="font-mono font-normal text-foreground">{healthData ? formatUptime(healthData.uptime) : 'Unknown'}</span></span>
           </div>
         </div>
         <div className="flex items-center space-x-3">
           {lastUpdate && (
             <span className="text-[13px] text-muted-foreground">
-              Last Updated: <span className="font-mono font-medium">{lastUpdate.toLocaleTimeString()}</span>
+              Last Updated: <span className="font-mono font-normal text-foreground">{lastUpdate.toLocaleTimeString()}</span>
             </span>
           )}
           <Button onClick={handleRefresh} size="sm" disabled={isLoading}>
@@ -234,10 +261,19 @@ export default function SystemHealthDashboard() {
             <Cpu className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-normal text-foreground mb-2 font-mono font-medium">
-              {healthData?.resources?.cpuUsage || 0}%
+            <div className={`text-2xl font-normal mb-2 font-mono font-medium ${getUsageColor(healthData?.resources?.cpuUsage || 0).textColor}`}>
+              <Counter 
+                value={healthData?.resources?.cpuUsage || 0} 
+                format="percentage"
+                delay={0}
+              />
             </div>
-            <Progress value={healthData?.resources?.cpuUsage || 0} className="h-2" />
+            <div className={`rounded-full h-2 ${getUsageColor(healthData?.resources?.cpuUsage || 0).bgColor} border ${getUsageColor(healthData?.resources?.cpuUsage || 0).borderColor}`}>
+              <div 
+                className={`h-full rounded-full transition-all duration-300 ${getUsageColor(healthData?.resources?.cpuUsage || 0).barColor}`}
+                style={{ width: `${healthData?.resources?.cpuUsage || 0}%` }}
+              />
+            </div>
             <p className="text-[13px] text-muted-foreground mt-2">
               System processor utilization
             </p>
@@ -251,10 +287,19 @@ export default function SystemHealthDashboard() {
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-normal text-foreground mb-2 font-mono font-medium">
-              {healthData?.resources?.memoryUsage || 0}%
+            <div className={`text-2xl font-normal mb-2 font-mono font-medium ${getUsageColor(healthData?.resources?.memoryUsage || 0).textColor}`}>
+              <Counter 
+                value={healthData?.resources?.memoryUsage || 0} 
+                format="percentage"
+                delay={0.05}
+              />
             </div>
-            <Progress value={healthData?.resources?.memoryUsage || 0} className="h-2" />
+            <div className={`rounded-full h-2 ${getUsageColor(healthData?.resources?.memoryUsage || 0).bgColor} border ${getUsageColor(healthData?.resources?.memoryUsage || 0).borderColor}`}>
+              <div 
+                className={`h-full rounded-full transition-all duration-300 ${getUsageColor(healthData?.resources?.memoryUsage || 0).barColor}`}
+                style={{ width: `${healthData?.resources?.memoryUsage || 0}%` }}
+              />
+            </div>
             <p className="text-[13px] text-muted-foreground mt-2 font-mono font-medium">
               {formatBytes((healthData?.resources?.usedMemory || 0) * 1024 * 1024)} / {formatBytes((healthData?.resources?.totalMemory || 0) * 1024 * 1024)}
             </p>
@@ -268,10 +313,19 @@ export default function SystemHealthDashboard() {
             <HardDrive className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-normal text-foreground mb-2 font-mono font-medium">
-              {healthData?.resources?.diskUsage || 0}%
+            <div className={`text-2xl font-normal mb-2 font-mono font-medium ${getUsageColor(healthData?.resources?.diskUsage || 0).textColor}`}>
+              <Counter 
+                value={healthData?.resources?.diskUsage || 0} 
+                format="percentage"
+                delay={0.1}
+              />
             </div>
-            <Progress value={healthData?.resources?.diskUsage || 0} className="h-2" />
+            <div className={`rounded-full h-2 ${getUsageColor(healthData?.resources?.diskUsage || 0).bgColor} border ${getUsageColor(healthData?.resources?.diskUsage || 0).borderColor}`}>
+              <div 
+                className={`h-full rounded-full transition-all duration-300 ${getUsageColor(healthData?.resources?.diskUsage || 0).barColor}`}
+                style={{ width: `${healthData?.resources?.diskUsage || 0}%` }}
+              />
+            </div>
             <p className="text-[13px] text-muted-foreground mt-2 font-mono font-medium">
               {formatBytes((healthData?.resources?.usedDisk || 0) * 1024 * 1024)} / {formatBytes((healthData?.resources?.totalDisk || 0) * 1024 * 1024)}
             </p>
@@ -286,7 +340,10 @@ export default function SystemHealthDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-normal text-foreground mb-2 font-mono font-medium">
-              {healthData?.metrics?.activeUsers || 0}
+              <Counter 
+                value={healthData?.metrics?.activeUsers || 0} 
+                delay={0.15}
+              />
             </div>
             <p className="text-[13px] text-muted-foreground">
               <span className="font-mono font-medium">{healthData?.metrics?.totalUsers || 0}</span> total users

@@ -8,9 +8,10 @@ import { MetricCard, MetricCardContent } from '@/components/ui/metric-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import Counter from '@/components/ui/counter';
 import { useAuth } from '@/hooks/useAuth';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
-import { TrendingUp, Database, Shield, Users, Activity, Upload, FolderPlus, FileText, Eye, Sparkles } from 'lucide-react';
+import { TrendingUp, Database, Shield, Users, Activity, Upload, FolderPlus, FileText, Eye, Sparkles, Key } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function DashboardPage() {
@@ -19,12 +20,11 @@ export default function DashboardPage() {
 
   return (
     <ProtectedRoute>
-      <DashboardLayout>
-        <div className="p-8">
-          <div className="mb-8">
-            <h1>Welcome to Maskwise Dashboard</h1>
-          </div>
-
+      <DashboardLayout 
+        pageTitle="Dashboard"
+        pageDescription="Monitor your PII detection activities and system overview"
+      >
+        <>
           {error && (
             <div className="bg-destructive/15 border border-destructive/50 p-4 rounded-lg mb-8">
               <p className="text-destructive font-normal">Failed to load dashboard statistics</p>
@@ -44,7 +44,7 @@ export default function DashboardPage() {
                 <div className="flex items-center">
                   <TrendingUp className="h-4 w-4 text-muted-foreground" style={{strokeWidth: 1.5}} />
                   <div className="ml-4">
-                    <p className="text-[13px] font-normal text-gray-600">Recent Scans</p>
+                    <p className="text-[13px] font-normal text-gray-600">Scans (last 7 days)</p>
                     {isLoading ? (
                       <>
                         <Skeleton className="h-6 w-12 mb-1" />
@@ -52,7 +52,11 @@ export default function DashboardPage() {
                       </>
                     ) : (
                       <>
-                        <p className="text-xl font-semibold">{stats?.recentScans ?? 0}</p>
+                        <Counter 
+                          value={stats?.recentScans ?? 0} 
+                          className="text-xl font-semibold"
+                          delay={0}
+                        />
                       </>
                     )}
                   </div>
@@ -65,7 +69,7 @@ export default function DashboardPage() {
                 <div className="flex items-center">
                   <Database className="h-4 w-4 text-muted-foreground" style={{strokeWidth: 1.5}} />
                   <div className="ml-4">
-                    <p className="text-[13px] font-normal text-gray-600">Datasets</p>
+                    <p className="text-[13px] font-normal text-gray-600">Uploaded datasets</p>
                     {isLoading ? (
                       <>
                         <Skeleton className="h-6 w-12 mb-1" />
@@ -73,7 +77,11 @@ export default function DashboardPage() {
                       </>
                     ) : (
                       <>
-                        <p className="text-xl font-semibold">{stats?.totalDatasets ?? 0}</p>
+                        <Counter 
+                          value={stats?.totalDatasets ?? 0} 
+                          className="text-xl font-semibold"
+                          delay={0.05}
+                        />
                       </>
                     )}
                   </div>
@@ -94,7 +102,11 @@ export default function DashboardPage() {
                       </>
                     ) : (
                       <>
-                        <p className="text-xl font-semibold">{stats?.piiFindings ?? 0}</p>
+                        <Counter 
+                          value={stats?.piiFindings ?? 0} 
+                          className="text-xl font-semibold"
+                          delay={0.1}
+                        />
                       </>
                     )}
                   </div>
@@ -115,7 +127,11 @@ export default function DashboardPage() {
                       </>
                     ) : (
                       <>
-                        <p className="text-xl font-semibold">{stats?.activeProjects ?? 0}</p>
+                        <Counter 
+                          value={stats?.activeProjects ?? 0} 
+                          className="text-xl font-semibold"
+                          delay={0.15}
+                        />
                       </>
                     )}
                   </div>
@@ -130,22 +146,22 @@ export default function DashboardPage() {
                 <h2 className="text-xl font-semibold">Quick Actions</h2>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Anonymization Workflow - Full Width */}
+                <div className="grid grid-cols-3 gap-4">
+                  {/* Start Anonymization */}
                   <div 
-                    className="col-span-2 p-6 bg-gradient-to-br from-blue-50 to-blue-100/50 hover:from-blue-100 hover:to-blue-200/50 border border-blue-200 hover:border-blue-400 rounded-lg cursor-pointer transition-all group"
+                    className="p-6 bg-gradient-to-br from-blue-50/50 to-blue-100/30 hover:from-blue-50/70 hover:to-blue-100/40 border border-blue-200/50 hover:border-blue-300 rounded-lg cursor-pointer transition-all group"
                     onClick={() => window.location.href = '/anonymize'}
                   >
                     <div className="flex flex-col items-center text-center space-y-2">
                       <Sparkles className="h-4 w-4 text-muted-foreground" style={{strokeWidth: 1.5}} />
                       <h3 className="font-semibold text-[13px] text-gray-900">Start Anonymization</h3>
-                      <p className="text-[13px] text-gray-600">Begin guided workflow</p>
+                      <p className="text-[13px] text-gray-600">Begin workflow</p>
                     </div>
                   </div>
 
                   {/* Upload Dataset */}
                   <div 
-                    className="p-6 bg-gradient-to-br from-gray-50 to-gray-100/50 hover:from-gray-100 hover:to-gray-200/50 border border-gray-200 hover:border-gray-400 rounded-lg cursor-pointer transition-all group"
+                    className="p-6 bg-gradient-to-br from-gray-50/50 to-gray-100/30 hover:from-gray-50/70 hover:to-gray-100/40 border border-gray-200/50 hover:border-gray-300 rounded-lg cursor-pointer transition-all group"
                     onClick={() => window.location.href = '/datasets'}
                   >
                     <div className="flex flex-col items-center text-center space-y-2">
@@ -157,7 +173,7 @@ export default function DashboardPage() {
 
                   {/* Create Project */}
                   <div 
-                    className="p-6 bg-gradient-to-br from-green-50 to-green-100/50 hover:from-green-100 hover:to-green-200/50 border border-green-200 hover:border-green-400 rounded-lg cursor-pointer transition-all group"
+                    className="p-6 bg-gradient-to-br from-green-50/50 to-green-100/30 hover:from-green-50/70 hover:to-green-100/40 border border-green-200/50 hover:border-green-300 rounded-lg cursor-pointer transition-all group"
                     onClick={() => window.location.href = '/projects'}
                   >
                     <div className="flex flex-col items-center text-center space-y-2">
@@ -169,7 +185,7 @@ export default function DashboardPage() {
 
                   {/* View Policies */}
                   <div 
-                    className="p-6 bg-gradient-to-br from-purple-50 to-purple-100/50 hover:from-purple-100 hover:to-purple-200/50 border border-purple-200 hover:border-purple-400 rounded-lg cursor-pointer transition-all group"
+                    className="p-6 bg-gradient-to-br from-purple-50/50 to-purple-100/30 hover:from-purple-50/70 hover:to-purple-100/40 border border-purple-200/50 hover:border-purple-300 rounded-lg cursor-pointer transition-all group"
                     onClick={() => window.location.href = '/policies'}
                   >
                     <div className="flex flex-col items-center text-center space-y-2">
@@ -179,9 +195,21 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
+                  {/* Manage API Keys */}
+                  <div 
+                    className="p-6 bg-gradient-to-br from-indigo-50/50 to-indigo-100/30 hover:from-indigo-50/70 hover:to-indigo-100/40 border border-indigo-200/50 hover:border-indigo-300 rounded-lg cursor-pointer transition-all group"
+                    onClick={() => window.location.href = '/settings?tab=api-keys'}
+                  >
+                    <div className="flex flex-col items-center text-center space-y-2">
+                      <Key className="h-4 w-4 text-muted-foreground" style={{strokeWidth: 1.5}} />
+                      <h3 className="font-semibold text-[13px] text-gray-900">Manage API Keys</h3>
+                      <p className="text-[13px] text-gray-600">Access tokens</p>
+                    </div>
+                  </div>
+
                   {/* Audit Logs */}
                   <div 
-                    className="p-6 bg-gradient-to-br from-orange-50 to-orange-100/50 hover:from-orange-100 hover:to-orange-200/50 border border-orange-200 hover:border-orange-400 rounded-lg cursor-pointer transition-all group"
+                    className="p-6 bg-gradient-to-br from-orange-50/50 to-orange-100/30 hover:from-orange-50/70 hover:to-orange-100/40 border border-orange-200/50 hover:border-orange-300 rounded-lg cursor-pointer transition-all group"
                     onClick={() => window.location.href = '/settings?tab=audit'}
                   >
                     <div className="flex flex-col items-center text-center space-y-2">
@@ -196,8 +224,7 @@ export default function DashboardPage() {
 
             <ActivityFeed />
           </div>
-
-        </div>
+        </>
       </DashboardLayout>
     </ProtectedRoute>
   );

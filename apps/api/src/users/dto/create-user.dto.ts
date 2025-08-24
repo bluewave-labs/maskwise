@@ -3,9 +3,7 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export enum UserRole {
   ADMIN = 'ADMIN',
-  DATA_ENGINEER = 'DATA_ENGINEER',
-  ML_ENGINEER = 'ML_ENGINEER',
-  COMPLIANCE_OFFICER = 'COMPLIANCE_OFFICER'
+  MEMBER = 'MEMBER'
 }
 
 export class CreateUserDto {
@@ -42,10 +40,10 @@ export class CreateUserDto {
   lastName: string;
 
   @ApiProperty({
-    example: 'DATA_ENGINEER',
+    example: 'MEMBER',
     description: 'User role',
     enum: UserRole,
-    default: UserRole.DATA_ENGINEER,
+    default: UserRole.MEMBER,
   })
   @IsOptional()
   @IsEnum(UserRole)

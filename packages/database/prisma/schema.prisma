@@ -23,6 +23,7 @@ model User {
   projects   Project[]
   auditLogs  AuditLog[]
   createdJobs Job[] @relation("CreatedBy")
+  apiKeys    ApiKey[]
 
   @@map("users")
 }
@@ -212,9 +213,7 @@ model SystemConfig {
 // Enums
 enum UserRole {
   ADMIN
-  DATA_ENGINEER
-  ML_ENGINEER
-  COMPLIANCE_OFFICER
+  MEMBER
 }
 
 enum FileType {
@@ -251,6 +250,7 @@ enum SourceType {
 }
 
 enum DatasetStatus {
+  UPLOADED
   PENDING
   PROCESSING
   COMPLETED
@@ -312,4 +312,22 @@ enum PolicyTemplateCategory {
   HIPAA
   PCI_DSS
   CUSTOM
+}
+
+model ApiKey {
+  id          String   @id @default(cuid())
+  name        String   // User-defined name for the key
+  keyHash     String   @unique // SHA-256 hash of the actual key
+  prefix      String   // First part for display (e.g., "mk_live_12345678")
+  isActive    Boolean  @default(true)
+  lastUsedAt  DateTime?
+  expiresAt   DateTime? // Optional expiration
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("api_keys")
 }

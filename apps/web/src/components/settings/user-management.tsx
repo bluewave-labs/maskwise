@@ -256,16 +256,6 @@ export function UserManagement({ className }: UserManagementProps) {
     return formatDate(dateString);
   };
 
-  const getRoleBadgeColor = (role: string) => {
-    switch (role.toLowerCase()) {
-      case 'admin':
-        return 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100';
-      case 'moderator':
-        return 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100';
-      default:
-        return 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100';
-    }
-  };
 
   if (authLoading || loading) {
     return (
@@ -447,9 +437,13 @@ export function UserManagement({ className }: UserManagementProps) {
                     </td>
                     <td className="p-4 text-[13px] text-muted-foreground">{user.email}</td>
                     <td className="p-4">
-                      <Badge variant="outline" className={getRoleBadgeColor(user.role)}>
-                        {user.role}
-                      </Badge>
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-normal ${
+                        user.role.toLowerCase() === 'admin' 
+                          ? 'bg-red-100 text-red-600' 
+                          : 'bg-blue-100 text-blue-600'
+                      }`}>
+                        {user.role.charAt(0).toUpperCase() + user.role.slice(1).toLowerCase()}
+                      </span>
                     </td>
                     <td className="p-4">
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-normal ${

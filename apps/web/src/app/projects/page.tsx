@@ -124,16 +124,11 @@ export default function ProjectsPage() {
 
   return (
     <ProtectedRoute>
-      <DashboardLayout>
-        <div className="p-8">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-[15px] font-bold text-foreground">Projects</h1>
-            <p className="text-muted-foreground text-[13px] mt-2">
-              Manage your PII detection projects and organize your datasets
-            </p>
-          </div>
-
+      <DashboardLayout 
+        pageTitle="Projects"
+        pageDescription="Manage your PII detection projects and organize your datasets"
+      >
+        <>
           {/* Content */}
           {pageLoading ? (
             <div className="space-y-6">
@@ -264,7 +259,7 @@ export default function ProjectsPage() {
               </div>
             </div>
           )}
-        </div>
+        </>
       </DashboardLayout>
     </ProtectedRoute>
   );
