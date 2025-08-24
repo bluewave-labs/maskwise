@@ -1,10 +1,37 @@
-# Maskwise
+# MaskWise - Enterprise PII Anonymization Platform
 
-On-premise PII detection and anonymization platform built on Microsoft Presidio.
+Maskwise is a single-tenant data privacy platform built to detect, redact, mask, and anonymize sensitive information across unstructured text, images, and structured data within LLM training datasets. It automatically identifies and classifies personally identifiable information (PII), payment data, health records, and other regulated content. The system supports 50+ document and file formats, applies anonymization while preserving original structure and formatting, and generates full compliance audit trails for traceability and verification.
 
 ## Overview
 
-Maskwise is a single-tenant platform designed to detect, redact, mask, and anonymize sensitive data across text, images, and structured data in training datasets for LLM systems.
+  - Microsoft Presidio Integration with 15+ compliance entity types (SSN, Credit Cards, HIPAA, GDPR etc)
+  - RBAC with comprehensive audit trails
+  - Full Office Suite Support (Word, Excel, PowerPoint, PDF) with format preservation
+  - Batch Processing for enterprise-scale volumes
+  - OCR Integration for scanned documents
+  - Policy-driven Processing with customizable business rules
+  - Format-preserving Anonymization maintaining document usability
+  - Multiple Strategies (`redact`, `mask`, `replace`, `encrypt`)
+  - Original + Anonymized Downloads for audit workflows
+  - On-premise & Docker Installation
+  - RESTful API for existing system integration
+  - Single Sign-On Ready (Active Directory, SAML, OIDC)
+
+You can deploy Maskwise in 24 hours an reduce PII exposure risk by 95%. Maskwise can process thousands of documents per hour.
+
+## Maskwise use cases for AI and LLMs
+
+### 1. Safe training data curation  
+LLM training datasets often contain sensitive information like PII or confidential business data. Maskwise detects and anonymizes this content before ingestion, preventing models from memorizing or leaking private details.  
+
+### 2. Fine-tuning on proprietary data  
+When fine-tuning LLMs with internal corpora such as customer conversations or documents, regulated data may slip through. Maskwise redacts or masks sensitive fields while preserving structure, enabling safe and compliant fine-tuning.  
+
+### 3. Prompt and response anonymization  
+Prompts and outputs collected for evaluation or reinforcement learning can include sensitive content. Maskwise anonymizes these logs before they’re stored or shared, reducing exposure and ensuring privacy.  
+
+### 4. Synthetic dataset generation  
+To expand training data safely, Maskwise anonymizes real records and replaces them with synthetic placeholders. This preserves realism for model training while protecting user privacy.  
 
 ## Architecture
 
@@ -23,6 +50,38 @@ This is a monorepo containing:
 - **Backend**: NestJS + TypeScript + PostgreSQL + Redis
 - **Processing**: Microsoft Presidio + Apache Tika + Tesseract OCR
 - **Deployment**: Docker Compose
+
+## Screenshots
+
+### Main dashboard
+
+<img width="1387" height="790" alt="image" src="https://github.com/user-attachments/assets/29982118-74f9-4934-b90e-c755a0953f50" />
+
+### Project view
+
+<img width="1389" height="789" alt="image" src="https://github.com/user-attachments/assets/9e0e5d71-7f9f-4c67-89f5-733d66c6058b" />
+
+### Datasets view
+
+<img width="1391" height="785" alt="image" src="https://github.com/user-attachments/assets/c7bfa5c2-5cf2-4765-9cc6-a0190f7b7bd1" />
+
+### Jobs overview
+
+<img width="1390" height="786" alt="image" src="https://github.com/user-attachments/assets/debb8d53-0d9e-41f1-81cf-423eaaaa3fa4" />
+
+### Anonymization workflow
+
+<img width="1387" height="784" alt="image" src="https://github.com/user-attachments/assets/505d1aee-cb96-4a1c-805d-706c1ee91f2a" />
+
+### Policies 
+
+<img width="1383" height="791" alt="image" src="https://github.com/user-attachments/assets/e7fbf7aa-abaa-41eb-8806-6262108b7500" />
+
+
+### Settings 
+
+<img width="1389" height="778" alt="image" src="https://github.com/user-attachments/assets/228ce6d8-7dbc-49ef-bd2b-d8f0b2c818c8" />
+
 
 ## Quick Start
 
@@ -124,23 +183,3 @@ npm run lint
 npm run type-check
 ```
 
-## Features
-
-- 🔐 Role-based authentication (extensible for SSO)
-- 📁 Multiple data source support (file upload, S3, Azure Blob, BigQuery)
-- 🔍 PII detection using Microsoft Presidio
-- 🎭 Data anonymization and masking
-- 📊 Results dashboard with detailed reporting
-- 📋 Policy engine with YAML versioning
-- 🏪 Policy template marketplace
-- 🔍 Evidence manifest generation
-- 📈 Audit logging and compliance tracking
-
-## Supported File Types
-
-- **Structured**: CSV, JSONL, Parquet, TXT
-- **Semi-structured**: PDF, DOCX (with OCR support)
-
-## License
-
-Private - All rights reserved
