@@ -50,18 +50,18 @@ export function PolicyEffectivenessChart({ data, onPolicyClick }: PolicyEffectiv
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-background border border-border rounded-md p-3 shadow-md">
+        <div className="bg-background border border-border rounded-md p-3 shadow-md text-[13px]">
           <p className="font-medium">{data.policyName}</p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground">
             Version: {data.version}
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground">
             Effectiveness: {data.effectivenessScore}%
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground">
             Applied to: {data.appliedDatasets} datasets
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground">
             High-risk findings: {data.highRiskFindings}
           </p>
         </div>

@@ -4,6 +4,7 @@ import './globals.css'
 import { AuthProvider } from '@/hooks/useAuth'
 import { OnboardingProvider } from '@/hooks/useOnboarding'
 import { Toaster } from '@/components/ui/toaster'
+import { PageErrorBoundary } from '@/components/error/error-boundary'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -20,12 +21,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <AuthProvider>
-          <OnboardingProvider>
-            {children}
-            <Toaster />
-          </OnboardingProvider>
-        </AuthProvider>
+        <PageErrorBoundary>
+          <AuthProvider>
+            <OnboardingProvider>
+              {children}
+              <Toaster />
+            </OnboardingProvider>
+          </AuthProvider>
+        </PageErrorBoundary>
       </body>
     </html>
   )

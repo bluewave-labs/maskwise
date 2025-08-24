@@ -22,8 +22,12 @@
   "dependencies": {
     "@prisma/client": "^5.6.0",
     "@types/bcryptjs": "^2.4.6",
+    "@types/pdfkit": "^0.17.2",
+    "@types/uuid": "^10.0.0",
     "bcryptjs": "^2.4.3",
-    "prisma": "^5.6.0"
+    "pdfkit": "^0.17.1",
+    "prisma": "^5.6.0",
+    "uuid": "^9.0.1"
   },
   "prisma": {
     "seed": "npx ts-node src/seed.ts"

@@ -30,15 +30,15 @@ export function ConfidenceDistributionChart({ data }: ConfidenceDistributionChar
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-background border border-border rounded-md p-3 shadow-md">
+        <div className="bg-background border border-border rounded-md p-3 shadow-md text-[13px]">
           <p className="font-medium">{data.label}</p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground">
             Findings: {data.count.toLocaleString()}
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground">
             Percentage: {data.percentage.toFixed(1)}%
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground">
             Entity Types: {data.entityTypes}
           </p>
         </div>

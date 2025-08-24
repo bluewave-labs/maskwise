@@ -8,6 +8,7 @@ import { OverviewInsights } from '@/components/reports/overview-insights';
 import { PIIDetectionAnalysis } from '@/components/reports/pii-detection-analysis';
 import { ComplianceRiskTab } from '@/components/reports/compliance-risk-tab';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { SectionErrorBoundary } from '@/components/error/error-boundary';
 
 export default function ReportsPage() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -15,13 +16,29 @@ export default function ReportsPage() {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'overview':
-        return <OverviewInsights />;
+        return (
+          <SectionErrorBoundary>
+            <OverviewInsights />
+          </SectionErrorBoundary>
+        );
       case 'detection':
-        return <PIIDetectionAnalysis />;
+        return (
+          <SectionErrorBoundary>
+            <PIIDetectionAnalysis />
+          </SectionErrorBoundary>
+        );
       case 'compliance':
-        return <ComplianceRiskTab />;
+        return (
+          <SectionErrorBoundary>
+            <ComplianceRiskTab />
+          </SectionErrorBoundary>
+        );
       default:
-        return <OverviewInsights />;
+        return (
+          <SectionErrorBoundary>
+            <OverviewInsights />
+          </SectionErrorBoundary>
+        );
     }
   };
 

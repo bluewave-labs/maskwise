@@ -3,7 +3,7 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { Sidebar } from './sidebar';
 import { NotificationIcon } from './notification-icon';
-import { ErrorBoundary } from '@/components/error/error-boundary';
+import { SectionErrorBoundary, ComponentErrorBoundary } from '@/components/error/error-boundary';
 import { InfoTooltip } from '@/components/ui/info-tooltip';
 import { usePageTooltip } from '@/hooks/usePageTooltip';
 import { WelcomeModal } from '@/components/onboarding/welcome-modal';
@@ -22,16 +22,21 @@ export function DashboardLayout({ children, pageTitle, pageDescription }: Dashbo
   const { showOnboarding, completeOnboarding } = useOnboarding();
   
   return (
-    <ErrorBoundary>
+    <SectionErrorBoundary>
       {/* Global Onboarding Modal */}
-      <WelcomeModal 
-        isOpen={showOnboarding}
-        onClose={completeOnboarding}
-        userName={user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.email}
-      />
+      <ComponentErrorBoundary>
+        <WelcomeModal 
+          isOpen={showOnboarding}
+          onClose={completeOnboarding}
+          userName={user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.email}
+        />
+      </ComponentErrorBoundary>
       
       <div className="flex h-screen bg-background">
-        <Sidebar className="flex-shrink-0" />
+        <ComponentErrorBoundary>
+          <Sidebar className="flex-shrink-0" />
+        </ComponentErrorBoundary>
+        
         <main className="flex-1 overflow-auto" style={{ 
           background: `
             linear-gradient(
@@ -43,53 +48,39 @@ export function DashboardLayout({ children, pageTitle, pageDescription }: Dashbo
           `
         }}>
           {pageTitle && (
-            <div className="px-8 py-3 min-h-[60px] flex items-center justify-between border-b border-border">
-              <div>
-                <div className="flex items-center">
-                  <h1 className="text-[15px] font-bold text-foreground">{pageTitle}</h1>
-                  {hasTooltip && tooltipContent && (
-                    <div className="ml-1">
-                      <InfoTooltip
-                        title={tooltipContent.title}
-                        description={tooltipContent.description}
-                        features={tooltipContent.features}
-                      />
-                    </div>
+            <ComponentErrorBoundary>
+              <div className="px-8 py-3 min-h-[60px] flex items-center justify-between border-b border-border">
+                <div>
+                  <div className="flex items-center">
+                    <h1 className="text-[15px] font-bold text-foreground">{pageTitle}</h1>
+                    {hasTooltip && tooltipContent && (
+                      <div className="ml-1">
+                        <InfoTooltip
+                          title={tooltipContent.title}
+                          description={tooltipContent.description}
+                          features={tooltipContent.features}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  {pageDescription && (
+                    <p className="text-muted-foreground text-[13px] mt-1">
+                      {pageDescription}
+                    </p>
                   )}
                 </div>
-                {pageDescription && (
-                  <p className="text-muted-foreground text-[13px] mt-1">
-                    {pageDescription}
-                  </p>
-                )}
+                <NotificationIcon />
               </div>
-              <NotificationIcon />
-            </div>
+            </ComponentErrorBoundary>
           )}
+          
           <div className="p-8">
-            <ErrorBoundary
-              fallback={(error, retry) => (
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-center p-8">
-                    <h2 className="text-xl font-semibold mb-2">Content Error</h2>
-                    <p className="text-muted-foreground mb-4">
-                      {error.message}
-                    </p>
-                    <button 
-                      onClick={retry}
-                      className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-                    >
-                      Try Again
-                    </button>
-                  </div>
-                </div>
-              )}
-            >
+            <SectionErrorBoundary>
               {children}
-            </ErrorBoundary>
+            </SectionErrorBoundary>
           </div>
         </main>
       </div>
-    </ErrorBoundary>
+    </SectionErrorBoundary>
   );
 }

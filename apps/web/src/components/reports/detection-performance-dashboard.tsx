@@ -29,15 +29,15 @@ export function DetectionPerformanceDashboard({ data }: DetectionPerformanceDash
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-background border border-border rounded-md p-3 shadow-md">
+        <div className="bg-background border border-border rounded-md p-3 shadow-md text-[13px]">
           <p className="font-medium">{data.method.charAt(0).toUpperCase() + data.method.slice(1)} Method</p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground">
             Datasets: {data.count}
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground">
             Avg Confidence: {data.avgConfidence.toFixed(1)}%
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground">
             Usage Rate: {data.successRate}%
           </p>
         </div>

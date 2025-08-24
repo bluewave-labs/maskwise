@@ -64,10 +64,11 @@ services:
     ports:
       - "9998:9998"
     healthcheck:
-      test: ["CMD", "java", "-version"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9998/version"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 30s
 
   # Tesseract OCR service
   tesseract:

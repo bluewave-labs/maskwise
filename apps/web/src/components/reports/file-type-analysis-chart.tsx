@@ -15,21 +15,21 @@ export function FileTypeAnalysisChart({ data, onFileTypeClick }: FileTypeAnalysi
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-background border border-border rounded-md p-3 shadow-md">
+        <div className="bg-background border border-border rounded-md p-3 shadow-md text-[13px]">
           <p className="font-medium">{data.fileType} Files</p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground">
             Datasets: {data.datasetCount}
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground">
             PII Findings: {data.findingsCount.toLocaleString()}
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground">
             Total Size: {data.totalSizeMB.toFixed(1)} MB
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground">
             PII Density: {data.piiDensity.toFixed(2)} findings/MB
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground">
             Avg Findings/File: {data.avgFindingsPerFile.toFixed(1)}
           </p>
         </div>

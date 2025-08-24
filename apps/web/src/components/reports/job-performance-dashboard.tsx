@@ -42,15 +42,15 @@ export function JobPerformanceDashboard({ data }: JobPerformanceDashboardProps) 
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-background border border-border rounded-md p-3 shadow-md">
+        <div className="bg-background border border-border rounded-md p-3 shadow-md text-[13px]">
           <p className="font-medium">{JOB_TYPE_LABELS[data.jobType as keyof typeof JOB_TYPE_LABELS]}</p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground">
             Total Jobs: {data.totalJobs.toLocaleString()}
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground">
             Success Rate: {data.successRate}%
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground">
             Avg Processing: {formatProcessingTime(data.avgProcessingTimeMs)}
           </p>
         </div>

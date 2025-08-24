@@ -2,212 +2,328 @@
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { AlertTriangle, RefreshCw, Home, Bug } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { 
+  AlertTriangleIcon, 
+  RefreshCwIcon, 
+  HomeIcon, 
+  BugIcon,
+  ChevronDownIcon,
+  ChevronUpIcon
+} from 'lucide-react';
 
 interface Props {
   children: ReactNode;
-  fallback?: (error: Error, retry: () => void) => ReactNode;
+  fallback?: (props: ErrorFallbackProps) => ReactNode;
   onError?: (error: Error, errorInfo: ErrorInfo) => void;
+  level?: 'page' | 'section' | 'component';
+  resetOnPropsChange?: boolean;
 }
 
 interface State {
   hasError: boolean;
-  error?: Error;
-  errorId: string;
+  error: Error | null;
+  errorInfo: ErrorInfo | null;
+  eventId: string | null;
+  showDetails: boolean;
+}
+
+export interface ErrorFallbackProps {
+  error: Error | null;
+  errorInfo: ErrorInfo | null;
+  resetError: () => void;
+  eventId: string | null;
+  level: 'page' | 'section' | 'component';
 }
 
 /**
- * Global Error Boundary Component
+ * Enhanced Error Boundary Component
  * 
  * Catches JavaScript errors anywhere in the child component tree and displays
- * a fallback UI with recovery options. Provides error reporting and retry mechanisms.
+ * a fallback UI with recovery options. Supports different error levels and
+ * comprehensive error logging.
  */
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = {
       hasError: false,
-      errorId: ''
+      error: null,
+      errorInfo: null,
+      eventId: null,
+      showDetails: false,
     };
   }
 
-  static getDerivedStateFromError(error: Error): State {
-    // Generate unique error ID for tracking
-    const errorId = `err_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+  static getDerivedStateFromError(error: Error): Partial<State> {
     return {
       hasError: true,
       error,
-      errorId
     };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // Log error to console for development
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    const eventId = this.logErrorToService(error, errorInfo);
+    
+    this.setState({
+      errorInfo,
+      eventId,
+    });
 
     // Call custom error handler if provided
-    if (this.props.onError) {
-      this.props.onError(error, errorInfo);
-    }
-
-    // In production, you would send this to your error reporting service
-    this.logErrorToService(error, errorInfo);
+    this.props.onError?.(error, errorInfo);
   }
 
-  private logErrorToService = (error: Error, errorInfo: ErrorInfo) => {
-    // Mock error reporting - in production, send to service like Sentry
-    const errorReport = {
+  componentDidUpdate(prevProps: Props) {
+    const { resetOnPropsChange } = this.props;
+    const { hasError } = this.state;
+
+    // Auto-reset error boundary when props change (useful for route changes)
+    if (hasError && resetOnPropsChange && prevProps.children !== this.props.children) {
+      this.resetError();
+    }
+  }
+
+  logErrorToService = (error: Error, errorInfo: ErrorInfo): string => {
+    const eventId = `err_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    const errorDetails = {
+      eventId,
       message: error.message,
       stack: error.stack,
       componentStack: errorInfo.componentStack,
-      errorId: this.state.errorId,
       timestamp: new Date().toISOString(),
       userAgent: navigator.userAgent,
-      url: window.location.href
+      url: window.location.href,
+      level: this.props.level || 'component',
     };
 
-    // For now, just log to console
-    console.error('Error Report:', errorReport);
+    // Log to console in development
+    if (process.env.NODE_ENV === 'development') {
+      console.group(`🚨 Error Boundary Caught Error [${eventId}]`);
+      console.error('Error:', error);
+      console.error('Error Info:', errorInfo);
+      console.error('Full Details:', errorDetails);
+      console.groupEnd();
+    }
 
-    // In production, send to error tracking service:
-    // fetch('/api/errors', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify(errorReport)
-    // });
+    // Here you would typically send to your error tracking service
+    // Example: Sentry, LogRocket, Bugsnag, etc.
+    // await errorTrackingService.captureException(error, errorDetails);
+
+    return eventId;
   };
 
-  private handleRetry = () => {
+  resetError = () => {
     this.setState({
       hasError: false,
-      error: undefined,
-      errorId: ''
+      error: null,
+      errorInfo: null,
+      eventId: null,
+      showDetails: false,
     });
   };
 
-  private handleReload = () => {
-    window.location.reload();
-  };
-
-  private handleGoHome = () => {
-    window.location.href = '/dashboard';
-  };
-
-  private handleReportBug = () => {
-    const subject = encodeURIComponent(`Bug Report: ${this.state.error?.message || 'Unknown Error'}`);
-    const body = encodeURIComponent(`
-Error ID: ${this.state.errorId}
-Error Message: ${this.state.error?.message}
-Stack: ${this.state.error?.stack}
-Timestamp: ${new Date().toISOString()}
-URL: ${window.location.href}
-User Agent: ${navigator.userAgent}
-
-Please describe what you were doing when this error occurred:
-[Your description here]
-    `);
-    
-    // Open email client with pre-filled bug report
-    window.location.href = `mailto:support@maskwise.com?subject=${subject}&body=${body}`;
+  toggleDetails = () => {
+    this.setState(prev => ({
+      showDetails: !prev.showDetails
+    }));
   };
 
   render() {
-    if (this.state.hasError) {
+    const { hasError, error, errorInfo, eventId, showDetails } = this.state;
+    const { children, fallback, level = 'component' } = this.props;
+
+    if (hasError) {
       // Use custom fallback if provided
-      if (this.props.fallback) {
-        return this.props.fallback(this.state.error!, this.handleRetry);
+      if (fallback) {
+        return fallback({
+          error,
+          errorInfo,
+          resetError: this.resetError,
+          eventId,
+          level,
+        });
       }
 
-      // Default error UI
+      // Default fallback UI based on level
       return (
-        <div className="min-h-screen bg-background flex items-center justify-center p-4">
-          <Card className="max-w-lg w-full p-8 text-center">
-            <div className="mb-6">
-              <AlertTriangle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-              <h1 className="text-2xl font-bold text-foreground mb-2">
-                Something went wrong
-              </h1>
-              <p className="text-muted-foreground mb-4">
-                We apologize for the inconvenience. An unexpected error occurred while loading this page.
-              </p>
-              
-              {this.state.error && (
-                <details className="text-left mb-4">
-                  <summary className="cursor-pointer text-[13px] text-muted-foreground hover:text-foreground">
-                    Technical Details
-                  </summary>
-                  <div className="mt-2 p-3 bg-muted rounded-md text-[13px] font-mono break-all">
-                    <div className="mb-2">
-                      <strong>Error ID:</strong> {this.state.errorId}
-                    </div>
-                    <div className="mb-2">
-                      <strong>Message:</strong> {this.state.error.message}
-                    </div>
-                    {this.state.error.stack && (
-                      <div>
-                        <strong>Stack:</strong>
-                        <pre className="mt-1 whitespace-pre-wrap">
-                          {this.state.error.stack}
-                        </pre>
-                      </div>
-                    )}
-                  </div>
-                </details>
-              )}
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex gap-2 justify-center">
-                <Button
-                  onClick={this.handleRetry}
-                  className="flex items-center gap-2"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  Try Again
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  onClick={this.handleReload}
-                  className="flex items-center gap-2"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  Reload Page
-                </Button>
-              </div>
-
-              <div className="flex gap-2 justify-center">
-                <Button
-                  variant="outline"
-                  onClick={this.handleGoHome}
-                  className="flex items-center gap-2"
-                >
-                  <Home className="h-4 w-4" />
-                  Go to Dashboard
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  onClick={this.handleReportBug}
-                  className="flex items-center gap-2"
-                >
-                  <Bug className="h-4 w-4" />
-                  Report Bug
-                </Button>
-              </div>
-            </div>
-
-            <div className="mt-6 text-[13px] text-muted-foreground">
-              <p>Error ID: {this.state.errorId}</p>
-              <p>If this problem persists, please contact support with the error ID.</p>
-            </div>
-          </Card>
-        </div>
+        <DefaultErrorFallback
+          error={error}
+          errorInfo={errorInfo}
+          resetError={this.resetError}
+          eventId={eventId}
+          level={level}
+          showDetails={showDetails}
+          toggleDetails={this.toggleDetails}
+        />
       );
     }
 
-    return this.props.children;
+    return children;
   }
+}
+
+interface DefaultErrorFallbackProps extends ErrorFallbackProps {
+  showDetails: boolean;
+  toggleDetails: () => void;
+}
+
+function DefaultErrorFallback({
+  error,
+  errorInfo,
+  resetError,
+  eventId,
+  level,
+  showDetails,
+  toggleDetails,
+}: DefaultErrorFallbackProps) {
+  const isPageLevel = level === 'page';
+  const isSectionLevel = level === 'section';
+
+  return (
+    <Card className={`${isPageLevel ? 'mx-auto max-w-2xl mt-12' : ''} ${isSectionLevel ? 'border-destructive/20' : ''}`}>
+      <CardHeader className="text-center">
+        <div className="flex items-center justify-center mb-4">
+          <div className="rounded-full bg-destructive/10 p-3">
+            <AlertTriangleIcon className="h-8 w-8 text-destructive" />
+          </div>
+        </div>
+        
+        <CardTitle className="text-[15px] font-bold flex items-center justify-center gap-2">
+          {isPageLevel && 'Application Error'}
+          {isSectionLevel && 'Section Error'}
+          {level === 'component' && 'Component Error'}
+          
+          {eventId && (
+            <Badge variant="outline" className="text-xs font-mono">
+              {eventId}
+            </Badge>
+          )}
+        </CardTitle>
+        
+        <p className="text-[13px] text-muted-foreground">
+          {isPageLevel && 'The application encountered an unexpected error. We\'ve been notified and will fix this issue.'}
+          {isSectionLevel && 'This section is temporarily unavailable. Other parts of the application should still work.'}
+          {level === 'component' && 'This component failed to load. Please try refreshing or contact support.'}
+        </p>
+      </CardHeader>
+      
+      <CardContent className="text-center space-y-4">
+        {/* Action Buttons */}
+        <div className="flex flex-wrap gap-2 justify-center">
+          <Button onClick={resetError} size="sm" className="h-8">
+            <RefreshCwIcon className="h-4 w-4 mr-2" />
+            Try Again
+          </Button>
+          
+          {!isPageLevel && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-8"
+              onClick={() => window.location.reload()}
+            >
+              <RefreshCwIcon className="h-4 w-4 mr-2" />
+              Reload Page
+            </Button>
+          )}
+          
+          {isPageLevel && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-8"
+              onClick={() => window.location.href = '/dashboard'}
+            >
+              <HomeIcon className="h-4 w-4 mr-2" />
+              Go Home
+            </Button>
+          )}
+          
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="h-8"
+            onClick={toggleDetails}
+          >
+            <BugIcon className="h-4 w-4 mr-2" />
+            {showDetails ? 'Hide' : 'Show'} Details
+            {showDetails ? (
+              <ChevronUpIcon className="h-4 w-4 ml-1" />
+            ) : (
+              <ChevronDownIcon className="h-4 w-4 ml-1" />
+            )}
+          </Button>
+        </div>
+
+        {/* Error Details (Collapsible) */}
+        {showDetails && (
+          <div className="mt-6 p-4 bg-muted/30 rounded-lg text-left">
+            <h4 className="text-[13px] font-semibold mb-2">Error Details</h4>
+            
+            {error && (
+              <div className="mb-3">
+                <p className="text-[11px] font-medium text-muted-foreground mb-1">Message:</p>
+                <p className="text-[11px] font-mono text-destructive bg-background p-2 rounded border">
+                  {error.message}
+                </p>
+              </div>
+            )}
+            
+            {error?.stack && (
+              <div className="mb-3">
+                <p className="text-[11px] font-medium text-muted-foreground mb-1">Stack Trace:</p>
+                <pre className="text-[10px] font-mono text-muted-foreground bg-background p-2 rounded border overflow-x-auto max-h-32 overflow-y-auto">
+                  {error.stack}
+                </pre>
+              </div>
+            )}
+            
+            {errorInfo?.componentStack && (
+              <div>
+                <p className="text-[11px] font-medium text-muted-foreground mb-1">Component Stack:</p>
+                <pre className="text-[10px] font-mono text-muted-foreground bg-background p-2 rounded border overflow-x-auto max-h-32 overflow-y-auto">
+                  {errorInfo.componentStack}
+                </pre>
+              </div>
+            )}
+          </div>
+        )}
+        
+        {/* Support Information */}
+        <div className="mt-6 pt-4 border-t text-center">
+          <p className="text-[11px] text-muted-foreground">
+            If this problem persists, please contact support with error ID: <strong>{eventId}</strong>
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Convenience wrapper for different error boundary levels
+export function PageErrorBoundary({ children, ...props }: Omit<Props, 'level'>) {
+  return (
+    <ErrorBoundary level="page" resetOnPropsChange={true} {...props}>
+      {children}
+    </ErrorBoundary>
+  );
+}
+
+export function SectionErrorBoundary({ children, ...props }: Omit<Props, 'level'>) {
+  return (
+    <ErrorBoundary level="section" {...props}>
+      {children}
+    </ErrorBoundary>
+  );
+}
+
+export function ComponentErrorBoundary({ children, ...props }: Omit<Props, 'level'>) {
+  return (
+    <ErrorBoundary level="component" {...props}>
+      {children}
+    </ErrorBoundary>
+  );
 }

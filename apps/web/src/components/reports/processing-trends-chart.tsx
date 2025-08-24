@@ -45,6 +45,7 @@ export function ProcessingTrendsChart({ data }: ProcessingTrendsChartProps) {
                   backgroundColor: 'hsl(var(--background))',
                   border: '1px solid hsl(var(--border))',
                   borderRadius: '6px',
+                  fontSize: '13px',
                 }}
               />
               <Legend />

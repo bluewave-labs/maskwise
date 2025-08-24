@@ -16,11 +16,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import { usePolicies, usePolicyTemplates } from '@/hooks/usePolicies';
 import { Policy, STATUS_COLORS } from '@/types/policy';
-import { Search, Plus, FileText, Settings, Calendar, ChevronLeft, ChevronRight, Trash2, Copy } from 'lucide-react';
+import { Search, Plus, FileText, Settings, Calendar, ChevronLeft, ChevronRight, Trash2, Copy, Edit } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { Skeleton } from '@/components/ui/skeleton';
 import Counter from '@/components/ui/counter';
 import { useToast } from '@/hooks/use-toast';
+import { PolicyEditorModal } from '@/components/policies/policy-editor-modal';
 
 function PoliciesContent() {
   const router = useRouter();
@@ -46,6 +47,8 @@ function PoliciesContent() {
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [selectedTemplateForCreation, setSelectedTemplateForCreation] = useState<any>(null);
   const [templatePolicyName, setTemplatePolicyName] = useState('');
+  const [policyEditorOpen, setPolicyEditorOpen] = useState(false);
+  const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
   const [totalStats, setTotalStats] = useState({
     totalPolicies: 0,
     activePolicies: 0,
@@ -113,6 +116,22 @@ function PoliciesContent() {
     }
     setDeleteDialogOpen(false);
     setPolicyToDelete(null);
+  };
+
+  const handleCreateNewPolicy = () => {
+    setEditingPolicy(null);
+    setPolicyEditorOpen(true);
+  };
+
+  const handleEditPolicy = (policy: Policy) => {
+    setEditingPolicy(policy);
+    setPolicyEditorOpen(true);
+  };
+
+  const handlePolicyEditorSave = async () => {
+    // Refresh the policies list after save
+    await fetchPolicies({ page: currentPage, limit: pageSize });
+    fetchTotalStats();
   };
 
   const handleCreateFromTemplate = async () => {
@@ -269,7 +288,7 @@ function PoliciesContent() {
           Templates ({templates.length})
         </Button>
         <Button 
-          onClick={() => router.push('/policies/create')}
+          onClick={handleCreateNewPolicy}
           className="h-[34px]"
         >
           <Plus className="w-4 h-4 mr-2" />
@@ -473,7 +492,18 @@ function PoliciesContent() {
                           </td>
                           <td className="p-4">
                             {isAdmin(user) && (
-                              <div onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center space-x-1" onClick={(e) => e.stopPropagation()}>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditPolicy(policy);
+                                  }}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
                                 <Button 
                                   variant="ghost" 
                                   size="sm" 
@@ -670,6 +700,14 @@ function PoliciesContent() {
         confirmText="Delete Policy"
         cancelText="Cancel"
         variant="destructive"
+      />
+
+      {/* Policy Editor Modal */}
+      <PolicyEditorModal
+        open={policyEditorOpen}
+        onOpenChange={setPolicyEditorOpen}
+        policy={editingPolicy}
+        onSave={handlePolicyEditorSave}
       />
     </div>
   );
