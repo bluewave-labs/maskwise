@@ -13,11 +13,14 @@ import {
   LogOut,
   Sparkles,
   User,
-  ChevronUp
+  ChevronUp,
+  Activity
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
+import { useOnboarding } from '@/hooks/useOnboarding';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,6 +34,7 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Projects', href: '/projects', icon: FolderOpen },
   { name: 'Datasets', href: '/datasets', icon: Database },
+  { name: 'Jobs', href: '/jobs', icon: Activity },
   { name: 'Anonymize', href: '/anonymize', icon: Sparkles },
   { name: 'Policies', href: '/policies', icon: Shield },
   { name: 'Reports', href: '/reports', icon: BarChart3 },
@@ -44,6 +48,7 @@ interface SidebarProps {
 export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname();
   const { logout, user } = useAuth();
+  const { resetOnboarding, setShowOnboarding } = useOnboarding();
 
   const handleLogout = async () => {
     await logout();
@@ -53,14 +58,19 @@ export function Sidebar({ className }: SidebarProps) {
     <div className={`flex flex-col bg-card border-r border-border w-64 relative ${className}`}>
       {/* Header */}
       <div className="flex items-center px-4 py-3 relative min-h-[60px]">
-        <span className="text-xl font-bold tracking-wide text-foreground font-sans uppercase ml-3">MASKWISE</span>
+        <span className="text-xl font-bold tracking-wide font-sans uppercase ml-3" style={{
+          background: 'linear-gradient(to right, rgb(59 130 246), rgb(147 51 234))',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text'
+        }}>MASKWISE</span>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 p-4">
         <ul className="space-y-1">
           {navigation.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
             return (
               <li key={item.name}>
                 <Link
@@ -79,6 +89,19 @@ export function Sidebar({ className }: SidebarProps) {
           })}
         </ul>
       </nav>
+
+      {/* Show onboarding button */}
+      <div className="px-4 pb-3">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={resetOnboarding}
+          className="w-full text-yellow-700 border-yellow-300 hover:bg-yellow-100 h-[34px]"
+        >
+          <Sparkles className="h-4 w-4 mr-2" />
+          Show onboarding
+        </Button>
+      </div>
 
       {/* User section with dropdown */}
       <div className="p-4 border-t border-border">

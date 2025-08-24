@@ -157,7 +157,7 @@ export function YAMLEditor({
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <CardTitle className="text-lg">YAML Policy Editor</CardTitle>
+              <CardTitle className="text-[15px] font-bold">YAML Policy Editor</CardTitle>
               {getValidationIcon()}
               {getValidationStatus()}
             </div>
@@ -247,7 +247,7 @@ export function YAMLEditor({
           {/* YAML Help */}
           <Card className="bg-gray-50">
             <CardContent className="p-4">
-              <h4 className="font-normal text-gray-900 mb-2">YAML Policy Structure Help</h4>
+              <h4 className="text-[15px] font-bold text-foreground mb-2">YAML Policy Structure Help</h4>
               <div className="text-[13px] text-gray-600 space-y-1">
                 <div><strong>name:</strong> Policy name (required)</div>
                 <div><strong>version:</strong> Semantic version like "1.0.0" (required)</div>

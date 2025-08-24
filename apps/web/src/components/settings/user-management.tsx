@@ -68,6 +68,9 @@ export function UserManagement({ className }: UserManagementProps) {
   const [showDeactivateDialog, setShowDeactivateDialog] = useState(false);
   const [userToDeactivate, setUserToDeactivate] = useState<User | null>(null);
   const [deactivateLoading, setDeactivateLoading] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const { user: currentUser, isAuthenticated, isLoading: authLoading } = useAuth();
 
   const fetchUsers = async () => {
@@ -156,6 +159,52 @@ export function UserManagement({ className }: UserManagementProps) {
   const handleCancelStatusToggle = () => {
     setShowDeactivateDialog(false);
     setUserToDeactivate(null);
+  };
+
+  const handleDeleteUserClick = (user: User) => {
+    setUserToDelete(user);
+    setShowDeleteDialog(true);
+  };
+
+  const handleDeleteUserConfirm = async () => {
+    if (!userToDelete) return;
+    
+    setDeleteLoading(true);
+    try {
+      // Use a different endpoint for permanent deletion
+      await api.delete(`/users/${userToDelete.id}/permanent`);
+      
+      await fetchUsers(); // Refresh the list
+      toast({
+        title: "User deleted successfully",
+        description: `${userToDelete.firstName} ${userToDelete.lastName} has been permanently removed from the system`,
+      });
+      setShowDeleteDialog(false);
+      setUserToDelete(null);
+    } catch (error: any) {
+      console.error('Failed to delete user:', error);
+      let errorMessage = 'Failed to delete user';
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.status === 404) {
+        errorMessage = 'User not found';
+      } else if (error.response?.status === 403) {
+        errorMessage = 'Cannot delete this user';
+      }
+      
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteDialog(false);
+    setUserToDelete(null);
   };
 
   const handleCreateUser = () => {
@@ -476,7 +525,7 @@ export function UserManagement({ className }: UserManagementProps) {
                             {user.isActive ? (
                               <DropdownMenuItem 
                                 onClick={() => handleStatusToggleClick(user)}
-                                className="text-red-600 focus:text-red-600"
+                                className="text-orange-600 focus:text-orange-600"
                               >
                                 <UserX className="h-4 w-4 mr-2" />
                                 Deactivate
@@ -490,6 +539,13 @@ export function UserManagement({ className }: UserManagementProps) {
                                 Activate
                               </DropdownMenuItem>
                             )}
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteUserClick(user)}
+                              className="text-red-600 focus:text-red-600"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete User
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       )}
@@ -599,6 +655,24 @@ export function UserManagement({ className }: UserManagementProps) {
         variant={userToDeactivate?.isActive ? "destructive" : "default"}
         loading={deactivateLoading}
       />
+
+      {/* Delete User Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={showDeleteDialog}
+        onClose={handleCancelDelete}
+        onConfirm={handleDeleteUserConfirm}
+        title="Delete User Permanently"
+        description={
+          userToDelete 
+            ? `Are you sure you want to permanently delete ${userToDelete.firstName} ${userToDelete.lastName}? This action cannot be undone. All user data, history, and associated records will be permanently removed from the system.`
+            : ''
+        }
+        confirmText="Delete User Permanently"
+        cancelText="Cancel"
+        variant="destructive"
+        loading={deleteLoading}
+      />
+
     </div>
   );
 }
