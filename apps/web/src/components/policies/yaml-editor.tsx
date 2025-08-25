@@ -1,15 +1,29 @@
 'use client';
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { usePolicies } from '@/hooks/usePolicies';
 import { YAMLValidationResult } from '@/types/policy';
-import { CheckCircle, AlertTriangle, AlertCircle, Save, Eye, RotateCcw } from 'lucide-react';
+import { CheckCircle, AlertTriangle, AlertCircle, Save, Eye, RotateCcw, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { debounce } from '@/lib/utils';
+
+// Dynamically import Monaco Editor to avoid SSR issues
+const Editor = dynamic(() => import('@monaco-editor/react'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-96 bg-gray-50 rounded border">
+      <div className="flex items-center space-x-2 text-gray-500">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        <span className="text-[13px]">Loading YAML Editor...</span>
+      </div>
+    </div>
+  ),
+});
 
 interface YAMLEditorProps {
   initialYaml?: string;
@@ -199,21 +213,45 @@ export function YAMLEditor({
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* YAML Editor Textarea */}
-          <div className="relative">
-            <textarea
+          {/* Monaco YAML Editor */}
+          <div className={`border rounded ${
+            validationResult.isValid ? 'border-gray-300' : 'border-red-300'
+          }`}>
+            <Editor
+              height="400px"
+              defaultLanguage="yaml"
               value={yamlContent}
-              onChange={(e) => setYamlContent(e.target.value)}
-              readOnly={readonly}
-              className={`w-full h-96 p-4 font-mono text-[13px] border rounded resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                readonly ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'
-              } ${
-                validationResult.isValid ? 'border-gray-300' : 'border-red-300'
-              }`}
-              placeholder="Enter your YAML policy configuration here..."
-              spellCheck={false}
+              onChange={(value) => setYamlContent(value || '')}
+              options={{
+                readOnly: readonly,
+                minimap: { enabled: false },
+                fontSize: 13,
+                lineNumbers: 'on',
+                wordWrap: 'on',
+                automaticLayout: true,
+                scrollBeyondLastLine: false,
+                theme: 'vs-light',
+                folding: true,
+                showFoldingControls: 'always',
+                bracketPairColorization: { enabled: true },
+                suggest: {
+                  showKeywords: true,
+                  showSnippets: true
+                },
+                tabSize: 2,
+                insertSpaces: true,
+                renderWhitespace: 'selection',
+                renderControlCharacters: false,
+                contextmenu: true,
+                mouseWheelZoom: true,
+                smoothScrolling: true,
+                cursorBlinking: 'smooth',
+                renderLineHighlight: 'line',
+                selectOnLineNumbers: true,
+                roundedSelection: false,
+                automaticLayout: true
+              }}
             />
-            {/* Line numbers could be added here in the future */}
           </div>
 
           {/* Validation Results */}

@@ -11,6 +11,7 @@ import { useNetworkErrorRecovery } from '@/hooks/useErrorRecovery';
 import { useSmartRefresh } from '@/hooks/useSmartRefresh';
 import { LiveIndicator } from '@/components/ui/live-indicator';
 import { useAuth } from '@/hooks/useAuth';
+import { useSSE, SSEEvent } from '@/hooks/useSSE';
 import { DatasetFindings } from './dataset-findings';
 import { JobProgress } from './job-progress';
 import { ErrorDetailsModal } from './error-details-modal';
@@ -57,13 +58,14 @@ interface Dataset {
 interface RecentUploadsProps {
   projectId?: string;
   refreshTrigger?: number;
+  onDatasetSelect?: (dataset: any) => void;
 }
 
 interface DatasetsResponse {
   datasets: Dataset[];
 }
 
-export function RecentUploads({ projectId, refreshTrigger }: RecentUploadsProps) {
+export function RecentUploads({ projectId, refreshTrigger, onDatasetSelect }: RecentUploadsProps) {
   const [selectedDatasetId, setSelectedDatasetId] = useState<string | null>(null);
   const [errorDatasetId, setErrorDatasetId] = useState<string | null>(null);
   const [datasets, setDatasets] = useState<Dataset[]>([]);
@@ -74,6 +76,7 @@ export function RecentUploads({ projectId, refreshTrigger }: RecentUploadsProps)
   const router = useRouter();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { showUploadCompletionNotification } = useNotifications();
+  const { status: sseStatus, addEventListener, removeEventListener } = useSSE();
 
   const fetchDatasets = useCallback(async () => {
     // Don't fetch if auth is still loading
@@ -174,6 +177,78 @@ export function RecentUploads({ projectId, refreshTrigger }: RecentUploadsProps)
       });
     }
   }, [refreshTrigger, isAuthenticated, authLoading]); // Removed executeWithRetry from deps to prevent infinite loop
+
+  // SSE Real-time updates
+  useEffect(() => {
+    if (!sseStatus.connected) return;
+
+    const handleJobUpdate = (event: SSEEvent) => {
+      const { jobId, status, progress, message } = event.data;
+      console.log('SSE Job update:', { jobId, status, progress, message });
+      
+      // Update dataset status based on job updates
+      setDatasets(prevDatasets => {
+        return prevDatasets.map(dataset => {
+          // Find dataset with matching job
+          const hasJob = dataset.jobs?.some(job => job.id === jobId);
+          if (hasJob) {
+            // Update job status
+            const updatedJobs = dataset.jobs?.map(job => 
+              job.id === jobId 
+                ? { ...job, status: status, progress: progress || 0 }
+                : job
+            );
+
+            // Map job status to dataset status
+            let datasetStatus = dataset.status;
+            if (status === 'PROCESSING') datasetStatus = 'PROCESSING';
+            else if (status === 'COMPLETED') datasetStatus = 'COMPLETED';
+            else if (status === 'FAILED') datasetStatus = 'FAILED';
+
+            return { ...dataset, status: datasetStatus, jobs: updatedJobs };
+          }
+          return dataset;
+        });
+      });
+    };
+
+    const handleDatasetUpdate = (event: SSEEvent) => {
+      const { datasetId, status, findingsCount, message } = event.data;
+      console.log('SSE Dataset update:', { datasetId, status, findingsCount, message });
+      
+      setDatasets(prevDatasets => {
+        return prevDatasets.map(dataset => {
+          if (dataset.id === datasetId) {
+            const updatedDataset = { 
+              ...dataset, 
+              status: status,
+              ...(findingsCount !== undefined && {
+                _count: { ...dataset._count, findings: findingsCount }
+              })
+            };
+
+            // Show notification for completed datasets
+            if (dataset.status !== 'COMPLETED' && status === 'COMPLETED') {
+              showUploadCompletionNotification(dataset.filename, findingsCount || 0);
+            }
+
+            return updatedDataset;
+          }
+          return dataset;
+        });
+      });
+    };
+
+    // Register event listeners
+    addEventListener('job_status', handleJobUpdate);
+    addEventListener('dataset_update', handleDatasetUpdate);
+
+    // Cleanup
+    return () => {
+      removeEventListener('job_status', handleJobUpdate);
+      removeEventListener('dataset_update', handleDatasetUpdate);
+    };
+  }, [sseStatus.connected, addEventListener, removeEventListener, showUploadCompletionNotification]);
 
   // Smart polling with dynamic intervals based on dataset activity
   const { refresh: manualRefresh } = useSmartRefresh(
@@ -331,6 +406,20 @@ export function RecentUploads({ projectId, refreshTrigger }: RecentUploadsProps)
             errorCount={fetchError ? 1 : 0}
             showDetails={true}
           />
+          
+          {/* SSE Connection Status */}
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <div className={`h-2 w-2 rounded-full ${
+              sseStatus.connected 
+                ? 'bg-green-500' 
+                : sseStatus.connecting 
+                  ? 'bg-yellow-500 animate-pulse' 
+                  : 'bg-red-500'
+            }`} />
+            <span className="hidden sm:inline">
+              {sseStatus.connected ? 'Real-time' : sseStatus.connecting ? 'Connecting' : 'Offline'}
+            </span>
+          </div>
           <Button
             variant="outline"
             size="sm"

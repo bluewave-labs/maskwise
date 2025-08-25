@@ -25,15 +25,15 @@ export function PIIDistributionChart({ data, onEntityClick }: PIIDistributionCha
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-background border border-border rounded-md p-3 shadow-md">
+        <div className="bg-background border border-border rounded-md p-3 shadow-md text-[13px]">
           <p className="font-medium">{data.entityType}</p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground">
             Count: {data.count.toLocaleString()}
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground">
             Percentage: {data.percentage.toFixed(1)}%
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground">
             Risk Level: <span className="font-medium" style={{ color: getRiskColor(data.riskLevel) }}>
               {data.riskLevel.toUpperCase()}
             </span>

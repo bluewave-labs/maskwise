@@ -18,12 +18,16 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   isActive  Boolean  @default(true)
+  notificationPreferences Json? // Notification settings
 
   // Relations
-  projects   Project[]
-  auditLogs  AuditLog[]
-  createdJobs Job[] @relation("CreatedBy")
-  apiKeys    ApiKey[]
+  projects        Project[]
+  auditLogs       AuditLog[]
+  createdJobs     Job[] @relation("CreatedBy")
+  apiKeys         ApiKey[]
+  reportTemplates ReportTemplate[]
+  generatedReports GeneratedReport[]
+  notifications   Notification[]
 
   @@map("users")
 }
@@ -100,8 +104,8 @@ model Job {
   dataset   Dataset @relation(fields: [datasetId], references: [id], onDelete: Cascade)
   createdById String
   createdBy   User   @relation("CreatedBy", fields: [createdById], references: [id])
-  policy      Policy @relation(fields: [policyId], references: [id])
-  policyId    String
+  policy      Policy? @relation(fields: [policyId], references: [id])
+  policyId    String?
 
   @@map("jobs")
 }
@@ -307,6 +311,10 @@ enum AuditAction {
   LOGIN
   LOGOUT
   DATASET_ANONYMIZED
+  REPORT_TEMPLATE_CREATED
+  REPORT_TEMPLATE_UPDATED
+  REPORT_TEMPLATE_DELETED
+  REPORT_GENERATED
 }
 
 enum PolicyTemplateCategory {
@@ -336,4 +344,83 @@ model ApiKey {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   @@map("api_keys")
+}
+
+model ReportTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  layout      Json     // Report layout configuration with components
+  isDefault   Boolean  @default(false)
+  tags        String[] // Tags for organizing templates
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  generatedReports GeneratedReport[]
+  
+  @@map("report_templates")
+}
+
+model GeneratedReport {
+  id           String      @id @default(cuid()) // Used as report ID for downloads
+  templateId   String?     // Nullable for custom layouts
+  templateName String      // Store template name for reference
+  title        String      // Report title
+  format       ReportFormat
+  filePath     String      // Local file path for storage
+  fileName     String      // Original filename for downloads
+  expiresAt    DateTime    // Automatic cleanup date
+  metadata     Json?       // Additional report metadata
+  createdAt    DateTime    @default(now())
+  
+  // Relations
+  userId       String
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template     ReportTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  
+  @@map("generated_reports")
+}
+
+model Notification {
+  id          String            @id @default(cuid())
+  title       String
+  message     String
+  type        NotificationType  @default(INFO)
+  category    NotificationCategory @default(SYSTEM)
+  isRead      Boolean           @default(false)
+  readAt      DateTime?
+  metadata    Json?             // Additional notification data
+  actionUrl   String?           // URL for notification action
+  actionLabel String?           // Label for action button
+  createdAt   DateTime          @default(now())
+  
+  // Relations
+  userId      String
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, createdAt])
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+}
+
+enum NotificationCategory {
+  SYSTEM
+  JOB
+  SECURITY
+  USER
+}
+
+enum ReportFormat {
+  JSON
+  PDF
 }

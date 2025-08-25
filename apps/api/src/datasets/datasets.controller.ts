@@ -18,6 +18,7 @@ import { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { diskStorage } from 'multer';
+import { UploadRateLimit, ModerateRateLimit, HeavyOperationRateLimit } from '../throttling/rate-limit.decorators';
 import { extname } from 'path';
 import * as fs from 'fs';
 
@@ -175,6 +176,7 @@ export class DatasetsController {
   constructor(private readonly datasetsService: DatasetsService) {}
 
   @Post('upload')
+  @UploadRateLimit()
   @AdminOnly() // Only admins can upload files
   @ApiOperation({ summary: 'Upload file and create dataset' })
   @ApiConsumes('multipart/form-data')

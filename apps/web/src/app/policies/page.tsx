@@ -16,11 +16,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import { usePolicies, usePolicyTemplates } from '@/hooks/usePolicies';
 import { Policy, STATUS_COLORS } from '@/types/policy';
-import { Search, Plus, FileText, Settings, Calendar, ChevronLeft, ChevronRight, Trash2, Copy } from 'lucide-react';
+import { Search, Plus, FileText, Settings, Calendar, ChevronLeft, ChevronRight, Trash2, Copy, Edit } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { Skeleton } from '@/components/ui/skeleton';
 import Counter from '@/components/ui/counter';
 import { useToast } from '@/hooks/use-toast';
+// Use lazy loaded policy editor to reduce bundle size
+import { LazyPolicyEditorModal as PolicyEditorModal } from '@/components/lazy/lazy-components';
 
 function PoliciesContent() {
   const router = useRouter();
@@ -46,6 +48,8 @@ function PoliciesContent() {
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [selectedTemplateForCreation, setSelectedTemplateForCreation] = useState<any>(null);
   const [templatePolicyName, setTemplatePolicyName] = useState('');
+  const [policyEditorOpen, setPolicyEditorOpen] = useState(false);
+  const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
   const [totalStats, setTotalStats] = useState({
     totalPolicies: 0,
     activePolicies: 0,
@@ -115,6 +119,22 @@ function PoliciesContent() {
     setPolicyToDelete(null);
   };
 
+  const handleCreateNewPolicy = () => {
+    setEditingPolicy(null);
+    setPolicyEditorOpen(true);
+  };
+
+  const handleEditPolicy = (policy: Policy) => {
+    setEditingPolicy(policy);
+    setPolicyEditorOpen(true);
+  };
+
+  const handlePolicyEditorSave = async () => {
+    // Refresh the policies list after save
+    await fetchPolicies({ page: currentPage, limit: pageSize });
+    fetchTotalStats();
+  };
+
   const handleCreateFromTemplate = async () => {
     if (!selectedTemplateForCreation || !templatePolicyName.trim()) return;
     
@@ -148,7 +168,7 @@ function PoliciesContent() {
 
   const getPolicyStatus = (policy: Policy): 'active' | 'inactive' | 'draft' => {
     if (!policy.isActive) return 'inactive';
-    if (policy._count.versions === 0) return 'draft';
+    if (policy._count?.versions === 0) return 'draft';
     return 'active';
   };
 
@@ -269,7 +289,7 @@ function PoliciesContent() {
           Templates ({templates.length})
         </Button>
         <Button 
-          onClick={() => router.push('/policies/create')}
+          onClick={handleCreateNewPolicy}
           className="h-[34px]"
         >
           <Plus className="w-4 h-4 mr-2" />
@@ -466,14 +486,25 @@ function PoliciesContent() {
                           </td>
                           <td className="p-4">
                             <div className="text-[13px] text-gray-900">{policy.version}</div>
-                            <div className="text-[13px] text-gray-500">{policy._count.versions} version{policy._count.versions !== 1 ? 's' : ''}</div>
+                            <div className="text-[13px] text-gray-500">{policy._count?.versions || 0} version{(policy._count?.versions || 0) !== 1 ? 's' : ''}</div>
                           </td>
                           <td className="p-4 text-[13px] text-gray-500">
                             {formatDate(policy.updatedAt)}
                           </td>
                           <td className="p-4">
                             {isAdmin(user) && (
-                              <div onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center space-x-1" onClick={(e) => e.stopPropagation()}>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditPolicy(policy);
+                                  }}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
                                 <Button 
                                   variant="ghost" 
                                   size="sm" 
@@ -564,7 +595,7 @@ function PoliciesContent() {
                       <p className="text-gray-600 text-[13px] mb-3">{template.description}</p>
                       <div className="flex items-center gap-4 text-[13px] text-gray-500">
                         <span>Category: {template.category}</span>
-                        <span>Version: {template.version}</span>
+                        <span>Version: {(template as any).version || '1.0.0'}</span>
                         <Badge variant="secondary">Template</Badge>
                       </div>
                     </div>
@@ -670,6 +701,14 @@ function PoliciesContent() {
         confirmText="Delete Policy"
         cancelText="Cancel"
         variant="destructive"
+      />
+
+      {/* Policy Editor Modal */}
+      <PolicyEditorModal
+        open={policyEditorOpen}
+        onOpenChange={setPolicyEditorOpen}
+        policy={editingPolicy}
+        onSave={handlePolicyEditorSave}
       />
     </div>
   );

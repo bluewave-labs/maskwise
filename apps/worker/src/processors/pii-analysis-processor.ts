@@ -3,6 +3,7 @@ import { BaseProcessor } from './base-processor.js';
 import { presidioService, AnalysisResult } from '../services/presidio.service.js';
 import { policyService, PolicyConfig } from '../services/policy.service.js';
 import { textExtractionService, TextExtractionResult } from '../services/text-extraction.service.js';
+import { sseClientService } from '../services/sse-client.service.js';
 import { logger } from '../utils/logger.js';
 import { JobData, JobType, JobStatus, PIIAnalysisJobData } from '../types/jobs.js';
 import { db } from '../database/prisma.js';
@@ -44,6 +45,15 @@ export class PIIAnalysisProcessor extends BaseProcessor {
       // Update job status to processing
       await this.updateJobStatus(job.data.jobId, JobStatus.PROCESSING, 10);
       
+      // Send real-time update
+      await sseClientService.sendJobUpdate({
+        jobId: job.data.jobId,
+        status: 'PROCESSING',
+        userId: job.data.userId,
+        progress: 10,
+        message: 'Starting PII analysis...'
+      });
+      
       // Get dataset information
       const dataset = await db.client.dataset.findUnique({
         where: { id: datasetId! },
@@ -76,6 +86,15 @@ export class PIIAnalysisProcessor extends BaseProcessor {
 
       // Update progress
       await this.updateJobStatus(job.data.jobId, JobStatus.PROCESSING, 20);
+      
+      // Send real-time update
+      await sseClientService.sendJobUpdate({
+        jobId: job.data.jobId,
+        status: 'PROCESSING',
+        userId: job.data.userId,
+        progress: 20,
+        message: `Extracting text from ${dataset.filename}...`
+      });
 
       // Extract text content based on file type
       const jobData = job.data as PIIAnalysisJobData;
@@ -93,6 +112,15 @@ export class PIIAnalysisProcessor extends BaseProcessor {
 
       // Update progress
       await this.updateJobStatus(job.data.jobId, JobStatus.PROCESSING, 40);
+      
+      // Send real-time update
+      await sseClientService.sendJobUpdate({
+        jobId: job.data.jobId,
+        status: 'PROCESSING',
+        userId: job.data.userId,
+        progress: 40,
+        message: 'Analyzing text for PII entities...'
+      });
 
       // Configure analysis based on policy
       const analysisConfig = await this.buildAnalysisConfig(currentJob.policy, textContent);
