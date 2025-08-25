@@ -11,8 +11,11 @@ import { JobsModule } from './jobs/jobs.module';
 import { ReportsModule } from './reports/reports.module';
 import { ApiKeysModule } from './api-keys/api-keys.module';
 import { SystemModule } from './system/system.module';
+import { HealthModule } from './health/health.module';
 import { DatabaseModule } from './common/database.module';
 import { V1Module } from './v1/v1.module';
+import { SSEModule } from './sse/sse.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -37,6 +40,9 @@ import { V1Module } from './v1/v1.module';
     ReportsModule,
     ApiKeysModule,
     SystemModule,
+    HealthModule,
+    SSEModule,
+    NotificationsModule,
     V1Module,
   ],
 })

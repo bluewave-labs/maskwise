@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/hooks/useAuth'
 import { OnboardingProvider } from '@/hooks/useOnboarding'
+import { SWRProvider } from '@/providers/swr-provider'
 import { Toaster } from '@/components/ui/toaster'
 import { PageErrorBoundary } from '@/components/error/error-boundary'
 
@@ -22,12 +23,14 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <PageErrorBoundary>
-          <AuthProvider>
-            <OnboardingProvider>
-              {children}
-              <Toaster />
-            </OnboardingProvider>
-          </AuthProvider>
+          <SWRProvider>
+            <AuthProvider>
+              <OnboardingProvider>
+                {children}
+                <Toaster />
+              </OnboardingProvider>
+            </AuthProvider>
+          </SWRProvider>
         </PageErrorBoundary>
       </body>
     </html>

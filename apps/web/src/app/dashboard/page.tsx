@@ -9,7 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import Counter from '@/components/ui/counter';
 import { useAuth } from '@/hooks/useAuth';
-import { useDashboardStats } from '@/hooks/useDashboardStats';
+// Use optimized SWR hook for better caching
+import { useDashboardStatsOptimized as useDashboardStats } from '@/hooks/useSWRData';
 import { TrendingUp, Database, Shield, Users, Activity, Upload, FolderPlus, FileText, Eye, Sparkles, Key, ArrowRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 

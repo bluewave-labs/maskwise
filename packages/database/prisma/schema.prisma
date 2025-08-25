@@ -18,6 +18,7 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   isActive  Boolean  @default(true)
+  notificationPreferences Json? // Notification settings
 
   // Relations
   projects        Project[]
@@ -26,6 +27,7 @@ model User {
   apiKeys         ApiKey[]
   reportTemplates ReportTemplate[]
   generatedReports GeneratedReport[]
+  notifications   Notification[]
 
   @@map("users")
 }
@@ -380,6 +382,42 @@ model GeneratedReport {
   template     ReportTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
   
   @@map("generated_reports")
+}
+
+model Notification {
+  id          String            @id @default(cuid())
+  title       String
+  message     String
+  type        NotificationType  @default(INFO)
+  category    NotificationCategory @default(SYSTEM)
+  isRead      Boolean           @default(false)
+  readAt      DateTime?
+  metadata    Json?             // Additional notification data
+  actionUrl   String?           // URL for notification action
+  actionLabel String?           // Label for action button
+  createdAt   DateTime          @default(now())
+  
+  // Relations
+  userId      String
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, createdAt])
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+}
+
+enum NotificationCategory {
+  SYSTEM
+  JOB
+  SECURITY
+  USER
 }
 
 enum ReportFormat {

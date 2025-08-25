@@ -5,6 +5,7 @@ import { CreateDatasetDto } from './dto/create-dataset.dto';
 import { UploadFileDto } from './dto/upload-file.dto';
 import { FileValidatorService } from './security/file-validator.service';
 import { InputSanitizerService } from './security/input-sanitizer.service';
+import { SSEService } from '../sse/sse.service';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as mimeTypes from 'mime-types';
@@ -32,6 +33,7 @@ export class DatasetsService {
     private queueService: QueueService,
     private fileValidator: FileValidatorService,
     private inputSanitizer: InputSanitizerService,
+    private sseService: SSEService,
   ) {}
 
   async findAll(userId: string, params?: {
@@ -283,12 +285,34 @@ export class DatasetsService {
         where: { id: dataset.id },
         data: { status: 'PENDING' },
       });
+
+      // Send real-time notification about job start
+      this.sseService.sendJobUpdate(
+        job.id,
+        'QUEUED',
+        userId,
+        0,
+        `PII analysis started for ${file.originalname}`
+      );
+
+      this.sseService.sendDatasetUpdate(
+        dataset.id,
+        'PENDING',
+        userId
+      );
     } else {
       // If not processing immediately, set status to UPLOADED
       await this.prisma.dataset.update({
         where: { id: dataset.id },
         data: { status: 'UPLOADED' },
       });
+
+      // Send notification for upload without processing
+      this.sseService.sendDatasetUpdate(
+        dataset.id,
+        'UPLOADED',
+        userId
+      );
     }
 
     // Log audit action

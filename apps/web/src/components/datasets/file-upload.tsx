@@ -36,9 +36,11 @@ import { api as apiClient } from '@/lib/api';
 
 interface FileUploadProps {
   projectId?: string;
+  policyId?: string;
   onUploadComplete?: (result: any) => void;
   maxFileSize?: number; // in MB
   acceptedTypes?: string[];
+  className?: string;
 }
 
 interface UploadFile {
@@ -65,6 +67,7 @@ interface UploadFile {
 
 export function FileUpload({ 
   projectId, 
+  policyId: propPolicyId,
   onUploadComplete, 
   maxFileSize = 100,
   acceptedTypes = [
@@ -78,12 +81,13 @@ export function FileUpload({
     'image/jpeg',
     'image/png',
     'image/tiff'
-  ]
+  ],
+  className
 }: FileUploadProps) {
   const [files, setFiles] = useState<UploadFile[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const [description, setDescription] = useState('');
-  const [selectedPolicyId, setSelectedPolicyId] = useState<string>('');
+  const [selectedPolicyId, setSelectedPolicyId] = useState<string>(propPolicyId || '');
   const [processImmediately, setProcessImmediately] = useState(false);
   const [policies, setPolicies] = useState<any[]>([]);
   const [loadingPolicies, setLoadingPolicies] = useState(false);
@@ -611,7 +615,7 @@ export function FileUpload({
   const hasWarnings = files.some(f => f.validation?.warnings.length > 0 || f.preview?.warnings.length > 0);
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${className || ''}`}>
       {/* Upload Area */}
       <Card className="p-6">
         <div className="space-y-4">

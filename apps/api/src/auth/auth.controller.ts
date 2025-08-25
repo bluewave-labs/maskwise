@@ -6,6 +6,7 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { AuthRateLimit, StrictRateLimit } from '../throttling/rate-limit.decorators';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -13,6 +14,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
+  @AuthRateLimit()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login user' })
   @ApiResponse({ 
@@ -42,6 +44,7 @@ export class AuthController {
   }
 
   @Post('register')
+  @StrictRateLimit()
   @ApiOperation({ summary: 'Register new user' })
   @ApiResponse({ 
     status: 201, 

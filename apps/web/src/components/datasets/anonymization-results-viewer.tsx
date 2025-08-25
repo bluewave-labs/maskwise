@@ -251,7 +251,7 @@ export function AnonymizationResultsViewer({
 
   // Calculate protection metrics
   const getProtectionMetrics = (data: AnonymizationData) => {
-    const entityTypes = [...new Set(data.operations.map(op => op.entity_type))];
+    const entityTypes = Array.from(new Set(data.operations.map(op => op.entity_type)));
     const protectionPercentage = data.operations.length > 0 
       ? Math.round((data.operations.length / (data.operations.length + 10)) * 100) // Simplified calculation
       : 0;

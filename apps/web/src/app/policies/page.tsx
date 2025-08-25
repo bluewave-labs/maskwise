@@ -21,7 +21,8 @@ import { Spinner } from '@/components/ui/spinner';
 import { Skeleton } from '@/components/ui/skeleton';
 import Counter from '@/components/ui/counter';
 import { useToast } from '@/hooks/use-toast';
-import { PolicyEditorModal } from '@/components/policies/policy-editor-modal';
+// Use lazy loaded policy editor to reduce bundle size
+import { LazyPolicyEditorModal as PolicyEditorModal } from '@/components/lazy/lazy-components';
 
 function PoliciesContent() {
   const router = useRouter();
@@ -167,7 +168,7 @@ function PoliciesContent() {
 
   const getPolicyStatus = (policy: Policy): 'active' | 'inactive' | 'draft' => {
     if (!policy.isActive) return 'inactive';
-    if (policy._count.versions === 0) return 'draft';
+    if (policy._count?.versions === 0) return 'draft';
     return 'active';
   };
 
@@ -485,7 +486,7 @@ function PoliciesContent() {
                           </td>
                           <td className="p-4">
                             <div className="text-[13px] text-gray-900">{policy.version}</div>
-                            <div className="text-[13px] text-gray-500">{policy._count.versions} version{policy._count.versions !== 1 ? 's' : ''}</div>
+                            <div className="text-[13px] text-gray-500">{policy._count?.versions || 0} version{(policy._count?.versions || 0) !== 1 ? 's' : ''}</div>
                           </td>
                           <td className="p-4 text-[13px] text-gray-500">
                             {formatDate(policy.updatedAt)}
@@ -594,7 +595,7 @@ function PoliciesContent() {
                       <p className="text-gray-600 text-[13px] mb-3">{template.description}</p>
                       <div className="flex items-center gap-4 text-[13px] text-gray-500">
                         <span>Category: {template.category}</span>
-                        <span>Version: {template.version}</span>
+                        <span>Version: {(template as any).version || '1.0.0'}</span>
                         <Badge variant="secondary">Template</Badge>
                       </div>
                     </div>

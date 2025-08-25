@@ -4,11 +4,14 @@ import { useState } from 'react';
 import { ProtectedRoute } from '@/components/auth/protected-route';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { SimpleAnimatedTabs } from '@/components/ui/simple-animated-tabs';
-import { OverviewInsights } from '@/components/reports/overview-insights';
-import { PIIDetectionAnalysis } from '@/components/reports/pii-detection-analysis';
-import { ComplianceRiskTab } from '@/components/reports/compliance-risk-tab';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { SectionErrorBoundary } from '@/components/error/error-boundary';
+// Use lazy loaded components for heavy charts
+import { 
+  LazyOverviewInsights as OverviewInsights,
+  LazyPIIDetectionAnalysis as PIIDetectionAnalysis,
+  LazyComplianceRiskTab as ComplianceRiskTab
+} from '@/components/lazy/lazy-components';
 
 export default function ReportsPage() {
   const [activeTab, setActiveTab] = useState('overview');

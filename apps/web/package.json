@@ -6,9 +6,14 @@
   "scripts": {
     "dev": "next dev -p 4200",
     "build": "next build",
+    "build:analyze": "ANALYZE=true next build",
     "start": "next start -p 4200",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
     "clean": "rm -rf .next out"
   },
   "dependencies": {
@@ -39,11 +44,13 @@
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.48.2",
     "recharts": "^2.8.0",
+    "swr": "^2.3.6",
     "tailwind-merge": "^2.0.0",
     "tailwindcss-animate": "^1.0.7",
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@next/bundle-analyzer": "^15.5.0",
     "@types/js-cookie": "^3.0.6",
     "@types/node": "^20.8.0",
     "@types/react": "^18.2.37",
