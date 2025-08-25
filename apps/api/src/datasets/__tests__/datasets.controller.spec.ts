@@ -48,10 +48,10 @@ describe('DatasetsController', () => {
   };
 
   const mockDatasetsService = {
-    upload: jest.fn(),
+    uploadFile: jest.fn(),
     findAll: jest.fn(),
     findOne: jest.fn(),
-    remove: jest.fn(),
+    delete: jest.fn(),
     getFindings: jest.fn(),
   };
 

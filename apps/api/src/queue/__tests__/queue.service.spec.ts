@@ -482,14 +482,14 @@ describe('QueueService', () => {
       expect(service.onModuleInit).toBeDefined();
     });
 
-    it('should use correct Redis configuration parsing', async () => {
+    it('should normalize invalid Redis port to default (6379)', async () => {
       process.env.REDIS_PORT = 'invalid-port';
 
       await service.onModuleInit();
 
       expect(MockRedis).toHaveBeenCalledWith({
         host: 'localhost',
-        port: NaN, // parseInt of invalid string returns NaN
+        port: 6379, // invalid parse falls back to default
         maxRetriesPerRequest: null,
       });
 

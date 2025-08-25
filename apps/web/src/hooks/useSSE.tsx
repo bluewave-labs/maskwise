@@ -91,12 +91,10 @@ export const useSSE = (): SSEHookReturn => {
 
           // Handle notifications with toast
           if (sseEvent.type === 'notification') {
-            const { title, message, type } = sseEvent.data;
-            toast({
-              title,
-              description: message,
-              variant: type === 'error' ? 'destructive' : 'default',
-            });
+            const { title, message, type } = sseEvent.data ?? {};
+            const normalized = typeof type === 'string' ? type.toUpperCase() : 'INFO';
+            const variant = normalized === 'ERROR' ? 'destructive' : 'default';
+            toast({ title, description: message, variant });
           }
 
           // Trigger event listeners
