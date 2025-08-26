@@ -1,0 +1,138 @@
+name: Build and Publish Docker Images
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build and publish'
+        required: true
+        default: 'latest'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/maskwise
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [api, worker, web]
+        include:
+          - service: api
+            dockerfile: ./apps/api/Dockerfile
+            context: .
+            port: 3001
+          - service: worker
+            dockerfile: ./apps/worker/Dockerfile
+            context: .
+            port: none
+          - service: web
+            dockerfile: ./apps/web/Dockerfile
+            context: .
+            port: 3000
+    
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_PREFIX }}-${{ matrix.service }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:latest
+          format: 'sarif'
+          output: 'trivy-${{ matrix.service }}.sarif'
+        continue-on-error: true
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-${{ matrix.service }}.sarif'
+        continue-on-error: true
+
+  update-docker-compose:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update docker-compose with new image tags
+        run: |
+          # Get the release tag
+          TAG=${GITHUB_REF#refs/tags/}
+          
+          # Update docker-compose.yml to use the new images
+          sed -i "s|build:|# build:|g" docker-compose.yml
+          sed -i "s|context: \.|# context: .|g" docker-compose.yml
+          sed -i "s|dockerfile: \./apps/api/Dockerfile|# dockerfile: ./apps/api/Dockerfile|g" docker-compose.yml
+          sed -i "s|dockerfile: \./apps/worker/Dockerfile|# dockerfile: ./apps/worker/Dockerfile|g" docker-compose.yml
+          sed -i "s|dockerfile: \./apps/web/Dockerfile|# dockerfile: ./apps/web/Dockerfile|g" docker-compose.yml
+          
+          # Add image references
+          sed -i "/api:/a \ \ image: ghcr.io/${{ github.repository_owner }}/maskwise-api:${TAG}" docker-compose.yml
+          sed -i "/worker:/a \ \ image: ghcr.io/${{ github.repository_owner }}/maskwise-worker:${TAG}" docker-compose.yml
+          sed -i "/web:/a \ \ image: ghcr.io/${{ github.repository_owner }}/maskwise-web:${TAG}" docker-compose.yml
+
+      - name: Create Production Docker Compose
+        run: |
+          cp docker-compose.yml docker-compose.production.yml
+          echo "Created production docker-compose with image tags"
+
+      - name: Commit updated docker-compose
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add docker-compose.production.yml
+          git commit -m "chore: add production docker-compose with release images for ${GITHUB_REF#refs/tags/}" || exit 0
+          git push

@@ -74,11 +74,23 @@ services:
       retries: 3
     restart: unless-stopped
 
+  # Tesseract OCR service
+  tesseract:
+    image: hertzg/tesseract-server:latest
+    ports:
+      - "${TESSERACT_PORT:-8884}:3000"
+    environment:
+      - PORT=3000
+    healthcheck:
+      test: ["CMD", "node", "--version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
   # Backend API
   api:
-    build:
-      context: .
-      dockerfile: ./apps/api/Dockerfile
+    image: ghcr.io/bluewave-labs/maskwise-api:v1.1.1
     ports:
       - "${API_PORT:-3001}:3001"
     environment:
@@ -106,6 +118,8 @@ services:
         condition: service_healthy
       tika:
         condition: service_healthy
+      tesseract:
+        condition: service_healthy
     restart: unless-stopped
     deploy:
       resources:
@@ -116,9 +130,7 @@ services:
 
   # Worker service
   worker:
-    build:
-      context: .
-      dockerfile: ./apps/worker/Dockerfile
+    image: ghcr.io/bluewave-labs/maskwise-worker:v1.1.1
     environment:
       - NODE_ENV=${NODE_ENV:-production}
       - DATABASE_URL=postgresql://${POSTGRES_USER:-maskwise}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-maskwise}
@@ -143,6 +155,8 @@ services:
         condition: service_healthy
       tika:
         condition: service_healthy
+      tesseract:
+        condition: service_healthy
     restart: unless-stopped
     deploy:
       replicas: 2
@@ -154,9 +168,7 @@ services:
 
   # Frontend web app
   web:
-    build:
-      context: .
-      dockerfile: ./apps/web/Dockerfile
+    image: ghcr.io/bluewave-labs/maskwise-web:v1.1.1
     ports:
       - "${WEB_PORT:-3000}:3000"
     environment:

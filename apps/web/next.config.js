@@ -9,6 +9,9 @@ const nextConfig = {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
   },
   
+  // Enable standalone output for Docker
+  output: 'standalone',
+  
   // Performance optimizations
   swcMinify: true,
   compress: true,
