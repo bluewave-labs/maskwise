@@ -115,15 +115,6 @@ services:
         condition: service_healthy
       tika:
         condition: service_healthy
-    develop:
-      watch:
-        - action: sync
-          path: ./apps/api
-          target: /app
-          ignore:
-            - node_modules/
-        - action: rebuild
-          path: ./apps/api/package.json
 
   # Worker service
   worker:
@@ -154,15 +145,6 @@ services:
         condition: service_healthy
       tika:
         condition: service_healthy
-    develop:
-      watch:
-        - action: sync
-          path: ./apps/worker
-          target: /app
-          ignore:
-            - node_modules/
-        - action: rebuild
-          path: ./apps/worker/package.json
 
   # Frontend web app
   web:
@@ -176,16 +158,6 @@ services:
       - NODE_ENV=development
     depends_on:
       - api
-    develop:
-      watch:
-        - action: sync
-          path: ./apps/web
-          target: /app
-          ignore:
-            - node_modules/
-            - .next/
-        - action: rebuild
-          path: ./apps/web/package.json
 
 volumes:
   postgres_data:

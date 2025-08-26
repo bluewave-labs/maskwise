@@ -8,8 +8,7 @@ help:
 	@echo "====================================="
 	@echo ""
 	@echo "Setup:"
-	@echo "  make install     Install dependencies"
-	@echo "  make setup       First-time setup (install + start)"
+	@echo "  make install     Install dependencies (see README.md for full setup)"
 	@echo ""
 	@echo "Development:"
 	@echo "  make dev         Start development servers (local)"
@@ -44,10 +43,7 @@ install:
 	@echo "📦 Installing dependencies..."
 	npm install
 
-setup: install start
-	@echo "🎉 Setup complete! Access the app at:"
-	@echo "   Frontend: http://localhost:4200"
-	@echo "   API: http://localhost:3001"
+# Note: 'make setup' has been removed - use README.md installation steps instead
 
 # Development
 dev:

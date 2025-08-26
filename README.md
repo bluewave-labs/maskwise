@@ -85,34 +85,100 @@ This is a monorepo containing:
 
 ## Quick Start
 
-### Option 1: Super Easy (Recommended)
+### Prerequisites
+- **Docker** and **Docker Compose** installed and running
+- **Node.js 18+** and **npm** installed
+- **PostgreSQL client** (optional, for direct database access)
+
+### Quick Setup Script (Alternative)
 ```bash
-# One-command setup and start
-make setup
+# Automated setup of infrastructure and database
+./start-dev.sh
+```
+Then follow the terminal instructions to start the three application services.
+
+### Installation Steps (Manual)
+
+1. **Clone and Install Dependencies**
+   ```bash
+   git clone https://github.com/your-org/maskwise.git
+   cd maskwise
+   npm install
+   ```
+
+2. **Start Infrastructure Services**
+   ```bash
+   # Start PostgreSQL, Redis, Presidio, Tika, and Tesseract
+   docker-compose up -d postgres redis presidio-analyzer presidio-anonymizer tika tesseract
+   
+   # Wait for services to be healthy (about 30-60 seconds)
+   docker-compose ps
+   ```
+
+3. **Set Up Database**
+   ```bash
+   # Navigate to database package
+   cd packages/database
+   
+   # Generate Prisma client
+   npx prisma generate
+   
+   # Run migrations
+   npx prisma migrate deploy
+   
+   # Seed database with admin user and policies
+   npx prisma db seed
+   
+   # Return to project root
+   cd ../..
+   ```
+
+4. **Start Application Services**
+   
+   Open 3 separate terminals and run:
+   
+   **Terminal 1 - API Server:**
+   ```bash
+   cd apps/api
+   JWT_SECRET=maskwise_jwt_secret_dev_only \
+   DATABASE_URL=postgresql://maskwise:maskwise_dev_password@localhost:5436/maskwise \
+   REDIS_URL=redis://localhost:6379 \
+   npm run dev
+   ```
+   
+   **Terminal 2 - Worker Service:**
+   ```bash
+   cd apps/worker
+   npm run dev
+   ```
+   
+   **Terminal 3 - Web Frontend:**
+   ```bash
+   cd apps/web
+   npx next dev -p 3005
+   ```
+
+5. **Access the Application**
+   - **Frontend**: http://localhost:3005
+   - **API**: http://localhost:3001
+   - **Default Admin**: admin@maskwise.com / admin123
+
+### Verification
+```bash
+# Check Docker services are healthy
+docker-compose ps
+
+# Test API is responding
+curl http://localhost:3001/health
+
+# All services should show as running/healthy
 ```
 
-### Option 2: Manual Steps
-```bash
-# 1. Install dependencies
-npm install
-
-# 2. Start all services
-./scripts/deploy.sh
-# OR
-npm run docker:up
-```
-
-### Option 3: Development Mode
-```bash
-# Start development servers (requires Docker services running)
-make dev
-```
-
-**Access the application:**
-- Frontend: http://localhost:4200
-- API: http://localhost:3001  
-- API Docs: http://localhost:3001/api/docs
-- Default admin: admin@maskwise.com / admin123
+### Troubleshooting
+- **Port conflicts**: Change ports in the commands above if needed
+- **Docker issues**: Run `docker-compose down` and restart
+- **Database connection**: Ensure PostgreSQL container is healthy before starting API
+- **Missing dependencies**: Run `npm install` in individual app directories if needed
 
 ## Production Deployment
 
@@ -169,17 +235,39 @@ make dev
 
 ## Development
 
-```bash
-# Start development servers
-npm run dev
+### Starting Development Environment
+Follow the installation steps above to run in development mode.
 
-# Build all packages
-npm run build
+### Building and Testing
+```bash
+# Build individual packages
+cd apps/api && npm run build
+cd apps/web && npm run build
+cd apps/worker && npm run build
 
 # Run linting
-npm run lint
+cd apps/api && npm run lint
+cd apps/web && npm run lint
 
 # Type checking
-npm run type-check
+cd apps/api && npm run type-check
+cd apps/web && npm run type-check
+
+# Run tests
+cd apps/api && npm test
+```
+
+### Database Operations
+```bash
+cd packages/database
+
+# Reset database (careful!)
+npx prisma migrate reset
+
+# Apply new migrations
+npx prisma migrate dev
+
+# View data in browser
+npx prisma studio
 ```
 
