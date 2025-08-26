@@ -10,10 +10,10 @@ COPY packages/ ./packages/
 COPY apps/web/ ./apps/web/
 
 # Install dependencies
-RUN npm ci --only=production
+RUN npm ci
 
 # Build the Next.js application
-RUN npm run build --workspace=@maskwise/web
+RUN cd apps/web && npm run build
 
 # Production stage with minimal footprint
 FROM node:18-alpine AS production

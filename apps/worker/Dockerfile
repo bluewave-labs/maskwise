@@ -10,10 +10,10 @@ COPY packages/ ./packages/
 COPY apps/worker/ ./apps/worker/
 
 # Install dependencies
-RUN npm ci --only=production
+RUN npm ci
 
-# Build the application
-RUN npm run build --workspace=@maskwise/worker
+# Build the worker application
+RUN cd apps/worker && npm run build
 
 # Production stage
 FROM node:18-alpine AS production

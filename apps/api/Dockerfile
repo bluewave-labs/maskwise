@@ -10,10 +10,10 @@ COPY packages/ ./packages/
 COPY apps/api/ ./apps/api/
 
 # Install dependencies
-RUN npm ci --only=production
+RUN npm ci
 
-# Build the application
-RUN npm run build --workspace=@maskwise/api
+# Build the API application
+RUN cd apps/api && npm run build
 
 # Production stage
 FROM node:18-alpine AS production
