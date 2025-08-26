@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ProtectedRoute } from '@/components/auth/protected-route';
@@ -71,7 +71,8 @@ const SETTINGS_TABS: TabConfig[] = [
   }
 ];
 
-export default function SettingsPage() {
+// Component that uses useSearchParams - needs to be wrapped in Suspense
+function SettingsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<SettingsTab>('users');
@@ -122,13 +123,12 @@ export default function SettingsPage() {
   };
 
   return (
-    <ProtectedRoute>
-      <DashboardLayout 
-        pageTitle="Settings"
-        pageDescription="Configure your Maskwise instance and manage system preferences"
-      >
-        <div className="max-w-6xl">
-          {loading ? (
+    <DashboardLayout 
+      pageTitle="Settings"
+      pageDescription="Configure your Maskwise instance and manage system preferences"
+    >
+      <div className="max-w-6xl">
+        {loading ? (
             <div className="space-y-6">
 
               {/* Tab navigation skeleton */}
@@ -216,6 +216,37 @@ export default function SettingsPage() {
           )}
         </div>
       </DashboardLayout>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <ProtectedRoute>
+      <Suspense fallback={
+        <DashboardLayout 
+          pageTitle="Settings"
+          pageDescription="Configure your Maskwise instance and manage system preferences"
+        >
+          <div className="max-w-6xl">
+            <div className="space-y-6">
+              <div className="mb-8">
+                <div className="border-b border-border">
+                  <nav className="flex space-x-8">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div key={i} className="flex items-center space-x-2 pb-4 px-1">
+                        <Skeleton className="h-5 w-5" />
+                        <Skeleton className="h-4 w-24" />
+                      </div>
+                    ))}
+                  </nav>
+                </div>
+              </div>
+            </div>
+          </div>
+        </DashboardLayout>
+      }>
+        <SettingsContent />
+      </Suspense>
     </ProtectedRoute>
   );
 }
