@@ -19,6 +19,17 @@ Maskwise is a single-tenant data privacy platform built to detect, redact, mask,
 
 You can deploy Maskwise in 24 hours an reduce PII exposure risk by 95%. Maskwise can process thousands of documents per hour.
 
+## 🚀 Quick Deploy with Docker
+
+```bash
+git clone https://github.com/bluewave-labs/maskwise.git
+cd maskwise
+cp .env.production.example .env  # Edit with your values
+docker-compose -f docker-compose.production.yml up -d
+# Initialize: docker-compose -f docker-compose.production.yml exec api npx prisma migrate deploy && npx prisma db seed
+# Access: http://localhost:3000 (admin@maskwise.com / admin123)
+```
+
 ## Maskwise use cases for AI and LLMs
 
 ### 1. Safe training data curation  
@@ -85,7 +96,49 @@ This is a monorepo containing:
 
 ## Quick Start
 
-### Prerequisites
+### Option 1: Docker Images (Recommended for Production)
+
+**Use pre-built Docker images - no build required:**
+
+1. **Prerequisites**
+   - Docker and Docker Compose installed
+   - 4GB+ RAM available
+
+2. **Quick Deploy**
+   ```bash
+   # Clone repository
+   git clone https://github.com/bluewave-labs/maskwise.git
+   cd maskwise
+
+   # Configure environment
+   cp .env.production.example .env
+   # Edit .env with your values (set POSTGRES_PASSWORD, JWT_SECRET)
+
+   # Deploy with pre-built images
+   docker-compose -f docker-compose.production.yml up -d
+
+   # Initialize database
+   docker-compose -f docker-compose.production.yml exec api npx prisma migrate deploy
+   docker-compose -f docker-compose.production.yml exec api npx prisma db seed
+   ```
+
+3. **Access Application**
+   - **Frontend**: http://localhost:3000
+   - **API**: http://localhost:3001
+   - **Admin**: admin@maskwise.com / admin123
+
+**Docker Images Available:**
+- `ghcr.io/bluewave-labs/maskwise-api:v1.1.1`
+- `ghcr.io/bluewave-labs/maskwise-worker:v1.1.1`
+- `ghcr.io/bluewave-labs/maskwise-web:v1.1.1`
+
+See [DOCKER.md](DOCKER.md) for complete Docker deployment guide.
+
+### Option 2: Development Setup
+
+**For development with live code changes:**
+
+**Prerequisites:**
 - **Docker** and **Docker Compose** installed and running
 - **Node.js 18+** and **npm** installed
 - **PostgreSQL client** (optional, for direct database access)
@@ -182,7 +235,34 @@ curl http://localhost:3001/health
 
 ## Production Deployment
 
-### Option 1: Docker Compose (Simple)
+### Option 1: Docker Images (Recommended)
+**Deploy using pre-built Docker images from GitHub Container Registry:**
+
+```bash
+# Clone repository
+git clone https://github.com/bluewave-labs/maskwise.git
+cd maskwise
+
+# Configure production environment
+cp .env.production.example .env
+# Edit .env with secure production values
+
+# Deploy with pre-built images
+docker-compose -f docker-compose.production.yml up -d
+
+# Initialize database
+docker-compose -f docker-compose.production.yml exec api npx prisma migrate deploy
+docker-compose -f docker-compose.production.yml exec api npx prisma db seed
+```
+
+**Features:**
+- ✅ No build time required
+- ✅ Multi-platform support (amd64/arm64)  
+- ✅ Security-optimized Alpine images
+- ✅ Health checks and auto-restart
+- ✅ Resource limits configured
+
+### Option 2: Build from Source
 1. **Copy environment template**
    ```bash
    cp .env.example .env
@@ -194,7 +274,7 @@ curl http://localhost:3001/health
    make prod
    ```
 
-### Option 2: Kubernetes with Helm (Enterprise)
+### Option 3: Kubernetes with Helm (Enterprise)
 1. **Prerequisites**
    - Kubernetes cluster (1.19+)
    - Helm 3.0+
