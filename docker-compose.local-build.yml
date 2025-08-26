@@ -1,0 +1,177 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-maskwise}
+      POSTGRES_USER: ${POSTGRES_USER:-maskwise}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-maskwise_dev_password}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-maskwise}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis for job queues
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Microsoft Presidio Analyzer
+  presidio-analyzer:
+    image: mcr.microsoft.com/presidio-analyzer:latest
+    ports:
+      - "${PRESIDIO_ANALYZER_PORT:-5003}:3000"
+    environment:
+      - PORT=3000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Microsoft Presidio Anonymizer
+  presidio-anonymizer:
+    image: mcr.microsoft.com/presidio-anonymizer:latest
+    ports:
+      - "${PRESIDIO_ANONYMIZER_PORT:-5004}:3000"
+    environment:
+      - PORT=3000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Apache Tika for text extraction
+  tika:
+    image: apache/tika:latest
+    ports:
+      - "${TIKA_PORT:-9998}:9998"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9998/tika"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Tesseract OCR service
+  tesseract:
+    image: hertzg/tesseract-server:latest
+    ports:
+      - "${TESSERACT_PORT:-8884}:3000"
+    environment:
+      - PORT=3000
+    healthcheck:
+      test: ["CMD", "node", "--version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Backend API - Built locally
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    ports:
+      - "${API_PORT:-3001}:3001"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-maskwise}:${POSTGRES_PASSWORD:-maskwise_dev_password}@postgres:5432/${POSTGRES_DB:-maskwise}
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET:-your_jwt_secret_here}
+      - PRESIDIO_ANALYZER_URL=http://presidio-analyzer:3000
+      - PRESIDIO_ANONYMIZER_URL=http://presidio-anonymizer:3000
+      - TIKA_URL=http://tika:9998
+      - TESSERACT_URL=http://tesseract:8884
+      - UPLOAD_DIR=/app/uploads
+      - STORAGE_DIR=/app/storage
+    volumes:
+      - uploads_data:/app/uploads
+      - storage_data:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      presidio-analyzer:
+        condition: service_healthy
+      presidio-anonymizer:
+        condition: service_healthy
+      tika:
+        condition: service_healthy
+      tesseract:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Worker Service - Built locally
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-maskwise}:${POSTGRES_PASSWORD:-maskwise_dev_password}@postgres:5432/${POSTGRES_DB:-maskwise}
+      - REDIS_URL=redis://redis:6379
+      - PRESIDIO_ANALYZER_URL=http://presidio-analyzer:3000
+      - PRESIDIO_ANONYMIZER_URL=http://presidio-anonymizer:3000
+      - TIKA_URL=http://tika:9998
+      - TESSERACT_URL=http://tesseract:8884
+      - UPLOAD_DIR=/app/uploads
+      - STORAGE_DIR=/app/storage
+    volumes:
+      - uploads_data:/app/uploads
+      - storage_data:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      presidio-analyzer:
+        condition: service_healthy
+      presidio-anonymizer:
+        condition: service_healthy
+      tika:
+        condition: service_healthy
+      tesseract:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Web Frontend - Built locally
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - NEXT_PUBLIC_API_URL=http://localhost:3001
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  uploads_data:
+  storage_data:

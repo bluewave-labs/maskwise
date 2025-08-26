@@ -38,25 +38,15 @@ export function LoginForm() {
   });
 
   const onSubmit = async (data: LoginFormData) => {
-    console.log('Login form submitted with data:', data);
     setIsLoading(true);
     try {
-      console.log('Calling login function...');
       await login(data);
-      console.log('Login successful!');
       toast({
         title: 'Welcome back!',
         description: 'You have successfully logged in.',
       });
       router.push('/dashboard');
     } catch (error: any) {
-      console.error('Login error details:', {
-        error,
-        response: error?.response,
-        status: error?.response?.status,
-        data: error?.response?.data,
-        message: error?.message
-      });
       toast({
         variant: 'destructive',
         title: 'Login failed',
