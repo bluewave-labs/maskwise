@@ -71,6 +71,13 @@ describe('SystemController', () => {
       }
     ],
     resources: {
+      cpuUsage: 45.2,
+      memoryUsage: 68.7,
+      totalMemory: 8192,
+      usedMemory: 2048,
+      diskUsage: 25.0,
+      totalDisk: 200000,
+      usedDisk: 50000,
       cpu: {
         usage: 45.2,
         cores: 8,
@@ -89,21 +96,26 @@ describe('SystemController', () => {
         percentage: 25.0,
       },
     },
-    queues: {
-      'pii-analysis': {
+    queues: [
+      {
+        name: 'pii-analysis',
         waiting: 5,
         active: 2,
         completed: 100,
         failed: 3,
-        delayed: 0,
-        paused: false,
+        workers: 5,
       },
-    },
+    ],
     metrics: {
+      totalUsers: 50,
+      activeUsers: 15,
+      totalDatasets: 200,
+      totalFindings: 1500,
+      averageProcessingTime: 2500,
+      successRate: 92.5,
       totalJobs: 200,
       successfulJobs: 185,
       failedJobs: 15,
-      averageProcessingTime: 2500,
       requestsPerMinute: 50,
       errorRate: 0.075,
       responseTime: 150,

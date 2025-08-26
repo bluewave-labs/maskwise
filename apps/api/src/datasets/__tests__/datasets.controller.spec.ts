@@ -119,17 +119,17 @@ describe('DatasetsController', () => {
         },
       };
 
-      mockDatasetsService.upload.mockResolvedValue(uploadResult);
+      mockDatasetsService.uploadFile.mockResolvedValue(uploadResult);
 
       // Test service method directly
-      const result = await mockDatasetsService.upload(
+      const result = await mockDatasetsService.uploadFile(
         mockFile,
         { name: 'Test', projectId: 'project-123', policyId: 'policy-123' },
         mockUser.id
       );
 
       expect(result).toEqual(uploadResult);
-      expect(mockDatasetsService.upload).toHaveBeenCalledWith(
+      expect(mockDatasetsService.uploadFile).toHaveBeenCalledWith(
         mockFile,
         { name: 'Test', projectId: 'project-123', policyId: 'policy-123' },
         mockUser.id

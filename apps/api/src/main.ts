@@ -4,7 +4,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import helmet from 'helmet';
-import * as compression from 'compression';
+import compression from 'compression';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -46,30 +46,30 @@ async function bootstrap() {
     credentials: true,
   });
 
-  // Swagger API documentation
-  const config = new DocumentBuilder()
-    .setTitle('Maskwise API')
-    .setDescription('PII Detection and Anonymization Platform API')
-    .setVersion('1.0')
-    .addBearerAuth(
-      {
-        type: 'http',
-        scheme: 'bearer',
-        bearerFormat: 'JWT',
-        name: 'JWT',
-        description: 'Enter JWT token',
-        in: 'header',
-      },
-      'JWT-auth',
-    )
-    .build();
+  // Swagger API documentation (temporarily disabled due to metadata issues)
+  // const config = new DocumentBuilder()
+  //   .setTitle('Maskwise API')
+  //   .setDescription('PII Detection and Anonymization Platform API')
+  //   .setVersion('1.0')
+  //   .addBearerAuth(
+  //     {
+  //       type: 'http',
+  //       scheme: 'bearer',
+  //       bearerFormat: 'JWT',
+  //       name: 'JWT',
+  //       description: 'Enter JWT token',
+  //       in: 'header',
+  //     },
+  //     'JWT-auth',
+  //   )
+  //   .build();
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document, {
-    swaggerOptions: {
-      persistAuthorization: true,
-    },
-  });
+  // const document = SwaggerModule.createDocument(app, config);
+  // SwaggerModule.setup('api/docs', app, document, {
+  //   swaggerOptions: {
+  //     persistAuthorization: true,
+  //   },
+  // });
 
   const port = process.env.PORT || 3001;
   await app.listen(port);

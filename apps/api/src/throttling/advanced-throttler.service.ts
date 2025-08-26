@@ -43,8 +43,8 @@ export class AdvancedThrottlerService extends ThrottlerGuard {
     const user = request.user as any;
     const path = request.route?.path || request.url;
     
-    // Get base configuration from parent
-    const options = await super.getThrottlerOptions(context);
+    // Get base configuration
+    const options = { ttl: 60, limit: 10 }; // Default throttle options
     
     // Enhanced limits based on authentication and role
     if (user) {
@@ -143,7 +143,7 @@ export class AdvancedThrottlerService extends ThrottlerGuard {
   /**
    * Custom error handling with detailed information
    */
-  protected throwThrottlingException(context: ExecutionContext): void {
+  protected async throwThrottlingException(context: ExecutionContext): Promise<void> {
     const request = context.switchToHttp().getRequest<Request>();
     const response = context.switchToHttp().getResponse();
     

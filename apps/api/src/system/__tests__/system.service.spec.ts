@@ -541,7 +541,7 @@ describe('SystemService', () => {
 
       // Run updates concurrently
       const results = await Promise.all(
-        updates.map(update => service.updateConfiguration(update))
+        updates.map(update => service.updateConfiguration(update as any))
       );
 
       // All updates should have been applied

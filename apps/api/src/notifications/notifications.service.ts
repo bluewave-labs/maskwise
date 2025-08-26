@@ -87,7 +87,7 @@ export class NotificationsService implements OnModuleInit {
             payload.userId,
             payload.title,
             payload.message,
-            payload.type
+            payload.type.toLowerCase() as 'info' | 'success' | 'warning' | 'error'
           );
         } catch (error) {
           console.warn('SSE service not available:', error.message);
@@ -244,7 +244,7 @@ export class NotificationsService implements OnModuleInit {
 
     return {
       ...defaultPreferences,
-      ...user.notificationPreferences,
+      ...(user.notificationPreferences as any),
     };
   }
 
@@ -399,7 +399,7 @@ export class NotificationsService implements OnModuleInit {
         userId,
         'unread_count_updated',
         count.toString(),
-        'INFO'
+        'info'
       );
     } catch (error) {
       console.warn('SSE service not available for unread count update:', error.message);

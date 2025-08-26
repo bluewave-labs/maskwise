@@ -55,6 +55,27 @@ class SystemResourcesDto {
 
   @ApiProperty({ example: 126500, description: 'Used disk space in MB' })
   usedDisk: number;
+
+  // Additional properties for compatibility with tests
+  cpu?: {
+    usage: number;
+    cores: number;
+    loadAverage: number[];
+  };
+
+  memory?: {
+    used: number;
+    free: number;
+    total: number;
+    percentage: number;
+  };
+
+  disk?: {
+    used: number;
+    free: number;
+    total: number;
+    percentage: number;
+  };
 }
 
 class QueueStatusDto {
@@ -95,6 +116,14 @@ class ApplicationMetricsDto {
 
   @ApiProperty({ example: 99.8, description: 'Success rate percentage' })
   successRate: number;
+
+  // Additional properties for compatibility with tests
+  totalJobs?: number;
+  successfulJobs?: number;
+  failedJobs?: number;
+  errorRate?: number;
+  requestsPerMinute?: number;
+  responseTime?: number;
 }
 
 export class SystemHealthResponseDto {

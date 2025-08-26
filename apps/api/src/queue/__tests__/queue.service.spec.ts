@@ -234,9 +234,9 @@ describe('QueueService', () => {
       const jobData3 = { ...mockJobData, datasetId: 'dataset-3', jobId: 'job-3' };
 
       mockQueue.add
-        .mockResolvedValueOnce({ ...mockJob, id: 'bull-job-1' })
-        .mockResolvedValueOnce({ ...mockJob, id: 'bull-job-2' })
-        .mockResolvedValueOnce({ ...mockJob, id: 'bull-job-3' });
+        .mockResolvedValueOnce({ ...mockJob, id: 'bull-job-1' } as any)
+        .mockResolvedValueOnce({ ...mockJob, id: 'bull-job-2' } as any)
+        .mockResolvedValueOnce({ ...mockJob, id: 'bull-job-3' } as any);
 
       const promises = [
         service.addPiiAnalysisJob(jobData1),
