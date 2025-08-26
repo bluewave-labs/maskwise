@@ -696,16 +696,6 @@ export class TextExtractionService {
     }
   }
 
-  /**
-   * Check OCR Service Health
-   * 
-   * Uses the enhanced TesseractService health check for better reliability.
-   * 
-   * @returns True if OCR service is available
-   */
-  private async checkOCRHealth(): Promise<boolean> {
-    return await tesseractService.healthCheck();
-  }
 
   /**
    * Get MIME Type from File Path
@@ -752,15 +742,6 @@ export class TextExtractionService {
     return mimeTypes[ext] || 'application/octet-stream';
   }
 
-  /**
-   * Get MIME Type from File Extension (legacy method)
-   * 
-   * @param filePath - Path to file
-   * @returns MIME type string
-   */
-  private getMimeTypeFromExtension(filePath: string): string {
-    return this.getMimeTypeFromPath(filePath);
-  }
 
   /**
    * Get Tika Version
@@ -786,6 +767,7 @@ export interface TextExtractionResult {
   text: string;
   confidence: number;
   extractionMethod: string;
+  warnings?: string[];
   metadata: Record<string, any> & {
     // OCR-specific metadata (optional)
     ocrConfidence?: number;

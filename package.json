@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "turbo run dev",
     "dev:api": "turbo run dev --filter=@maskwise/api",
-    "dev:web": "turbo run dev --filter=@maskwise/web", 
+    "dev:web": "turbo run dev --filter=@maskwise/web",
     "dev:worker": "turbo run dev --filter=@maskwise/worker",
     "build": "turbo run build",
     "lint": "turbo run lint",
@@ -33,13 +33,16 @@
     "health": "curl -s http://localhost:3001/health && curl -s http://localhost:4200"
   },
   "devDependencies": {
+    "@types/node": "^20.8.0",
     "turbo": "^1.10.16",
-    "typescript": "^5.2.2",
-    "@types/node": "^20.8.0"
+    "typescript": "^5.2.2"
   },
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=9.0.0"
   },
-  "packageManager": "npm@9.0.0"
+  "packageManager": "npm@9.0.0",
+  "dependencies": {
+    "@next/swc-darwin-arm64": "^15.5.1"
+  }
 }
