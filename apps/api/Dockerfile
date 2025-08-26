@@ -12,6 +12,9 @@ COPY apps/api/ ./apps/api/
 # Install dependencies
 RUN npm ci
 
+# Generate Prisma client
+RUN cd packages/database && npx prisma generate
+
 # Build the API application
 RUN cd apps/api && npm run build
 

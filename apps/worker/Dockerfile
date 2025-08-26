@@ -12,6 +12,9 @@ COPY apps/worker/ ./apps/worker/
 # Install dependencies
 RUN npm ci
 
+# Generate Prisma client
+RUN cd packages/database && npx prisma generate
+
 # Build the worker application
 RUN cd apps/worker && npm run build
 
