@@ -13,7 +13,7 @@ COPY apps/web/ ./apps/web/
 RUN npm ci
 
 # Build the Next.js application
-RUN cd apps/web && npm run build
+RUN cd apps/web && NODE_ENV=production npm run build
 
 # Production stage with minimal footprint
 FROM node:20-alpine AS production
