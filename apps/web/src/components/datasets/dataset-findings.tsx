@@ -48,9 +48,10 @@ interface Dataset {
 interface DatasetFindingsProps {
   datasetId: string;
   onClose?: () => void;
+  className?: string;
 }
 
-export function DatasetFindings({ datasetId, onClose }: DatasetFindingsProps) {
+export function DatasetFindings({ datasetId, onClose, className }: DatasetFindingsProps) {
   const [dataset, setDataset] = useState<Dataset | null>(null);
   const [findings, setFindings] = useState<Finding[]>([]);
   const [loading, setLoading] = useState(true);
@@ -154,7 +155,7 @@ export function DatasetFindings({ datasetId, onClose }: DatasetFindingsProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${className || ''}`}>
       {/* Header */}
       <Card className="p-6">
         <div className="flex items-start justify-between">

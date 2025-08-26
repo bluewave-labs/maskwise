@@ -55,7 +55,7 @@ interface UploadFile {
     content: string;
     isSecure: boolean;
     warnings: string[];
-  };
+  } | null;
   validation?: {
     isValid: boolean;
     warnings: string[];
@@ -612,7 +612,7 @@ export function FileUpload({
   const completedCount = files.filter(f => f.status === 'completed').length;
   const errorCount = files.filter(f => f.status === 'error').length;
   const highRiskCount = files.filter(f => f.validation?.riskLevel === 'high').length;
-  const hasWarnings = files.some(f => f.validation?.warnings.length > 0 || f.preview?.warnings.length > 0);
+  const hasWarnings = files.some(f => (f.validation?.warnings?.length || 0) > 0 || (f.preview?.warnings?.length || 0) > 0);
 
   return (
     <div className={`space-y-6 ${className || ''}`}>
@@ -812,11 +812,11 @@ export function FileUpload({
                     )}
                     
                     {/* Validation Warnings */}
-                    {uploadFile.validation?.warnings.length > 0 && (
+                    {(uploadFile.validation?.warnings?.length || 0) > 0 && (
                       <div className="mt-1 flex items-start gap-1">
                         <AlertTriangle className="h-3 w-3 text-yellow-500 flex-shrink-0 mt-0.5" />
                         <div className="text-[13px] text-yellow-600">
-                          {uploadFile.validation.warnings.map((warning, idx) => (
+                          {uploadFile.validation?.warnings?.map((warning, idx) => (
                             <div key={idx}>{warning}</div>
                           ))}
                         </div>

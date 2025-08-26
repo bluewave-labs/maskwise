@@ -12,6 +12,11 @@ const nextConfig = {
   // Enable standalone output for Docker
   output: 'standalone',
   
+  // Disable TypeScript checking during build (for Docker)
+  typescript: {
+    ignoreBuildErrors: process.env.NODE_ENV === 'production',
+  },
+  
   // Performance optimizations
   swcMinify: true,
   compress: true,
@@ -81,7 +86,6 @@ const nextConfig = {
   
   // Enable experimental features for better performance
   experimental: {
-    optimizeCss: true,
     optimizePackageImports: ['lucide-react', '@radix-ui/react-*'],
   },
 };

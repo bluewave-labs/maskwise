@@ -139,7 +139,7 @@ export function JobProgress({
         currentStage: data.currentStage,
         isProcessing: data.isProcessing,
         jobsCount: data.jobs?.length || 0,
-        jobs: data.jobs?.map(j => ({ type: j.type, status: j.status, progress: j.progress })) || []
+        jobs: data.jobs?.map((j: any) => ({ type: j.type, status: j.status, progress: j.progress })) || []
       });
       
       setProgressData(data);
