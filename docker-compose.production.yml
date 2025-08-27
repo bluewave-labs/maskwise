@@ -166,9 +166,11 @@ services:
         reservations:
           memory: 512M
 
-  # Frontend web app  
+  # Frontend web app (using local build until Docker image is fixed)
   web:
-    image: ghcr.io/bluewave-labs/maskwise-web:latest
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
     ports:
       - "${WEB_PORT:-3000}:3000"
     environment:
