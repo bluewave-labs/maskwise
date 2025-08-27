@@ -3,17 +3,26 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
+# Copy monorepo package files
 COPY package*.json ./
 COPY turbo.json ./
+
+# Copy workspace packages
 COPY packages/ ./packages/
+COPY apps/web/package*.json ./apps/web/
+
+# Install dependencies with frozen lockfile
+RUN npm ci && npm cache clean --force
+
+# Copy web source code
 COPY apps/web/ ./apps/web/
 
-# Install dependencies
-RUN npm ci
+# Set build environment
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
-# Build the Next.js application
-RUN cd apps/web && NODE_ENV=production npm run build
+# Build the Next.js application from monorepo root
+RUN cd apps/web && npm run build
 
 # Production stage with minimal footprint
 FROM node:20-alpine AS production
@@ -21,7 +30,7 @@ FROM node:20-alpine AS production
 WORKDIR /app
 
 # Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
+RUN apk add --no-cache dumb-init wget
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs
@@ -35,11 +44,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./public
 USER nextjs
 
 EXPOSE 3000
-
-# Add wget for health checks
-USER root
-RUN apk add --no-cache wget
-USER nextjs
 
 # Health check for web service
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
