@@ -90,7 +90,7 @@ services:
 
   # Backend API
   api:
-    image: ghcr.io/bluewave-labs/maskwise-api:v1.1.1
+    image: ghcr.io/bluewave-labs/maskwise-api:latest
     ports:
       - "${API_PORT:-3001}:3001"
     environment:
@@ -130,7 +130,7 @@ services:
 
   # Worker service
   worker:
-    image: ghcr.io/bluewave-labs/maskwise-worker:v1.1.1
+    image: ghcr.io/bluewave-labs/maskwise-worker:latest
     environment:
       - NODE_ENV=${NODE_ENV:-production}
       - DATABASE_URL=postgresql://${POSTGRES_USER:-maskwise}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-maskwise}
@@ -166,9 +166,9 @@ services:
         reservations:
           memory: 512M
 
-  # Frontend web app
+  # Frontend web app  
   web:
-    image: ghcr.io/bluewave-labs/maskwise-web:v1.1.1
+    image: ghcr.io/bluewave-labs/maskwise-web:latest
     ports:
       - "${WEB_PORT:-3000}:3000"
     environment:
