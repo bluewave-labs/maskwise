@@ -38,12 +38,9 @@ export function LoginForm() {
   });
 
   const onSubmit = async (data: LoginFormData) => {
-    console.log('Login form submitted with data:', data);
     setIsLoading(true);
     try {
-      console.log('Calling login function...');
       await login(data);
-      console.log('Login successful!');
       toast({
         title: 'Welcome back!',
         description: 'You have successfully logged in.',
