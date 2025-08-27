@@ -19,16 +19,35 @@ Maskwise is a single-tenant data privacy platform built to detect, redact, mask,
 
 You can deploy Maskwise in 24 hours an reduce PII exposure risk by 95%. Maskwise can process thousands of documents per hour.
 
-## 🚀 Quick Deploy with Docker
+## 🚀 Quick Deploy with Docker (Recommended)
+
+**Deploy Maskwise in under 5 minutes using pre-built images:**
 
 ```bash
+# 1. Clone repository
 git clone https://github.com/bluewave-labs/maskwise.git
 cd maskwise
-cp .env.production.example .env  # Edit with your values
+
+# 2. Configure environment (required)
+cp .env.production.example .env
+# Edit .env: Set POSTGRES_PASSWORD and JWT_SECRET
+
+# 3. Deploy all services 
 docker-compose -f docker-compose.production.yml up -d
-# Initialize: docker-compose -f docker-compose.production.yml exec api npx prisma migrate deploy && npx prisma db seed
-# Access: http://localhost:3000 (admin@maskwise.com / admin123)
+
+# 4. Initialize database (one-time setup)
+docker-compose -f docker-compose.production.yml exec api npx prisma migrate deploy
+docker-compose -f docker-compose.production.yml exec api npx prisma db seed
+
+# 5. Access Maskwise
+# Frontend: http://localhost:3000
+# Login: admin@maskwise.com / admin123
 ```
+
+**✅ Ready-to-use Docker images available:**
+- `ghcr.io/bluewave-labs/maskwise-api:latest`
+- `ghcr.io/bluewave-labs/maskwise-worker:latest` 
+- `ghcr.io/bluewave-labs/maskwise-web:latest`
 
 ## Maskwise use cases for AI and LLMs
 
@@ -96,41 +115,51 @@ This is a monorepo containing:
 
 ## Quick Start
 
-### Option 1: Docker Images (Recommended for Production)
+### Option 1: Docker Images (Recommended)
 
-**Use pre-built Docker images - no build required:**
+**🚀 Zero-build deployment with pre-built images from GitHub Container Registry:**
 
-1. **Prerequisites**
-   - Docker and Docker Compose installed
-   - 4GB+ RAM available
+**Prerequisites:**
+- Docker and Docker Compose installed
+- 4GB+ RAM available
 
-2. **Quick Deploy**
-   ```bash
-   # Clone repository
-   git clone https://github.com/bluewave-labs/maskwise.git
-   cd maskwise
+**Quick Deploy:**
+```bash
+# Clone and configure
+git clone https://github.com/bluewave-labs/maskwise.git
+cd maskwise
+cp .env.production.example .env
+# Edit .env: Set POSTGRES_PASSWORD, JWT_SECRET
 
-   # Configure environment
-   cp .env.production.example .env
-   # Edit .env with your values (set POSTGRES_PASSWORD, JWT_SECRET)
+# Deploy all services instantly
+docker-compose -f docker-compose.production.yml up -d
 
-   # Deploy with pre-built images
-   docker-compose -f docker-compose.production.yml up -d
+# One-time database setup
+docker-compose -f docker-compose.production.yml exec api npx prisma migrate deploy
+docker-compose -f docker-compose.production.yml exec api npx prisma db seed
+```
 
-   # Initialize database
-   docker-compose -f docker-compose.production.yml exec api npx prisma migrate deploy
-   docker-compose -f docker-compose.production.yml exec api npx prisma db seed
-   ```
+**Access Application:**
+- **🌐 Web UI**: http://localhost:3000
+- **🔗 API**: http://localhost:3001  
+- **👤 Admin Login**: admin@maskwise.com / admin123
 
-3. **Access Application**
-   - **Frontend**: http://localhost:3000
-   - **API**: http://localhost:3001
-   - **Admin**: admin@maskwise.com / admin123
+**Service Status Check:**
+```bash
+# Verify all services are healthy
+docker-compose -f docker-compose.production.yml ps
+```
 
-**Docker Images Available:**
-- `ghcr.io/bluewave-labs/maskwise-api:v1.1.1`
-- `ghcr.io/bluewave-labs/maskwise-worker:v1.1.1`
-- `ghcr.io/bluewave-labs/maskwise-web:v1.1.1`
+**✅ Pre-built Docker Images (No Build Required):**
+- `ghcr.io/bluewave-labs/maskwise-api:latest` - Backend API service
+- `ghcr.io/bluewave-labs/maskwise-worker:latest` - Background job processor  
+- `ghcr.io/bluewave-labs/maskwise-web:latest` - Frontend web application
+
+**Features:**
+- Multi-platform support (linux/amd64, linux/arm64)
+- Security-optimized Alpine Linux base
+- Automated health checks and restart policies
+- Production-ready with resource limits
 
 See [DOCKER.md](DOCKER.md) for complete Docker deployment guide.
 
@@ -235,32 +264,42 @@ curl http://localhost:3001/health
 
 ## Production Deployment
 
-### Option 1: Docker Images (Recommended)
-**Deploy using pre-built Docker images from GitHub Container Registry:**
+### 🏭 Production Docker Deployment (Recommended)
+
+**Deploy Maskwise to production using battle-tested Docker images:**
 
 ```bash
-# Clone repository
+# 1. Setup production environment
 git clone https://github.com/bluewave-labs/maskwise.git
 cd maskwise
-
-# Configure production environment
 cp .env.production.example .env
-# Edit .env with secure production values
 
-# Deploy with pre-built images
+# 2. Configure secure production values
+# Edit .env with:
+# - Strong POSTGRES_PASSWORD (use a password manager)
+# - Secure JWT_SECRET (32+ random characters)  
+# - External database URLs if using managed services
+# - Custom ports if needed
+
+# 3. Deploy instantly with pre-built images
 docker-compose -f docker-compose.production.yml up -d
 
-# Initialize database
+# 4. Initialize database (first-time only)
 docker-compose -f docker-compose.production.yml exec api npx prisma migrate deploy
 docker-compose -f docker-compose.production.yml exec api npx prisma db seed
+
+# 5. Verify deployment
+docker-compose -f docker-compose.production.yml ps
+curl -f http://localhost:3001/health
 ```
 
-**Features:**
-- ✅ No build time required
-- ✅ Multi-platform support (amd64/arm64)  
-- ✅ Security-optimized Alpine images
-- ✅ Health checks and auto-restart
-- ✅ Resource limits configured
+**🛡️ Production Features:**
+- ✅ **Zero build time** - pre-built images ready to deploy
+- ✅ **Multi-platform** - works on amd64/arm64 (Apple Silicon, AWS Graviton)
+- ✅ **Security hardened** - Alpine Linux with non-root users
+- ✅ **Auto-healing** - health checks with automatic restart
+- ✅ **Resource optimized** - memory limits and CPU controls
+- ✅ **High availability** - separate API, Worker, and Web services
 
 ### Option 2: Build from Source
 1. **Copy environment template**
