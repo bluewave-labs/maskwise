@@ -4,210 +4,209 @@ services:
   # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
+    container_name: maskwise-postgres
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-maskwise}
       POSTGRES_USER: ${POSTGRES_USER:-maskwise}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./data/init:/docker-entrypoint-initdb.d
+    networks:
+      - maskwise-network
+    restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-maskwise}"]
       interval: 10s
       timeout: 5s
       retries: 5
-    restart: unless-stopped
 
   # Redis for job queues
   redis:
     image: redis:7-alpine
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
+    container_name: maskwise-redis
+    command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
+    networks:
+      - maskwise-network
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
-    restart: unless-stopped
 
   # Microsoft Presidio Analyzer
   presidio-analyzer:
     image: mcr.microsoft.com/presidio-analyzer:latest
-    ports:
-      - "${PRESIDIO_ANALYZER_PORT:-5003}:3000"
+    container_name: maskwise-presidio-analyzer
     environment:
       - PORT=3000
+    networks:
+      - maskwise-network
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3000/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
-    restart: unless-stopped
 
   # Microsoft Presidio Anonymizer
   presidio-anonymizer:
     image: mcr.microsoft.com/presidio-anonymizer:latest
-    ports:
-      - "${PRESIDIO_ANONYMIZER_PORT:-5004}:3000"
+    container_name: maskwise-presidio-anonymizer
     environment:
       - PORT=3000
+    networks:
+      - maskwise-network
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3000/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
-    restart: unless-stopped
 
-  # Apache Tika for document processing
+  # Apache Tika for document text extraction
   tika:
-    image: apache/tika:latest-full
-    ports:
-      - "${TIKA_PORT:-9998}:9998"
+    image: apache/tika:latest
+    container_name: maskwise-tika
+    networks:
+      - maskwise-network
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9998/version"]
+      test: ["CMD", "curl", "-f", "http://localhost:9998/tika"]
       interval: 30s
       timeout: 10s
       retries: 3
-    restart: unless-stopped
 
   # Tesseract OCR service
   tesseract:
     image: hertzg/tesseract-server:latest
-    ports:
-      - "${TESSERACT_PORT:-8884}:3000"
+    container_name: maskwise-tesseract
     environment:
-      - PORT=3000
+      - PORT=8884
+    networks:
+      - maskwise-network
+    restart: unless-stopped
+
+  # API Service
+  api:
+    build:
+      context: .
+      dockerfile: ./apps/api/Dockerfile
+    container_name: maskwise-api
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-maskwise}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-maskwise}
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      PRESIDIO_ANALYZER_URL: http://presidio-analyzer:3000
+      PRESIDIO_ANONYMIZER_URL: http://presidio-anonymizer:3000
+      TIKA_URL: http://tika:9998
+      TESSERACT_URL: http://tesseract:8884
+      DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:-admin@maskwise.com}
+      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:80,http://localhost:443}
+    volumes:
+      - ./uploads:/app/uploads
+      - ./storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      presidio-analyzer:
+        condition: service_healthy
+      presidio-anonymizer:
+        condition: service_healthy
+    networks:
+      - maskwise-network
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "node", "--version"]
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-    restart: unless-stopped
 
-  # Backend API
-  api:
-    image: ghcr.io/bluewave-labs/maskwise-api:latest
-    ports:
-      - "${API_PORT:-3001}:3001"
-    environment:
-      - NODE_ENV=${NODE_ENV:-production}
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-maskwise}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-maskwise}
-      - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=${JWT_SECRET}
-      - PRESIDIO_ANALYZER_URL=http://presidio-analyzer:3000
-      - PRESIDIO_ANONYMIZER_URL=http://presidio-anonymizer:3000
-      - TIKA_URL=http://tika:9998
-      - TESSERACT_URL=http://tesseract:8884
-      - UPLOAD_DIR=/app/uploads
-      - STORAGE_DIR=/app/storage
-    volumes:
-      - uploads_data:/app/uploads
-      - storage_data:/app/storage
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      presidio-analyzer:
-        condition: service_healthy
-      presidio-anonymizer:
-        condition: service_healthy
-      tika:
-        condition: service_healthy
-      tesseract:
-        condition: service_healthy
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-        reservations:
-          memory: 256M
-
-  # Worker service
+  # Worker Service
   worker:
-    image: ghcr.io/bluewave-labs/maskwise-worker:latest
+    build:
+      context: .
+      dockerfile: ./apps/worker/Dockerfile
+    container_name: maskwise-worker
     environment:
-      - NODE_ENV=${NODE_ENV:-production}
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-maskwise}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-maskwise}
-      - REDIS_URL=redis://redis:6379
-      - PRESIDIO_ANALYZER_URL=http://presidio-analyzer:3000
-      - PRESIDIO_ANONYMIZER_URL=http://presidio-anonymizer:3000
-      - TIKA_URL=http://tika:9998
-      - TESSERACT_URL=http://tesseract:8884
-      - UPLOAD_DIR=/app/uploads
-      - STORAGE_DIR=/app/storage
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-maskwise}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-maskwise}
+      REDIS_URL: redis://redis:6379
+      PRESIDIO_ANALYZER_URL: http://presidio-analyzer:3000
+      PRESIDIO_ANONYMIZER_URL: http://presidio-anonymizer:3000
+      TIKA_URL: http://tika:9998
+      TESSERACT_URL: http://tesseract:8884
     volumes:
-      - uploads_data:/app/uploads
-      - storage_data:/app/storage
+      - ./uploads:/app/uploads
+      - ./storage:/app/storage
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-      presidio-analyzer:
+      api:
         condition: service_healthy
-      presidio-anonymizer:
-        condition: service_healthy
-      tika:
-        condition: service_healthy
-      tesseract:
-        condition: service_healthy
+    networks:
+      - maskwise-network
     restart: unless-stopped
-    deploy:
-      replicas: 2
-      resources:
-        limits:
-          memory: 1G
-        reservations:
-          memory: 512M
 
-  # Frontend web app (using local build until Docker image is fixed)
+  # Web Frontend
   web:
     build:
       context: .
-      dockerfile: apps/web/Dockerfile
-    ports:
-      - "${WEB_PORT:-3000}:3000"
+      dockerfile: ./apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost/api}
+    container_name: maskwise-web
     environment:
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:3001}
-      - NODE_ENV=${NODE_ENV:-production}
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost/api}
     depends_on:
       - api
+    networks:
+      - maskwise-network
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-        reservations:
-          memory: 128M
 
-  # Nginx reverse proxy (optional)
+  # Nginx Reverse Proxy (with SSL support - disabled by default)
   nginx:
     image: nginx:alpine
+    container_name: maskwise-nginx
     ports:
-      - "${NGINX_PORT:-80}:80"
-      - "${NGINX_SSL_PORT:-443}:443"
+      - "80:80"
+      - "443:443"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./ssl:/etc/nginx/ssl:ro
+      - ./nginx/nginx.production.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - nginx_logs:/var/log/nginx
     depends_on:
       - web
       - api
+    networks:
+      - maskwise-network
     restart: unless-stopped
-    profiles:
-      - with-nginx
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  maskwise-network:
+    driver: bridge
 
 volumes:
   postgres_data:
+    driver: local
   redis_data:
-  uploads_data:
-  storage_data:
-
-networks:
-  default:
-    name: maskwise-production
+    driver: local
+  nginx_logs:
+    driver: local
