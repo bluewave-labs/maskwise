@@ -14,7 +14,8 @@ import {
   Sparkles,
   User,
   ChevronUp,
-  Activity
+  Activity,
+  Search
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -32,6 +33,7 @@ import {
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Search', href: '/search', icon: Search },
   { name: 'Projects', href: '/projects', icon: FolderOpen },
   { name: 'Datasets', href: '/datasets', icon: Database },
   { name: 'Jobs', href: '/jobs', icon: Activity },

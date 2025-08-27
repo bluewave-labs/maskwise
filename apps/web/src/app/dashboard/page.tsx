@@ -1,22 +1,124 @@
 'use client';
 
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { ProtectedRoute } from '@/components/auth/protected-route';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
-import { Spinner } from '@/components/ui/spinner';
-import { MetricCard, MetricCardContent } from '@/components/ui/metric-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import Counter from '@/components/ui/counter';
 import { useAuth } from '@/hooks/useAuth';
-// Use optimized SWR hook for better caching
-import { useDashboardStatsOptimized as useDashboardStats } from '@/hooks/useSWRData';
-import { TrendingUp, Database, Shield, Users, Activity, Upload, FolderPlus, FileText, Eye, Sparkles, Key, ArrowRight } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
+import { api } from '@/lib/api';
+import { 
+  TrendingUp, 
+  Database, 
+  Shield, 
+  Users, 
+  Activity, 
+  Upload, 
+  FolderPlus, 
+  FileText, 
+  Eye, 
+  Search,
+  ArrowRight 
+} from 'lucide-react';
+
+interface DashboardStats {
+  recentScans: number;
+  totalDatasets: number;
+  totalFindings: number;
+  activeProjects: number;
+}
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const { stats, isLoading, error, refetch } = useDashboardStats();
+  const router = useRouter();
+  const [stats, setStats] = useState<DashboardStats>({
+    recentScans: 0,
+    totalDatasets: 0,
+    totalFindings: 0,
+    activeProjects: 0
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchDashboardStats();
+  }, []);
+
+  const fetchDashboardStats = async () => {
+    try {
+      setIsLoading(true);
+      const response = await api.get('/dashboard/stats');
+      
+      // Ensure we have proper defaults for any missing fields
+      const statsData = response.data || {};
+      setStats({
+        recentScans: statsData.recentScans ?? 0,
+        totalDatasets: statsData.totalDatasets ?? 0,
+        totalFindings: statsData.totalFindings ?? statsData.piiFindings ?? 0,
+        activeProjects: statsData.activeProjects ?? 0
+      });
+      setError(null);
+    } catch (err: any) {
+      console.error('Failed to fetch dashboard stats:', err);
+      setError(err.response?.data?.message || 'Failed to load dashboard statistics');
+      // Keep the default zero values in case of error
+      setStats({
+        recentScans: 0,
+        totalDatasets: 0,
+        totalFindings: 0,
+        activeProjects: 0
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const StatCard = ({ title, value, icon: Icon, color }: {
+    title: string;
+    value: number;
+    icon: any;
+    color: string;
+  }) => (
+    <Card>
+      <CardContent className="p-6">
+        <div className="flex items-center">
+          <Icon className={`h-8 w-8 ${color}`} />
+          <div className="ml-4">
+            <p className="text-sm font-medium text-gray-600">{title}</p>
+            <div className="text-2xl font-bold">
+              {isLoading ? (
+                <div className="h-8 w-16 bg-gray-200 animate-pulse rounded"></div>
+              ) : (
+                (value ?? 0).toLocaleString()
+              )}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const QuickActionButton = ({ title, description, icon: Icon, onClick, color }: {
+    title: string;
+    description: string;
+    icon: any;
+    onClick: () => void;
+    color: string;
+  }) => (
+    <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={onClick}>
+      <CardContent className="p-6">
+        <div className="flex items-start">
+          <Icon className={`h-6 w-6 ${color} mt-1`} />
+          <div className="ml-4 flex-1">
+            <h3 className="font-medium text-gray-900">{title}</h3>
+            <p className="text-sm text-gray-500 mt-1">{description}</p>
+          </div>
+          <ArrowRight className="h-4 w-4 text-gray-400" />
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   return (
     <ProtectedRoute>
@@ -24,200 +126,139 @@ export default function DashboardPage() {
         pageTitle="Dashboard"
         pageDescription="Monitor your PII detection activities and system overview"
       >
-        <>
+        <div className="max-w-7xl">
+          {/* Header with Actions */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-semibold text-gray-900">
+                  Welcome back, {user?.firstName}
+                </h1>
+              </div>
+              <div className="flex gap-3">
+                <Button onClick={() => router.push('/datasets')} variant="outline">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload Dataset
+                </Button>
+                <Button onClick={() => router.push('/search')} className="bg-blue-600 hover:bg-blue-700">
+                  <Search className="h-4 w-4 mr-2" />
+                  Search PII
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Error Message */}
           {error && (
-            <div className="bg-destructive/15 border border-destructive/50 p-4 rounded-lg mb-8">
-              <p className="text-destructive font-normal">Failed to load dashboard statistics</p>
-              <p className="text-destructive/80 text-[13px] mt-1">{error}</p>
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+              <p className="font-medium">Error loading dashboard data</p>
+              <p className="text-sm mt-1">{error}</p>
               <button
-                onClick={refetch}
-                className="mt-2 text-[13px] text-destructive underline hover:no-underline"
+                onClick={fetchDashboardStats}
+                className="mt-2 text-sm text-red-600 underline hover:no-underline"
               >
                 Try again
               </button>
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center">
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" style={{strokeWidth: 1.5}} />
-                  <div className="ml-4">
-                    <p className="text-[13px] font-normal text-gray-600">Scans (last 7 days)</p>
-                    {isLoading ? (
-                      <>
-                        <Skeleton className="h-6 w-12 mb-1" />
-                        <Skeleton className="h-3 w-16" />
-                      </>
-                    ) : (
-                      <>
-                        <Counter 
-                          value={stats?.recentScans ?? 0} 
-                          className="text-xl font-semibold"
-                          delay={0}
-                        />
-                      </>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center">
-                  <Database className="h-4 w-4 text-muted-foreground" style={{strokeWidth: 1.5}} />
-                  <div className="ml-4">
-                    <p className="text-[13px] font-normal text-gray-600">Uploaded datasets</p>
-                    {isLoading ? (
-                      <>
-                        <Skeleton className="h-6 w-12 mb-1" />
-                        <Skeleton className="h-3 w-20" />
-                      </>
-                    ) : (
-                      <>
-                        <Counter 
-                          value={stats?.totalDatasets ?? 0} 
-                          className="text-xl font-semibold"
-                          delay={0.05}
-                        />
-                      </>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center">
-                  <Shield className="h-4 w-4 text-muted-foreground" style={{strokeWidth: 1.5}} />
-                  <div className="ml-4">
-                    <p className="text-[13px] font-normal text-gray-600">PII Findings</p>
-                    {isLoading ? (
-                      <>
-                        <Skeleton className="h-6 w-12 mb-1" />
-                        <Skeleton className="h-3 w-24" />
-                      </>
-                    ) : (
-                      <>
-                        <Counter 
-                          value={stats?.piiFindings ?? 0} 
-                          className="text-xl font-semibold"
-                          delay={0.1}
-                        />
-                      </>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center">
-                  <Users className="h-4 w-4 text-muted-foreground" style={{strokeWidth: 1.5}} />
-                  <div className="ml-4">
-                    <p className="text-[13px] font-normal text-gray-600">Projects</p>
-                    {isLoading ? (
-                      <>
-                        <Skeleton className="h-6 w-12 mb-1" />
-                        <Skeleton className="h-3 w-20" />
-                      </>
-                    ) : (
-                      <>
-                        <Counter 
-                          value={stats?.activeProjects ?? 0} 
-                          className="text-xl font-semibold"
-                          delay={0.15}
-                        />
-                      </>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <StatCard
+              title="Recent Scans"
+              value={stats.recentScans}
+              icon={TrendingUp}
+              color="text-green-600"
+            />
+            <StatCard
+              title="Total Datasets"
+              value={stats.totalDatasets}
+              icon={Database}
+              color="text-blue-600"
+            />
+            <StatCard
+              title="PII Findings"
+              value={stats.totalFindings}
+              icon={Shield}
+              color="text-orange-600"
+            />
+            <StatCard
+              title="Active Projects"
+              value={stats.activeProjects}
+              icon={FolderPlus}
+              color="text-purple-600"
+            />
           </div>
 
-
+          {/* Quick Actions */}
           <div className="mb-8">
-            <h2 className="text-xl font-semibold mb-6">Quick Actions</h2>
-            <div className="grid grid-cols-3 gap-4">
-              {/* Start Anonymization */}
-              <div 
-                className="p-6 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg cursor-pointer transition-all duration-200 group"
-                onClick={() => window.location.href = '/anonymize'}
-              >
-                <div className="flex flex-col items-center text-center space-y-2">
-                  <Sparkles className="h-4 w-4 text-blue-600" style={{strokeWidth: 1.5}} />
-                  <h3 className="font-semibold text-[13px] text-gray-900">Start Anonymization</h3>
-                  <p className="text-[13px] text-gray-600">Begin workflow</p>
-                </div>
-              </div>
-
-              {/* Upload Dataset */}
-              <div 
-                className="p-6 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg cursor-pointer transition-all duration-200 group"
-                onClick={() => window.location.href = '/datasets'}
-              >
-                <div className="flex flex-col items-center text-center space-y-2">
-                  <Upload className="h-4 w-4 text-green-600" style={{strokeWidth: 1.5}} />
-                  <h3 className="font-semibold text-[13px] text-gray-900">Upload Dataset</h3>
-                  <p className="text-[13px] text-gray-600">Add new files</p>
-                </div>
-              </div>
-
-              {/* Create Project */}
-              <div 
-                className="p-6 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg cursor-pointer transition-all duration-200 group"
-                onClick={() => window.location.href = '/projects'}
-              >
-                <div className="flex flex-col items-center text-center space-y-2">
-                  <FolderPlus className="h-4 w-4 text-purple-600" style={{strokeWidth: 1.5}} />
-                  <h3 className="font-semibold text-[13px] text-gray-900">Create Project</h3>
-                  <p className="text-[13px] text-gray-600">Organize datasets</p>
-                </div>
-              </div>
-
-              {/* View Policies */}
-              <div 
-                className="p-6 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg cursor-pointer transition-all duration-200 group"
-                onClick={() => window.location.href = '/policies'}
-              >
-                <div className="flex flex-col items-center text-center space-y-2">
-                  <FileText className="h-4 w-4 text-pink-600" style={{strokeWidth: 1.5}} />
-                  <h3 className="font-semibold text-[13px] text-gray-900">View Policies</h3>
-                  <p className="text-[13px] text-gray-600">Manage rules</p>
-                </div>
-              </div>
-
-              {/* Manage API Keys */}
-              <div 
-                className="p-6 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg cursor-pointer transition-all duration-200 group"
-                onClick={() => window.location.href = '/settings?tab=api-keys'}
-              >
-                <div className="flex flex-col items-center text-center space-y-2">
-                  <Key className="h-4 w-4 text-indigo-600" style={{strokeWidth: 1.5}} />
-                  <h3 className="font-semibold text-[13px] text-gray-900">Manage API Keys</h3>
-                  <p className="text-[13px] text-gray-600">Access tokens</p>
-                </div>
-              </div>
-
-              {/* Audit Logs */}
-              <div 
-                className="p-6 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg cursor-pointer transition-all duration-200 group"
-                onClick={() => window.location.href = '/settings?tab=audit'}
-              >
-                <div className="flex flex-col items-center text-center space-y-2">
-                  <Eye className="h-4 w-4 text-orange-600" style={{strokeWidth: 1.5}} />
-                  <h3 className="font-semibold text-[13px] text-gray-900">Audit Logs</h3>
-                  <p className="text-[13px] text-gray-600">View activity</p>
-                </div>
-              </div>
+            <h2 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <QuickActionButton
+                title="Upload Dataset"
+                description="Upload files for PII detection and analysis"
+                icon={Upload}
+                color="text-blue-600"
+                onClick={() => router.push('/datasets')}
+              />
+              <QuickActionButton
+                title="Search PII"
+                description="Search across all your PII findings"
+                icon={Search}
+                color="text-green-600"
+                onClick={() => router.push('/search')}
+              />
+              <QuickActionButton
+                title="View Projects"
+                description="Manage your data processing projects"
+                icon={FolderPlus}
+                color="text-purple-600"
+                onClick={() => router.push('/projects')}
+              />
+              <QuickActionButton
+                title="Manage Policies"
+                description="Configure PII detection policies"
+                icon={Shield}
+                color="text-orange-600"
+                onClick={() => router.push('/policies')}
+              />
+              <QuickActionButton
+                title="View Jobs"
+                description="Monitor processing job status"
+                icon={Activity}
+                color="text-indigo-600"
+                onClick={() => router.push('/jobs')}
+              />
+              <QuickActionButton
+                title="View Reports"
+                description="Generate compliance reports"
+                icon={FileText}
+                color="text-pink-600"
+                onClick={() => router.push('/reports')}
+              />
             </div>
           </div>
-        </>
+
+          {/* Recent Activity */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg font-medium">Recent Activity</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8">
+                <Activity className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No recent activity</h3>
+                <p className="text-gray-500 mb-4">
+                  Start by uploading a dataset or running a PII scan to see activity here.
+                </p>
+                <Button onClick={() => router.push('/datasets')}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload Your First Dataset
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </DashboardLayout>
     </ProtectedRoute>
   );

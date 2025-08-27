@@ -21,6 +21,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (token) {
         const response = await api.get('/users/profile');
         setUser(response.data);
+      } else {
+        // No token, not authenticated
+        setUser(null);
       }
     } catch (error: any) {
       // Only log non-401 errors to avoid console spam
