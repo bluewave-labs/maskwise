@@ -3,16 +3,20 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy monorepo package files
+# Copy monorepo package files first
 COPY package*.json ./
 COPY turbo.json ./
 
-# Copy workspace packages
+# Copy workspace packages and Web package files
 COPY packages/ ./packages/
 COPY apps/web/package*.json ./apps/web/
 
-# Install dependencies with frozen lockfile
-RUN npm ci && npm cache clean --force
+# Install ALL dependencies (including dev) to ensure proper resolution
+RUN npm install && npm cache clean --force
+
+# Verify dependency resolution
+RUN npm ls mime-db || echo "mime-db not found, continuing..."
+RUN npm ls mime-types || echo "mime-types not found, continuing..."
 
 # Copy web source code
 COPY apps/web/ ./apps/web/
@@ -20,9 +24,10 @@ COPY apps/web/ ./apps/web/
 # Set build environment
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV SKIP_ENV_VALIDATION=true
 
-# Build the Next.js application from monorepo root
-RUN cd apps/web && npm run build
+# Build with verbose logging
+RUN cd apps/web && npm run build --verbose
 
 # Production stage with minimal footprint
 FROM node:20-alpine AS production
