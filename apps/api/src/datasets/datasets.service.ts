@@ -3,6 +3,7 @@ import { PrismaService } from '../common/prisma.service';
 import { QueueService } from '../queue/queue.service';
 import { CreateDatasetDto } from './dto/create-dataset.dto';
 import { UploadFileDto } from './dto/upload-file.dto';
+import { SearchFindingsDto } from './dto/search-findings.dto';
 import { FileValidatorService } from './security/file-validator.service';
 import { InputSanitizerService } from './security/input-sanitizer.service';
 import { SSEService } from '../sse/sse.service';
@@ -608,10 +609,15 @@ export class DatasetsService {
     const contentResult = await this.getAnonymizedContent(id, userId, 'json');
     const data = contentResult.data;
 
-    // Validate format for text-based outputs
-    const validFormats = ['txt', 'json', 'csv'];
+    // Validate format for outputs
+    const validFormats = ['txt', 'json', 'csv', 'pdf', 'doc', 'docx'];
     if (!validFormats.includes(format.toLowerCase())) {
       throw new BadRequestException(`Invalid format. Supported formats: ${validFormats.join(', ')}, original`);
+    }
+
+    // For document formats (pdf, doc, docx), try to serve the original anonymized file if available
+    if (['pdf', 'doc', 'docx'].includes(format.toLowerCase()) && dataset.outputPath) {
+      return await this.downloadOriginalAnonymizedFile(dataset, userId);
     }
 
     let content: string;
@@ -671,6 +677,15 @@ export class DatasetsService {
         content = csvLines.join('\n');
         contentType = 'text/csv';
         filename = `${baseFilename}_${timestamp}.csv`;
+        break;
+
+      case 'pdf':
+      case 'doc':
+      case 'docx':
+        // For document formats, fallback to text content if no original anonymized file
+        content = data.anonymizedText;
+        contentType = 'text/plain';
+        filename = `${baseFilename}_${timestamp}.txt`;
         break;
     }
 
@@ -1359,5 +1374,508 @@ export class DatasetsService {
       job,
       message: 'Demo dataset created successfully'
     };
+  }
+
+  /**
+   * Global PII Findings Search
+   * 
+   * Searches across all PII findings that belong to the current user's datasets.
+   * Supports comprehensive filtering by text content, entity types, confidence scores,
+   * date ranges, and project/dataset scoping.
+   * 
+   * @param userId - Current user ID for data isolation
+   * @param searchParams - Search and filter parameters
+   * @returns Search results with metadata, pagination, and entity breakdown
+   */
+  async searchFindings(userId: string, searchParams: any) {
+    const startTime = Date.now();
+    
+    // Destructure and set defaults
+    const {
+      query,
+      entityTypes,
+      minConfidence = 0,
+      maxConfidence = 1,
+      dateFrom,
+      dateTo,
+      projectIds,
+      datasetIds,
+      page = 1,
+      limit = 50,
+      sortBy = 'confidence',
+      sortOrder = 'desc'
+    } = searchParams;
+
+    // Build where clause for search
+    const whereClause: any = {
+      dataset: {
+        project: {
+          userId: userId
+        }
+      }
+    };
+
+    // Text search in masked text and context
+    if (query && query.trim()) {
+      whereClause.OR = [
+        {
+          text: {
+            contains: query.trim(),
+            mode: 'insensitive'
+          }
+        },
+        {
+          contextBefore: {
+            contains: query.trim(),
+            mode: 'insensitive'
+          }
+        },
+        {
+          contextAfter: {
+            contains: query.trim(),
+            mode: 'insensitive'
+          }
+        }
+      ];
+    }
+
+    // Entity type filtering
+    if (entityTypes && entityTypes.length > 0) {
+      whereClause.entityType = {
+        in: entityTypes
+      };
+    }
+
+    // Confidence range filtering
+    whereClause.confidence = {
+      gte: minConfidence,
+      lte: maxConfidence
+    };
+
+    // Date range filtering
+    if (dateFrom || dateTo) {
+      whereClause.createdAt = {};
+      if (dateFrom) {
+        whereClause.createdAt.gte = new Date(dateFrom);
+      }
+      if (dateTo) {
+        whereClause.createdAt.lte = new Date(dateTo);
+      }
+    }
+
+    // Project filtering
+    if (projectIds && projectIds.length > 0) {
+      whereClause.dataset.project.id = {
+        in: projectIds
+      };
+    }
+
+    // Dataset filtering
+    if (datasetIds && datasetIds.length > 0) {
+      whereClause.dataset.id = {
+        in: datasetIds
+      };
+    }
+
+    // Build sort order
+    const orderBy: any = {};
+    if (sortBy === 'confidence') {
+      orderBy.confidence = sortOrder;
+    } else if (sortBy === 'createdAt') {
+      orderBy.createdAt = sortOrder;
+    } else if (sortBy === 'entityType') {
+      orderBy.entityType = sortOrder;
+    }
+
+    // Calculate pagination
+    const skip = (page - 1) * limit;
+
+    try {
+      // Execute search query with parallel requests for better performance
+      const [findings, totalCount, entityBreakdown] = await Promise.all([
+        // Main findings query
+        this.prisma.finding.findMany({
+          where: whereClause,
+          include: {
+            dataset: {
+              select: {
+                id: true,
+                name: true,
+                filename: true,
+                fileType: true,
+                status: true,
+                project: {
+                  select: {
+                    id: true,
+                    name: true
+                  }
+                }
+              }
+            }
+          },
+          orderBy,
+          skip,
+          take: limit,
+        }),
+
+        // Total count for pagination
+        this.prisma.finding.count({
+          where: whereClause
+        }),
+
+        // Entity type breakdown for statistics
+        this.prisma.finding.groupBy({
+          by: ['entityType'],
+          where: whereClause,
+          _count: {
+            id: true
+          },
+          _avg: {
+            confidence: true
+          }
+        })
+      ]);
+
+      // Calculate execution time
+      const executionTime = Date.now() - startTime;
+
+      // Format entity breakdown
+      const breakdown = entityBreakdown.map(item => ({
+        entityType: item.entityType,
+        count: item._count.id,
+        avgConfidence: Math.round((item._avg.confidence || 0) * 100) / 100
+      }));
+
+      // Build applied filters summary
+      const appliedFilters: any = {};
+      if (entityTypes && entityTypes.length > 0) {
+        appliedFilters.entityTypes = entityTypes;
+      }
+      if (minConfidence > 0 || maxConfidence < 1) {
+        appliedFilters.confidenceRange = [minConfidence, maxConfidence];
+      }
+      if (dateFrom && dateTo) {
+        appliedFilters.dateRange = [dateFrom, dateTo];
+      }
+      if (projectIds && projectIds.length > 0) {
+        appliedFilters.projects = projectIds.length;
+      }
+      if (datasetIds && datasetIds.length > 0) {
+        appliedFilters.datasets = datasetIds.length;
+      }
+
+      // Build pagination info
+      const totalPages = Math.ceil(totalCount / limit);
+      
+      const result = {
+        findings,
+        metadata: {
+          totalResults: totalCount,
+          searchQuery: query || undefined,
+          appliedFilters,
+          executionTime
+        },
+        pagination: {
+          page,
+          limit,
+          total: totalCount,
+          pages: totalPages,
+          hasNext: page < totalPages,
+          hasPrev: page > 1
+        },
+        breakdown
+      };
+
+      // Log search action for audit (only for specific searches, not general browsing)
+      if (query || entityTypes?.length || minConfidence > 0 || maxConfidence < 1) {
+        await this.prisma.auditLog.create({
+          data: {
+            userId,
+            action: 'VIEW',
+            resource: 'finding',
+            resourceId: null, // Global search, no specific resource
+            details: {
+              searchQuery: query,
+              entityTypes: entityTypes,
+              confidenceRange: [minConfidence, maxConfidence],
+              projectsFiltered: projectIds?.length || 0,
+              datasetsFiltered: datasetIds?.length || 0,
+              resultsFound: totalCount,
+              executionTime,
+              action: 'GLOBAL_SEARCH'
+            },
+          },
+        });
+      }
+
+      return result;
+
+    } catch (error) {
+      console.error('Error in global findings search:', error);
+      throw new InternalServerErrorException('Failed to search findings');
+    }
+  }
+
+  /**
+   * Export Global PII Findings Search Results
+   * 
+   * Exports search results as CSV or JSON format with the same filtering capabilities
+   * as the searchFindings method. Optimized for large result sets with appropriate limits.
+   * 
+   * @param userId - Current user ID for data isolation
+   * @param searchParams - Search and filter parameters
+   * @param format - Export format ('csv' or 'json')
+   * @returns Formatted export data as string
+   */
+  async exportSearchFindings(userId: string, searchParams: any, format: 'csv' | 'json' = 'csv'): Promise<string> {
+    const startTime = Date.now();
+    
+    // Destructure and set defaults (use higher limit for export)
+    const {
+      query,
+      entityTypes,
+      minConfidence = 0,
+      maxConfidence = 1,
+      dateFrom,
+      dateTo,
+      projectIds,
+      datasetIds,
+      limit = 10000, // Export limit
+      sortBy = 'confidence',
+      sortOrder = 'desc'
+    } = searchParams;
+
+    // Build where clause (same as searchFindings)
+    const whereClause: any = {
+      dataset: {
+        project: {
+          userId: userId
+        }
+      }
+    };
+
+    // Apply filters (same logic as searchFindings)
+    if (query && query.trim()) {
+      whereClause.OR = [
+        {
+          text: {
+            contains: query.trim(),
+            mode: 'insensitive'
+          }
+        },
+        {
+          contextBefore: {
+            contains: query.trim(),
+            mode: 'insensitive'
+          }
+        },
+        {
+          contextAfter: {
+            contains: query.trim(),
+            mode: 'insensitive'
+          }
+        }
+      ];
+    }
+
+    if (entityTypes && entityTypes.length > 0) {
+      whereClause.entityType = {
+        in: entityTypes
+      };
+    }
+
+    whereClause.confidence = {
+      gte: minConfidence,
+      lte: maxConfidence
+    };
+
+    if (dateFrom || dateTo) {
+      whereClause.createdAt = {};
+      if (dateFrom) {
+        whereClause.createdAt.gte = new Date(dateFrom);
+      }
+      if (dateTo) {
+        whereClause.createdAt.lte = new Date(dateTo);
+      }
+    }
+
+    if (projectIds && projectIds.length > 0) {
+      whereClause.dataset.project.id = {
+        in: projectIds
+      };
+    }
+
+    if (datasetIds && datasetIds.length > 0) {
+      whereClause.dataset.id = {
+        in: datasetIds
+      };
+    }
+
+    // Build sort order
+    const orderBy: any = {};
+    if (sortBy === 'confidence') {
+      orderBy.confidence = sortOrder;
+    } else if (sortBy === 'createdAt') {
+      orderBy.createdAt = sortOrder;
+    } else if (sortBy === 'entityType') {
+      orderBy.entityType = sortOrder;
+    }
+
+    try {
+      // Get findings for export
+      const findings = await this.prisma.finding.findMany({
+        where: whereClause,
+        include: {
+          dataset: {
+            select: {
+              id: true,
+              name: true,
+              filename: true,
+              fileType: true,
+              status: true,
+              project: {
+                select: {
+                  id: true,
+                  name: true
+                }
+              }
+            }
+          }
+        },
+        orderBy,
+        take: limit,
+      });
+
+      const executionTime = Date.now() - startTime;
+
+      // Log export action
+      await this.prisma.auditLog.create({
+        data: {
+          userId,
+          action: 'VIEW',
+          resource: 'finding',
+          resourceId: 'export_search_results',
+          details: {
+            action: 'EXPORT_SEARCH_RESULTS',
+            format,
+            searchQuery: query,
+            entityTypes: entityTypes,
+            confidenceRange: [minConfidence, maxConfidence],
+            projectsFiltered: projectIds?.length || 0,
+            datasetsFiltered: datasetIds?.length || 0,
+            resultsExported: findings.length,
+            executionTime
+          },
+        },
+      });
+
+      if (format === 'json') {
+        return this.formatJsonExport(findings, {
+          searchQuery: query,
+          appliedFilters: {
+            entityTypes: entityTypes || [],
+            confidenceRange: [minConfidence, maxConfidence],
+            dateRange: dateFrom && dateTo ? [dateFrom, dateTo] : null,
+            projectIds: projectIds || [],
+            datasetIds: datasetIds || []
+          },
+          exportInfo: {
+            exportedAt: new Date().toISOString(),
+            totalResults: findings.length,
+            executionTime
+          }
+        });
+      } else {
+        return this.formatCsvExport(findings);
+      }
+
+    } catch (error) {
+      console.error('Error in export findings:', error);
+      throw new InternalServerErrorException('Failed to export search results');
+    }
+  }
+
+  /**
+   * Format findings as JSON export
+   */
+  private formatJsonExport(findings: any[], metadata: any): string {
+    const exportData = {
+      exportMetadata: metadata,
+      findings: findings.map(finding => ({
+        id: finding.id,
+        entityType: finding.entityType,
+        confidence: finding.confidence,
+        text: finding.text,
+        contextBefore: finding.contextBefore,
+        contextAfter: finding.contextAfter,
+        lineNumber: finding.lineNumber,
+        startOffset: finding.startOffset,
+        endOffset: finding.endOffset,
+        columnName: finding.columnName,
+        createdAt: finding.createdAt,
+        dataset: {
+          id: finding.dataset.id,
+          name: finding.dataset.name,
+          filename: finding.dataset.filename,
+          fileType: finding.dataset.fileType,
+          status: finding.dataset.status,
+          project: finding.dataset.project
+        }
+      }))
+    };
+
+    return JSON.stringify(exportData, null, 2);
+  }
+
+  /**
+   * Format findings as CSV export
+   */
+  private formatCsvExport(findings: any[]): string {
+    const headers = [
+      'ID',
+      'Entity Type',
+      'Confidence',
+      'Text',
+      'Context Before',
+      'Context After',
+      'Line Number',
+      'Column Name',
+      'Start Offset',
+      'End Offset',
+      'Created Date',
+      'Dataset ID',
+      'Dataset Name',
+      'Filename',
+      'File Type',
+      'Project ID',
+      'Project Name'
+    ];
+
+    const csvRows = [headers.join(',')];
+
+    findings.forEach(finding => {
+      const row = [
+        `"${finding.id}"`,
+        `"${finding.entityType}"`,
+        finding.confidence,
+        `"${(finding.text || '').replace(/"/g, '""')}"`,
+        `"${(finding.contextBefore || '').replace(/"/g, '""')}"`,
+        `"${(finding.contextAfter || '').replace(/"/g, '""')}"`,
+        finding.lineNumber || '',
+        `"${finding.columnName || ''}"`,
+        finding.startOffset || '',
+        finding.endOffset || '',
+        `"${finding.createdAt.toISOString()}"`,
+        `"${finding.dataset.id}"`,
+        `"${finding.dataset.name}"`,
+        `"${finding.dataset.filename}"`,
+        `"${finding.dataset.fileType}"`,
+        `"${finding.dataset.project.id}"`,
+        `"${finding.dataset.project.name}"`
+      ];
+      csvRows.push(row.join(','));
+    });
+
+    return csvRows.join('\n');
   }
 }

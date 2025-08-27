@@ -315,7 +315,7 @@ export default function DatasetDetailsPage() {
                 <DropdownMenuContent align="end" className="w-56">
                   {/* Show original file option for PDFs and DOCs */}
                   {(['PDF', 'DOC', 'DOCX'].includes(dataset.fileType.toUpperCase())) && (
-                    <DropdownMenuItem onClick={() => handleDownload('original')}>
+                    <DropdownMenuItem onClick={() => handleDownload(dataset.fileType.toLowerCase())}>
                       <Shield className="h-4 w-4 mr-2" />
                       Anonymized {dataset.fileType.toUpperCase()} (.{dataset.fileType.toLowerCase()})
                     </DropdownMenuItem>

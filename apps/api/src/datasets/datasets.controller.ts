@@ -173,7 +173,9 @@ const fileFilter = (req: any, file: Express.Multer.File, cb: any) => {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth('JWT-auth')
 export class DatasetsController {
-  constructor(private readonly datasetsService: DatasetsService) {}
+  constructor(
+    private readonly datasetsService: DatasetsService,
+  ) {}
 
   @Post('upload')
   @UploadRateLimit()
@@ -262,6 +264,172 @@ export class DatasetsController {
       take: limitNum,
       projectId,
     });
+  }
+
+  @Get('search/findings')
+  @ModerateRateLimit()
+  @ApiOperation({ 
+    summary: 'Global PII findings search',
+    description: 'Search across all PII findings in user\'s datasets with comprehensive filtering options'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Search results retrieved successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        findings: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              entityType: { type: 'string' },
+              maskedText: { type: 'string' },
+              context: { type: 'string' },
+              confidence: { type: 'number' },
+              startOffset: { type: 'number' },
+              endOffset: { type: 'number' },
+              createdAt: { type: 'string' },
+              dataset: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  name: { type: 'string' },
+                  filename: { type: 'string' },
+                  fileType: { type: 'string' },
+                  project: {
+                    type: 'object',
+                    properties: {
+                      id: { type: 'string' },
+                      name: { type: 'string' }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        metadata: {
+          type: 'object',
+          properties: {
+            totalResults: { type: 'number' },
+            searchQuery: { type: 'string' },
+            appliedFilters: { type: 'object' },
+            executionTime: { type: 'number' }
+          }
+        },
+        pagination: {
+          type: 'object',
+          properties: {
+            page: { type: 'number' },
+            limit: { type: 'number' },
+            total: { type: 'number' },
+            pages: { type: 'number' },
+            hasNext: { type: 'boolean' },
+            hasPrev: { type: 'boolean' }
+          }
+        },
+        breakdown: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              entityType: { type: 'string' },
+              count: { type: 'number' },
+              avgConfidence: { type: 'number' }
+            }
+          }
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 400, description: 'Invalid search parameters' })
+  @ApiResponse({ status: 500, description: 'Search failed' })
+  async searchFindings(
+    @Request() req,
+    @Query('query') query?: string,
+    @Query('entityTypes') entityTypes?: string,
+    @Query('minConfidence') minConfidence?: string,
+    @Query('maxConfidence') maxConfidence?: string,
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
+    @Query('projectIds') projectIds?: string,
+    @Query('datasetIds') datasetIds?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortOrder') sortOrder?: string
+  ) {
+    // Transform query parameters
+    const searchParams = {
+      query,
+      entityTypes: entityTypes ? entityTypes.split(',') : undefined,
+      minConfidence: minConfidence ? parseFloat(minConfidence) : undefined,
+      maxConfidence: maxConfidence ? parseFloat(maxConfidence) : undefined,
+      dateFrom,
+      dateTo,
+      projectIds: projectIds ? projectIds.split(',') : undefined,
+      datasetIds: datasetIds ? datasetIds.split(',') : undefined,
+      page: page ? parseInt(page, 10) : undefined,
+      limit: limit ? parseInt(limit, 10) : undefined,
+      sortBy,
+      sortOrder
+    };
+
+    return this.datasetsService.searchFindings(req.user.id, searchParams);
+  }
+
+  @Get('search/export')
+  @ApiOperation({ summary: 'Export search findings as CSV or JSON' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Search results exported successfully',
+    headers: {
+      'Content-Type': { description: 'application/json or text/csv' },
+      'Content-Disposition': { description: 'attachment; filename=findings_export.*' }
+    }
+  })
+  @ApiResponse({ status: 400, description: 'Invalid export parameters' })
+  @ApiResponse({ status: 500, description: 'Export failed' })
+  async exportSearchFindings(
+    @Request() req,
+    @Res() res: Response,
+    @Query('format') format: 'csv' | 'json' = 'csv',
+    @Query('query') query?: string,
+    @Query('entityTypes') entityTypes?: string,
+    @Query('minConfidence') minConfidence?: string,
+    @Query('maxConfidence') maxConfidence?: string,
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
+    @Query('projectIds') projectIds?: string,
+    @Query('datasetIds') datasetIds?: string,
+  ) {
+    const searchParams = {
+      query,
+      entityTypes: entityTypes ? entityTypes.split(',') : undefined,
+      minConfidence: minConfidence ? parseFloat(minConfidence) : undefined,
+      maxConfidence: maxConfidence ? parseFloat(maxConfidence) : undefined,
+      dateFrom: dateFrom ? new Date(dateFrom) : undefined,
+      dateTo: dateTo ? new Date(dateTo) : undefined,
+      projectIds: projectIds ? projectIds.split(',') : undefined,
+      datasetIds: datasetIds ? datasetIds.split(',') : undefined,
+      page: 1,
+      limit: 10000 // Export limit - reasonable for performance
+    };
+
+    const results = await this.datasetsService.exportSearchFindings(req.user.id, searchParams, format);
+    
+    const timestamp = new Date().toISOString().split('T')[0];
+    const filename = `maskwise_findings_${timestamp}.${format}`;
+    const contentType = format === 'json' ? 'application/json' : 'text/csv';
+    
+    res.set({
+      'Content-Type': contentType,
+      'Content-Disposition': `attachment; filename="${filename}"`,
+    });
+    
+    res.send(results);
   }
 
   @Get(':id')
