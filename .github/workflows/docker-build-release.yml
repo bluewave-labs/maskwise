@@ -106,6 +106,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          ref: main
 
       - name: Update docker-compose with new image tags
         run: |
@@ -134,5 +135,9 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add docker-compose.production.yml
-          git commit -m "chore: add production docker-compose with release images for ${GITHUB_REF#refs/tags/}" || exit 0
-          git push
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: add production docker-compose with release images for ${GITHUB_REF#refs/tags/}"
+            git push origin main
+          fi
