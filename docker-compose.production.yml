@@ -92,9 +92,10 @@ services:
 
   # API Service
   api:
-    build:
-      context: .
-      dockerfile: ./apps/api/Dockerfile
+    image: ghcr.io/bluewave-labs/maskwise-api:v1.2.0
+    # build:
+    #   context: .
+    #   dockerfile: ./apps/api/Dockerfile
     container_name: maskwise-api
     environment:
       NODE_ENV: production
@@ -132,9 +133,10 @@ services:
 
   # Worker Service
   worker:
-    build:
-      context: .
-      dockerfile: ./apps/worker/Dockerfile
+    image: ghcr.io/bluewave-labs/maskwise-worker:v1.2.0
+    # build:
+    #   context: .
+    #   dockerfile: ./apps/worker/Dockerfile
     container_name: maskwise-worker
     environment:
       NODE_ENV: production
@@ -160,11 +162,12 @@ services:
 
   # Web Frontend
   web:
-    build:
-      context: .
-      dockerfile: ./apps/web/Dockerfile
-      args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost/api}
+    image: ghcr.io/bluewave-labs/maskwise-web:v1.2.0
+    # build:
+    #   context: .
+    #   dockerfile: ./apps/web/Dockerfile
+    #   args:
+    #     NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost/api}
     container_name: maskwise-web
     environment:
       NODE_ENV: production
