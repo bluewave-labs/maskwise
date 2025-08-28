@@ -8,7 +8,7 @@ The system supports 50+ document and file formats, applies anonymization while p
 
 ## Overview
 
-  - Microsoft Presidio Integration with 15+ compliance entity types (SSN, Credit Cards, HIPAA, GDPR etc)
+  - [Microsoft Presidio](https://github.com/microsoft/presidio/) integration with 15+ compliance entity types (SSN, Credit Cards, HIPAA, GDPR etc)
   - RBAC with comprehensive audit trails
   - Full Office Suite Support (Word, Excel, PowerPoint, PDF) with format preservation
   - Batch Processing for enterprise-scale volumes
@@ -19,7 +19,11 @@ The system supports 50+ document and file formats, applies anonymization while p
   - Original + Anonymized Downloads for audit workflows
   - On-premise & Docker Installation
   - RESTful API for existing system integration
-  - Single Sign-On Ready (Active Directory, SAML, OIDC)
+ 
+Roadmap: 
+
+- Vault
+- Single Sign-On Ready (Active Directory, SAML, OIDC) (in the works)
 
 You can deploy Maskwise in 24 hours an reduce PII exposure risk by 95%. Maskwise can process thousands of documents per hour.
 
