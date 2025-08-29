@@ -4,7 +4,7 @@ Maskwise by [VerifyWise](https://verifywise.ai/) is a single-tenant data privacy
 
 The system supports 50+ document and file formats, applies anonymization while preserving original structure and formatting, and generates full compliance audit trails for traceability and verification.
 
-
+Join the Discord server for discussions: [Click here](https://discord.gg/xr5ta83BBr)
 
 ## Overview
 
