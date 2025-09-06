@@ -58,6 +58,23 @@ export function useGlobalSearch(): UseGlobalSearchReturn {
   const executeSearch = useCallback(async () => {
     if (isLoading) return;
 
+    // Check if there's any meaningful search criteria
+    const hasQuery = searchParams.query?.trim();
+    const hasFilters = !!(
+      searchParams.entityTypes?.length ||
+      searchParams.minConfidence !== undefined ||
+      searchParams.maxConfidence !== undefined ||
+      searchParams.dateFrom ||
+      searchParams.dateTo ||
+      searchParams.projectIds?.length ||
+      searchParams.datasetIds?.length
+    );
+
+    // Don't execute search if no query and no filters are applied
+    if (!hasQuery && !hasFilters) {
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
