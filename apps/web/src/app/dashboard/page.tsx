@@ -21,7 +21,6 @@ import {
   Search,
   ArrowRight 
 } from 'lucide-react';
-import { ActivityFeed } from '@/components/dashboard/activity-feed';
 
 interface DashboardStats {
   recentScans: number;
@@ -240,8 +239,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Recent Activity */}
-          <ActivityFeed />
         </div>
       </DashboardLayout>
     </ProtectedRoute>

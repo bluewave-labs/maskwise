@@ -7,6 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { SearchResponse, SearchFinding, EntityTypeConfig } from '@/types/search';
+import { EntityTypesPieChart } from '@/components/search/entity-types-pie-chart';
+import { 
+  DashboardWithRiskAssessment
+} from '@/components/search/search-results-layout-options';
 
 interface SearchResultsTableProps {
   results: SearchResponse;
@@ -74,98 +78,13 @@ export function SearchResultsTable({
 
   return (
     <div className={`w-full space-y-6 ${className}`}>
-      {/* Search Summary & Entity Breakdown */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Search Summary */}
-        <Card className="lg:col-span-2">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-[15px] font-medium text-gray-900 flex items-center gap-2">
-                <Zap className="h-4 w-4 text-primary" />
-                Search Results
-              </CardTitle>
-              {onExport && (
-                <div className="flex items-center gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => onExport('csv')}
-                    className="h-8 text-[12px] px-3"
-                  >
-                    <Download className="h-3 w-3 mr-1" />
-                    CSV
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => onExport('json')}
-                    className="h-8 text-[12px] px-3"
-                  >
-                    <FileCode className="h-3 w-3 mr-1" />
-                    JSON
-                  </Button>
-                </div>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <div>
-                <div className="text-[13px] font-medium text-gray-900">{metadata.totalResults.toLocaleString()}</div>
-                <div className="text-[11px] text-gray-500">Total Findings</div>
-              </div>
-              <div>
-                <div className="text-[13px] font-medium text-gray-900">{metadata.executionTime}ms</div>
-                <div className="text-[11px] text-gray-500">Search Time</div>
-              </div>
-              <div>
-                <div className="text-[13px] font-medium text-gray-900">{breakdown.length}</div>
-                <div className="text-[11px] text-gray-500">Entity Types</div>
-              </div>
-              <div>
-                <div className="text-[13px] font-medium text-gray-900">
-                  {Math.round(breakdown.reduce((sum, b) => sum + b.avgConfidence, 0) / breakdown.length * 100)}%
-                </div>
-                <div className="text-[11px] text-gray-500">Avg Confidence</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Entity Breakdown */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-[15px] font-medium text-gray-900">Entity Types</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {breakdown.slice(0, 5).map(item => {
-              const config = EntityTypeConfig[item.entityType];
-              return (
-                <div key={item.entityType} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[12px]">{config.icon}</span>
-                    <span className="text-[11px] text-gray-700">{config.label}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-medium">{item.count}</span>
-                    <div className="w-12">
-                      <Progress 
-                        value={item.avgConfidence * 100} 
-                        className="h-1"
-                      />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-            {breakdown.length > 5 && (
-              <div className="text-[10px] text-gray-400 text-center pt-2 border-t border-gray-100">
-                +{breakdown.length - 5} more types
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      {/* Dashboard with Risk Assessment */}
+      <DashboardWithRiskAssessment
+        results={results}
+        onPageChange={onPageChange}
+        onViewDataset={onViewDataset}
+        onExport={onExport}
+      />
 
       {/* Results Table */}
       <Card>
