@@ -230,31 +230,11 @@ export function ApiKeyManagement() {
         </p>
       </div>
 
-      {/* Top Section: API Documentation and Generate Button */}
-      <div className="flex items-start justify-between gap-6">
-        {/* API Documentation Box */}
-        <Card className="flex-1 border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-[13px] font-medium text-blue-800 dark:text-blue-200 mb-1">
-                  API Documentation
-                </h3>
-                <p className="text-[13px] text-blue-600 dark:text-blue-300">
-                  Learn how to authenticate and use the Maskwise API endpoints
-                </p>
-              </div>
-              <Button variant="outline" size="sm" className="text-blue-700 border-blue-300 flex-shrink-0">
-                View Docs
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Generate New Key Button */}
+      {/* Generate New Key Button */}
+      <div className="flex justify-end">
         <Dialog open={showGenerateModal} onOpenChange={setShowGenerateModal}>
           <DialogTrigger asChild>
-            <Button className="h-[34px] flex-shrink-0">
+            <Button className="h-[34px]">
               <Plus className="h-4 w-4 mr-2" />
               Generate New Key
             </Button>

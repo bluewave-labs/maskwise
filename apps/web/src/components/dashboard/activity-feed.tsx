@@ -88,7 +88,12 @@ function formatTimestamp(timestamp: string): string {
 }
 
 export function ActivityFeed() {
-  const { activities, isLoading, error, refetch } = useRecentActivity(10);
+  const { activities, isLoading, error, refetch } = useRecentActivity(20);
+  
+  // Filter out login/logout activities
+  const filteredActivities = activities.filter(activity => 
+    activity.action !== 'LOGIN' && activity.action !== 'LOGOUT'
+  ).slice(0, 10); // Take only first 10 after filtering
 
   if (error) {
     return (
@@ -120,13 +125,13 @@ export function ActivityFeed() {
           <Spinner size="sm" className="mr-2" />
           <span className="text-muted-foreground">Loading recent activity...</span>
         </div>
-      ) : !activities || activities.length === 0 ? (
+      ) : !filteredActivities || filteredActivities.length === 0 ? (
         <div className="text-center py-8">
           <p className="text-[13px] text-muted-foreground">No recent activity to display</p>
         </div>
       ) : (
         <div className="space-y-0">
-          {activities.map((activity, index) => {
+          {filteredActivities.map((activity, index) => {
             const ResourceIcon = getResourceIcon(activity.resource);
 
             return (
@@ -146,7 +151,7 @@ export function ActivityFeed() {
                   </div>
                 </div>
                 
-                {index < activities.length - 1 && (
+                {index < filteredActivities.length - 1 && (
                   <div className="border-b border-border/50"></div>
                 )}
               </div>
