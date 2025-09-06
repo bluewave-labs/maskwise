@@ -21,6 +21,7 @@ import {
   Search,
   ArrowRight 
 } from 'lucide-react';
+import { ActivityFeed } from '@/components/dashboard/activity-feed';
 
 interface DashboardStats {
   recentScans: number;
@@ -83,7 +84,7 @@ export default function DashboardPage() {
     <Card>
       <CardContent className="p-6">
         <div className="flex items-center">
-          <Icon className={`h-8 w-8 ${color}`} />
+          <Icon className={`h-5 w-5 ${color}`} />
           <div className="ml-4">
             <p className="text-sm font-medium text-gray-600">{title}</p>
             <div className="text-2xl font-bold">
@@ -240,24 +241,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Recent Activity */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-medium">Recent Activity</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8">
-                <Activity className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No recent activity</h3>
-                <p className="text-gray-500 mb-4">
-                  Start by uploading a dataset or running a PII scan to see activity here.
-                </p>
-                <Button onClick={() => router.push('/datasets')}>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Upload Your First Dataset
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          <ActivityFeed />
         </div>
       </DashboardLayout>
     </ProtectedRoute>

@@ -12,8 +12,6 @@ import {
   BarChart3,
   LogOut,
   Sparkles,
-  User,
-  ChevronUp,
   Activity,
   Search
 } from 'lucide-react';
@@ -22,14 +20,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useOnboarding } from '@/hooks/useOnboarding';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -105,64 +95,16 @@ export function Sidebar({ className }: SidebarProps) {
         </Button>
       </div>
 
-      {/* User section with dropdown */}
+      {/* User section with logout only */}
       <div className="p-4 border-t border-border">
-        {user && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className="w-full justify-between px-3 py-2 h-auto hover:bg-accent"
-              >
-                <div className="flex items-center gap-3 text-left">
-                  <div className="flex-1 overflow-hidden">
-                    <p className="text-[13px] font-normal text-foreground truncate">
-                      {user.firstName} {user.lastName}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground truncate">
-                      {user.email}
-                    </p>
-                  </div>
-                </div>
-                <ChevronUp className="h-4 w-4 text-muted-foreground" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              className="w-56"
-              align="end"
-              side="top"
-              sideOffset={5}
-            >
-              <DropdownMenuLabel>
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">{user.firstName} {user.lastName}</p>
-                  <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/settings" className="flex items-center cursor-pointer">
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Settings</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/settings#profile" className="flex items-center cursor-pointer">
-                  <User className="mr-2 h-4 w-4" />
-                  <span>Profile</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={handleLogout}
-                className="flex items-center cursor-pointer text-red-600 focus:text-red-600"
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Logout</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+        <Button
+          variant="ghost"
+          onClick={handleLogout}
+          className="w-full justify-start px-3 py-2 h-auto hover:bg-accent text-red-600 hover:text-red-600"
+        >
+          <LogOut className="mr-3 h-4 w-4" />
+          <span className="text-[13px] font-normal">Logout</span>
+        </Button>
       </div>
     </div>
   );
