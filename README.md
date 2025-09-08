@@ -1,6 +1,6 @@
 # MaskWise - Enterprise PII Anonymization Platform
 
-Maskwise by [VerifyWise](https://verifywise.ai/) is a single-tenant data privacy platform built to detect, redact, mask, and anonymize sensitive information across unstructured text, images, and structured data within LLM training datasets. It automatically identifies and classifies personally identifiable information (PII), payment data, health records, and other regulated content. 
+Maskwise by [VerifyWise](https://verifywise.ai/) is a data privacy platform built to detect, redact, mask, and anonymize sensitive information across unstructured text, images, and structured data within LLM training datasets. It automatically identifies and classifies PII, payment data, health records or other regulated content. 
 
 The system supports 50+ document and file formats, applies anonymization while preserving original structure and formatting, and generates full compliance audit trails for traceability and verification.
 
