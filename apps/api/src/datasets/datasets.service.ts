@@ -14,21 +14,79 @@ import * as crypto from 'crypto';
 
 /**
  * Datasets Service
- * 
- * Core business logic for dataset and file management.
- * Handles file upload processing, metadata extraction, security validation,
- * and integration with the PII detection job queue.
- * 
+ *
+ * Core business logic for dataset and file management in the MaskWise PII detection platform.
+ * Handles complete file upload lifecycle, security validation, metadata extraction, and
+ * integration with the PII analysis pipeline.
+ *
  * Key responsibilities:
- * - File upload and storage management
- * - Dataset CRUD operations with user isolation
+ * - Secure file upload with multi-layer validation
+ * - Dataset CRUD operations with strict user isolation
  * - SHA-256 content hashing for integrity verification
- * - Automatic job creation for PII analysis pipeline
+ * - Automatic PII analysis job creation and queue management
  * - Project-level statistics and analytics
- * - Comprehensive audit logging
+ * - Real-time progress updates via Server-Sent Events
+ * - Comprehensive audit logging for compliance
+ * - PII findings search with advanced filtering
+ * - File export and dataset deletion with cleanup
+ *
+ * @remarks
+ * Security architecture:
+ * - Multi-layer file validation (MIME type, extension, magic bytes)
+ * - Input sanitization for SQL/XSS/path traversal prevention
+ * - User isolation enforced at database query level
+ * - File size limits (100MB default)
+ * - Content hash verification for integrity
+ * - Suspicious pattern detection
+ *
+ * File processing workflow:
+ * 1. Security validation (file type, size, patterns)
+ * 2. Metadata extraction (MIME type, hash, size)
+ * 3. Secure file storage with unique naming
+ * 4. Database record creation
+ * 5. PII analysis job creation and queuing
+ * 6. Real-time status updates via SSE
+ * 7. Audit log entry creation
+ *
+ * Storage strategy:
+ * - Local filesystem storage in ./uploads directory
+ * - Unique filenames: {name}_{timestamp}-{random}{ext}
+ * - SHA-256 hashing for duplicate detection
+ * - Automatic cleanup on dataset deletion
+ * - File size stored as BigInt for large files
+ *
+ * Performance considerations:
+ * - Parallel database queries for statistics
+ * - Pagination support for large datasets
+ * - Streaming for file operations
+ * - Background job processing via BullMQ
+ * - SSE for non-blocking progress updates
+ *
+ * Integration points:
+ * - QueueService: Job creation for PII analysis pipeline
+ * - FileValidatorService: Security validation
+ * - InputSanitizerService: XSS/SQL injection prevention
+ * - SSEService: Real-time client updates
+ * - PrismaService: Database operations with transactions
+ *
+ * @see {@link QueueService} for job queue management
+ * @see {@link FileValidatorService} for security validation
+ * @see {@link InputSanitizerService} for input sanitization
+ * @see {@link SSEService} for real-time updates
+ *
+ * @since 1.0.0
  */
 @Injectable()
 export class DatasetsService {
+  /**
+   * Initializes datasets service with required dependencies
+   *
+   * @param prisma - Database service for dataset and findings operations
+   * @param queueService - Job queue service for PII analysis pipeline
+   * @param fileValidator - Security validator for file uploads
+   * @param inputSanitizer - Input sanitization for XSS/SQL prevention
+   * @param sseService - Server-sent events service for real-time updates
+   */
   constructor(
     private prisma: PrismaService,
     private queueService: QueueService,
