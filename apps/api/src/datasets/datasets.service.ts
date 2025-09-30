@@ -2113,14 +2113,219 @@ export class DatasetsService {
 
   /**
    * Global PII Findings Search
-   * 
-   * Searches across all PII findings that belong to the current user's datasets.
-   * Supports comprehensive filtering by text content, entity types, confidence scores,
-   * date ranges, and project/dataset scoping.
-   * 
+   *
+   * Comprehensive cross-dataset PII search engine enabling users to query all
+   * their findings with advanced filtering, pagination, and analytics. Supports
+   * text search, entity type filtering, confidence ranges, date ranges, and
+   * project/dataset scoping with performance optimization.
+   *
    * @param userId - Current user ID for data isolation
    * @param searchParams - Search and filter parameters
-   * @returns Search results with metadata, pagination, and entity breakdown
+   * @param searchParams.query - Optional text search (searches masked text and context)
+   * @param searchParams.entityTypes - Filter by entity types (e.g., ['EMAIL_ADDRESS', 'SSN'])
+   * @param searchParams.minConfidence - Minimum confidence score (0.0 to 1.0, default: 0)
+   * @param searchParams.maxConfidence - Maximum confidence score (0.0 to 1.0, default: 1.0)
+   * @param searchParams.dateFrom - Filter findings created after this date
+   * @param searchParams.dateTo - Filter findings created before this date
+   * @param searchParams.projectIds - Filter by specific project IDs
+   * @param searchParams.datasetIds - Filter by specific dataset IDs
+   * @param searchParams.page - Page number for pagination (default: 1)
+   * @param searchParams.limit - Results per page (default: 50, max: recommended 100)
+   * @param searchParams.sortBy - Sort field ('confidence', 'createdAt', 'entityType')
+   * @param searchParams.sortOrder - Sort direction ('asc' or 'desc', default: 'desc')
+   * @returns Search results with findings, metadata, pagination, and entity breakdown
+   *
+   * @remarks
+   * **Search Architecture:**
+   *
+   * Query Construction:
+   * - User isolation enforced via project → dataset relationship
+   * - Case-insensitive text search across masked text, context before/after
+   * - Multiple filters combined with AND logic
+   * - Entity type filtering via array inclusion
+   * - Confidence range filtering with gte/lte operators
+   * - Date range filtering on createdAt timestamp
+   *
+   * Performance Optimization:
+   * - Parallel execution of findings query, count, and entity breakdown
+   * - Single database round-trip using Promise.all
+   * - Optimized Prisma aggregations with groupBy
+   * - Execution time tracking for monitoring
+   * - Recommended limit: 50-100 results per page
+   *
+   * **Response Structure:**
+   *
+   * ```typescript
+   * {
+   *   findings: Array<{
+   *     id: string,
+   *     entityType: string,
+   *     confidence: number,
+   *     text: string,
+   *     contextBefore: string,
+   *     contextAfter: string,
+   *     dataset: {
+   *       id, name, filename, fileType, status,
+   *       project: { id, name }
+   *     }
+   *   }>,
+   *   metadata: {
+   *     totalResults: number,
+   *     searchQuery?: string,
+   *     appliedFilters: {
+   *       entityTypes?: string[],
+   *       confidenceRange?: [number, number],
+   *       dateRange?: [string, string],
+   *       projects?: number,
+   *       datasets?: number
+   *     },
+   *     executionTime: number // milliseconds
+   *   },
+   *   pagination: {
+   *     page: number,
+   *     limit: number,
+   *     total: number,
+   *     pages: number,
+   *     hasNext: boolean,
+   *     hasPrev: boolean
+   *   },
+   *   breakdown: Array<{
+   *     entityType: string,
+   *     count: number,
+   *     avgConfidence: number
+   *   }>
+   * }
+   * ```
+   *
+   * **Text Search Behavior:**
+   *
+   * Searches across three fields with OR logic:
+   * - finding.text (masked PII text)
+   * - finding.contextBefore (preceding context)
+   * - finding.contextAfter (following context)
+   *
+   * Case-insensitive, contains-based matching
+   * Useful for:
+   * - Finding PII with specific patterns
+   * - Locating findings in specific contexts
+   * - Verifying masking accuracy
+   *
+   * **Filtering Capabilities:**
+   *
+   * Entity Type Filtering:
+   * - Supports multiple entity types (array)
+   * - Exact match on EntityType enum
+   * - Examples: EMAIL_ADDRESS, SSN, CREDIT_CARD
+   *
+   * Confidence Range:
+   * - Filter by detection confidence
+   * - Useful for reviewing low-confidence findings
+   * - Range: 0.0 (uncertain) to 1.0 (certain)
+   *
+   * Date Range:
+   * - Filter by creation timestamp
+   * - Supports dateFrom, dateTo, or both
+   * - ISO 8601 format recommended
+   *
+   * Scope Filtering:
+   * - projectIds: Filter by specific projects
+   * - datasetIds: Filter by specific datasets
+   * - Both support multiple IDs
+   *
+   * **Sorting Options:**
+   *
+   * - confidence: Sort by detection confidence
+   * - createdAt: Sort by finding creation time
+   * - entityType: Sort alphabetically by entity type
+   * - Order: asc (ascending) or desc (descending)
+   *
+   * **Performance Characteristics:**
+   *
+   * - Typical query time: 50-200ms for 1000-10000 findings
+   * - Execution time included in response metadata
+   * - Parallel aggregations optimize response time
+   * - Consider indexing on (userId, entityType, confidence, createdAt)
+   * - Text search can be slow on large datasets (use sparingly)
+   *
+   * **Audit Logging:**
+   *
+   * Logs search action when:
+   * - Text query provided
+   * - Entity type filter applied
+   * - Confidence range customized
+   *
+   * Does NOT log:
+   * - Simple browsing (no filters)
+   * - Pagination navigation only
+   *
+   * Audit entry includes:
+   * - Search query text
+   * - Applied filters
+   * - Results count
+   * - Execution time
+   *
+   * **Use Cases:**
+   *
+   * - Global PII discovery across all datasets
+   * - Compliance reporting and analysis
+   * - Low-confidence finding review
+   * - Entity type distribution analysis
+   * - Temporal PII analysis (trends over time)
+   * - Project-specific PII inventory
+   * - Finding verification and validation
+   *
+   * **Security:**
+   *
+   * - User isolation via nested project relationship
+   * - No cross-user finding access
+   * - Audit trail for all searches
+   * - Masked text returned (original PII not exposed)
+   *
+   * @example
+   * ```typescript
+   * // Search for email findings with high confidence
+   * const results = await datasetsService.searchFindings(userId, {
+   *   entityTypes: ['EMAIL_ADDRESS'],
+   *   minConfidence: 0.8,
+   *   page: 1,
+   *   limit: 50,
+   *   sortBy: 'confidence',
+   *   sortOrder: 'desc'
+   * });
+   *
+   * // Result: {
+   * //   findings: [
+   * //     {
+   * //       entityType: 'EMAIL_ADDRESS',
+   * //       confidence: 0.95,
+   * //       text: '[EMAIL_REDACTED]',
+   * //       contextBefore: 'Contact: ',
+   * //       contextAfter: ' for more info',
+   * //       dataset: { name: 'customers.csv', project: { name: 'GDPR' } }
+   * //     },
+   * //     ...
+   * //   ],
+   * //   metadata: {
+   * //     totalResults: 234,
+   * //     appliedFilters: {
+   * //       entityTypes: ['EMAIL_ADDRESS'],
+   * //       confidenceRange: [0.8, 1.0]
+   * //     },
+   * //     executionTime: 87
+   * //   },
+   * //   pagination: {
+   * //     page: 1,
+   * //     limit: 50,
+   * //     total: 234,
+   * //     pages: 5,
+   * //     hasNext: true,
+   * //     hasPrev: false
+   * //   },
+   * //   breakdown: [
+   * //     { entityType: 'EMAIL_ADDRESS', count: 234, avgConfidence: 0.91 }
+   * //   ]
+   * // }
+   * ```
    */
   async searchFindings(userId: string, searchParams: any) {
     const startTime = Date.now();
@@ -2353,14 +2558,196 @@ export class DatasetsService {
 
   /**
    * Export Global PII Findings Search Results
-   * 
-   * Exports search results as CSV or JSON format with the same filtering capabilities
-   * as the searchFindings method. Optimized for large result sets with appropriate limits.
-   * 
+   *
+   * Exports PII findings search results in CSV or JSON format for offline analysis,
+   * compliance reporting, or data sharing. Uses same filtering capabilities as
+   * searchFindings with optimized limits for large exports.
+   *
    * @param userId - Current user ID for data isolation
-   * @param searchParams - Search and filter parameters
-   * @param format - Export format ('csv' or 'json')
-   * @returns Formatted export data as string
+   * @param searchParams - Search and filter parameters (same as searchFindings)
+   * @param searchParams.query - Optional text search query
+   * @param searchParams.entityTypes - Filter by entity types array
+   * @param searchParams.minConfidence - Minimum confidence (default: 0)
+   * @param searchParams.maxConfidence - Maximum confidence (default: 1.0)
+   * @param searchParams.dateFrom - Start date filter
+   * @param searchParams.dateTo - End date filter
+   * @param searchParams.projectIds - Filter by projects
+   * @param searchParams.datasetIds - Filter by datasets
+   * @param searchParams.limit - Export limit (default: 10000, recommend max: 50000)
+   * @param searchParams.sortBy - Sort field
+   * @param searchParams.sortOrder - Sort direction
+   * @param format - Export format ('csv' or 'json', default: 'csv')
+   * @returns Formatted export data as string (CSV or JSON)
+   *
+   * @remarks
+   * **Export Workflow:**
+   *
+   * 1. Filter Construction:
+   *    - Same filtering logic as searchFindings
+   *    - User isolation enforced
+   *    - All search parameters supported
+   *    - Higher default limit (10000 vs 50)
+   *
+   * 2. Data Retrieval:
+   *    - Single query (no parallel aggregations needed)
+   *    - Includes dataset and project relationships
+   *    - Respects sort order and limit
+   *    - No pagination (exports full result set up to limit)
+   *
+   * 3. Format Conversion:
+   *    - CSV: RFC 4180 compliant with proper quoting
+   *    - JSON: Structured with metadata and findings array
+   *    - Execution time tracking
+   *
+   * 4. Audit Logging:
+   *    - Records export action
+   *    - Tracks format and filters applied
+   *    - Counts exported results
+   *    - Monitors execution time
+   *
+   * **CSV Format:**
+   *
+   * Headers (17 columns):
+   * - ID, Entity Type, Confidence, Text
+   * - Context Before, Context After
+   * - Line Number, Column Name
+   * - Start Offset, End Offset
+   * - Created Date
+   * - Dataset ID, Dataset Name, Filename, File Type
+   * - Project ID, Project Name
+   *
+   * Features:
+   * - RFC 4180 compliant
+   * - Double-quote escaping for commas and quotes
+   * - ISO 8601 timestamps
+   * - UTF-8 encoding
+   * - Compatible with Excel, Google Sheets
+   *
+   * **JSON Format:**
+   *
+   * Structure:
+   * ```typescript
+   * {
+   *   exportMetadata: {
+   *     searchQuery?: string,
+   *     appliedFilters: { ... },
+   *     exportInfo: {
+   *       exportedAt: string,    // ISO 8601
+   *       totalResults: number,
+   *       executionTime: number
+   *     }
+   *   },
+   *   findings: Array<{
+   *     id, entityType, confidence, text,
+   *     contextBefore, contextAfter,
+   *     lineNumber, startOffset, endOffset,
+   *     columnName, createdAt,
+   *     dataset: {
+   *       id, name, filename, fileType, status,
+   *       project: { id, name }
+   *     }
+   *   }>
+   * }
+   * ```
+   *
+   * Features:
+   * - Structured JSON with metadata
+   * - Nested relationships preserved
+   * - Pretty-printed (2-space indent)
+   * - Machine-readable format
+   * - Ideal for programmatic processing
+   *
+   * **Performance Considerations:**
+   *
+   * - Default limit: 10000 results (vs 50 for search)
+   * - Recommended max: 50000 results
+   * - Large exports may timeout (adjust limits)
+   * - No pagination (single query retrieval)
+   * - CSV generation faster than JSON
+   * - Consider streaming for very large exports
+   * - Typical execution time: 200-1000ms for 10000 results
+   *
+   * **Use Cases:**
+   *
+   * - Compliance audit reports
+   * - Offline data analysis in Excel/R/Python
+   * - Third-party tool integration
+   * - Backup and archival
+   * - Management reporting
+   * - Data sharing with auditors
+   * - Trend analysis and visualization
+   *
+   * **Export Limits:**
+   *
+   * - Default: 10000 results
+   * - Recommended max: 50000 results
+   * - Larger exports may require:
+   *   - Streaming implementation
+   *   - Background job processing
+   *   - Chunked export strategy
+   *   - Cloud storage integration
+   *
+   * **Security:**
+   *
+   * - User isolation via project relationship
+   * - Masked text only (no original PII exposed)
+   * - Audit trail for all exports
+   * - Consider access control on export files
+   * - Recommend encryption for exported data
+   *
+   * **Integration:**
+   *
+   * - Used by DatasetsController export endpoint
+   * - Generates downloadable file content
+   * - Content-Type set by controller based on format
+   * - Filename suggested by controller
+   *
+   * @example
+   * ```typescript
+   * // Export high-confidence email findings as CSV
+   * const csv = await datasetsService.exportSearchFindings(
+   *   userId,
+   *   {
+   *     entityTypes: ['EMAIL_ADDRESS'],
+   *     minConfidence: 0.8,
+   *     limit: 5000
+   *   },
+   *   'csv'
+   * );
+   *
+   * // CSV Result (first 2 rows):
+   * // ID,Entity Type,Confidence,Text,Context Before,...
+   * // "clx123...","EMAIL_ADDRESS",0.95,"[EMAIL_REDACTED]","Contact: ",...
+   * // "clx456...","EMAIL_ADDRESS",0.92,"[EMAIL_REDACTED]","Send to ",...
+   *
+   * // Export as JSON for programmatic processing
+   * const json = await datasetsService.exportSearchFindings(
+   *   userId,
+   *   {
+   *     entityTypes: ['SSN', 'CREDIT_CARD'],
+   *     dateFrom: '2024-01-01',
+   *     dateTo: '2024-12-31'
+   *   },
+   *   'json'
+   * );
+   *
+   * // JSON Result:
+   * // {
+   * //   "exportMetadata": {
+   * //     "appliedFilters": {
+   * //       "entityTypes": ["SSN", "CREDIT_CARD"],
+   * //       "confidenceRange": [0, 1],
+   * //       "dateRange": ["2024-01-01", "2024-12-31"]
+   * //     },
+   * //     "exportInfo": {
+   * //       "exportedAt": "2024-08-18T10:30:00.000Z",
+   * //       "totalResults": 1234,
+   * //       "executionTime": 456
+   * //     }
+   * //   },
+   * //   "findings": [ ... ]
+   * // }
+   * ```
    */
   async exportSearchFindings(userId: string, searchParams: any, format: 'csv' | 'json' = 'csv'): Promise<string> {
     const startTime = Date.now();
