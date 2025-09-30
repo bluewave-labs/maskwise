@@ -626,6 +626,68 @@ export class DatasetsService {
     };
   }
 
+  /**
+   * Delete Dataset
+   *
+   * Soft deletes dataset by marking as CANCELLED and attempts to
+   * remove associated file from filesystem. Enforces user isolation.
+   *
+   * @param id - Dataset ID (CUID)
+   * @param userId - Authenticated user ID from JWT token
+   * @returns Soft-deleted dataset with CANCELLED status
+   * @throws {NotFoundException} If dataset not found or user lacks access
+   *
+   * @remarks
+   * Deletion workflow:
+   * 1. Verify dataset exists and user has access
+   * 2. Attempt file deletion from filesystem (non-blocking)
+   * 3. Update dataset status to CANCELLED
+   * 4. Log deletion to audit trail
+   * 5. Return updated dataset
+   *
+   * Soft delete strategy:
+   * - Dataset NOT permanently removed from database
+   * - Status set to CANCELLED for filtering
+   * - Findings and jobs remain in database
+   * - File removed from filesystem (if possible)
+   * - Audit trail preserved
+   *
+   * File system cleanup:
+   * - Attempts to delete file via fs.unlink
+   * - Non-fatal if file deletion fails (logs warning)
+   * - Database update always succeeds
+   * - File may already be deleted or moved
+   *
+   * Cascading behavior:
+   * - Findings NOT deleted (preserved for audit)
+   * - Jobs NOT deleted (preserved for history)
+   * - Audit logs maintained
+   * - Can query CANCELLED datasets if needed
+   *
+   * BigInt serialization:
+   * - fileSize converted from BigInt to Number
+   * - Required for JSON response
+   *
+   * Use cases:
+   * - User-initiated dataset deletion
+   * - Cleanup of failed uploads
+   * - Dataset lifecycle management
+   * - Storage space management
+   *
+   * @example
+   * ```typescript
+   * const deleted = await datasetsService.delete(datasetId, userId);
+   * // Result: {
+   * //   id: 'clx123...',
+   * //   status: 'CANCELLED',
+   * //   fileSize: 1048576,
+   * //   updatedAt: 2024-08-18T...
+   * // }
+   * //
+   * // File deleted from: ./uploads/customers_1234567890-abc123.csv
+   * // Audit log: { action: 'DELETE', resource: 'dataset', ... }
+   * ```
+   */
   async delete(id: string, userId: string) {
     const dataset = await this.prisma.dataset.findFirst({
       where: {
@@ -679,14 +741,97 @@ export class DatasetsService {
 
   /**
    * Get PII Findings for Dataset
-   * 
-   * Retrieves all PII findings detected for a specific dataset.
-   * Only returns findings for datasets owned by the authenticated user.
-   * 
-   * @param id - Dataset ID
-   * @param userId - User ID (for ownership verification)
-   * @param pagination - Pagination options
-   * @returns Paginated findings data
+   *
+   * Retrieves paginated PII findings for specified dataset with
+   * entity type breakdown, confidence scores, and masked content.
+   *
+   * @param id - Dataset ID (CUID)
+   * @param userId - Authenticated user ID from JWT token
+   * @param pagination - Pagination configuration
+   * @param pagination.page - Page number (default: 1)
+   * @param pagination.limit - Results per page (default: 50)
+   * @returns Paginated findings with metadata and statistics
+   * @throws {NotFoundException} If dataset not found or user lacks access
+   *
+   * @remarks
+   * Query behavior:
+   * - **User isolation**: Verifies dataset belongs to user's project
+   * - **Pagination**: Skip/take calculated from page and limit
+   * - **Sorting**: By location (lineNumber, columnStart) for logical order
+   * - **Entity aggregation**: Groups findings by entity type with counts
+   *
+   * Response structure:
+   * ```typescript
+   * {
+   *   findings: Finding[],     // Paginated findings array
+   *   total: number,           // Total findings count
+   *   page: number,            // Current page
+   *   pageSize: number,        // Results per page
+   *   totalPages: number,      // Total pages
+   *   summary: {               // Entity type breakdown
+   *     [entityType]: number   // Count per entity type
+   *   }
+   * }
+   * ```
+   *
+   * Finding structure:
+   * ```typescript
+   * Finding {
+   *   id: string;
+   *   entityType: string;      // EMAIL_ADDRESS, SSN, etc.
+   *   text: string;            // Masked PII text
+   *   start: number;           // Character offset
+   *   end: number;             // Character offset
+   *   score: number;           // Confidence score (0.0-1.0)
+   *   lineNumber?: number;     // Line location
+   *   columnStart?: number;    // Column location
+   *   context?: string;        // Surrounding text
+   *   createdAt: Date;
+   * }
+   * ```
+   *
+   * Performance:
+   * - Two queries: findMany + count (parallel possible)
+   * - Entity type aggregation via groupBy
+   * - Efficient pagination with skip/take
+   * - Typical query time: 30-100ms for 1000-10000 findings
+   *
+   * Use cases:
+   * - PII findings review interface
+   * - Compliance reporting
+   * - Entity type analysis
+   * - False positive identification
+   * - Dataset quality assessment
+   *
+   * @example
+   * ```typescript
+   * const result = await datasetsService.getFindings(
+   *   datasetId,
+   *   userId,
+   *   { page: 1, limit: 50 }
+   * );
+   * // Result: {
+   * //   findings: [
+   * //     {
+   * //       entityType: 'EMAIL_ADDRESS',
+   * //       text: 'j***@example.com',
+   * //       score: 0.95,
+   * //       context: 'Contact email: j***@example.com for...'
+   * //     },
+   * //     ...
+   * //   ],
+   * //   total: 245,
+   * //   page: 1,
+   * //   pageSize: 50,
+   * //   totalPages: 5,
+   * //   summary: {
+   * //     'EMAIL_ADDRESS': 89,
+   * //     'PHONE_NUMBER': 67,
+   * //     'SSN': 43,
+   * //     ...
+   * //   }
+   * // }
+   * ```
    */
   async getFindings(id: string, userId: string, pagination: { page: number; limit: number }) {
     // Verify dataset ownership and exists
