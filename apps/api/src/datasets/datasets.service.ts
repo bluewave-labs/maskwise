@@ -1673,9 +1673,10 @@ export class DatasetsService {
    *    - Links new job ID for traceability
    *    - Preserves previous status for comparison
    *
-   * 7. Queue Submission:
-   *    - Job ready for worker service pickup
+   * 7. Return Success Response:
+   *    - Job created and ready for worker service pickup
    *    - Returns success response with job details
+   *    - Note: Queue submission to BullMQ not yet implemented
    *
    * **Retry Context Tracking:**
    *
@@ -1880,7 +1881,7 @@ export class DatasetsService {
    * @param params.projectId - Target project ID for demo dataset
    * @param params.userId - User ID for ownership and audit
    * @param params.name - Display name for demo dataset
-   * @param params.description - Description of demo content
+   * @param params.description - Description parameter (currently unused, for future use)
    * @param params.content - Sample PII content to analyze
    * @param params.policyId - Optional policy ID (uses default if not provided)
    * @param params.processImmediately - If true, queues PII analysis job immediately
@@ -1906,7 +1907,7 @@ export class DatasetsService {
    *    - Creates ANALYZE_PII job if processImmediately = true
    *    - Uses provided policy or fetches default policy
    *    - Marks job metadata with isDemoDataset flag
-   *    - Includes security validation bypass (trusted content)
+   *    - Includes security validation metadata (low risk, validated)
    *    - Queues job via BullMQ for worker processing
    *
    * 4. Audit Logging:
@@ -1963,7 +1964,7 @@ export class DatasetsService {
    *   projectId: 'clx123...',
    *   userId: newUserId,
    *   name: 'Sample Customer Data',
-   *   description: 'Demo dataset showing PII detection capabilities',
+   *   description: '', // Currently unused
    *   content: `
    *     Customer: John Doe
    *     Email: john.doe@example.com
