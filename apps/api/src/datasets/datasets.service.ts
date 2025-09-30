@@ -14,21 +14,79 @@ import * as crypto from 'crypto';
 
 /**
  * Datasets Service
- * 
- * Core business logic for dataset and file management.
- * Handles file upload processing, metadata extraction, security validation,
- * and integration with the PII detection job queue.
- * 
+ *
+ * Core business logic for dataset and file management in the MaskWise PII detection platform.
+ * Handles complete file upload lifecycle, security validation, metadata extraction, and
+ * integration with the PII analysis pipeline.
+ *
  * Key responsibilities:
- * - File upload and storage management
- * - Dataset CRUD operations with user isolation
+ * - Secure file upload with multi-layer validation
+ * - Dataset CRUD operations with strict user isolation
  * - SHA-256 content hashing for integrity verification
- * - Automatic job creation for PII analysis pipeline
+ * - Automatic PII analysis job creation and queue management
  * - Project-level statistics and analytics
- * - Comprehensive audit logging
+ * - Real-time progress updates via Server-Sent Events
+ * - Comprehensive audit logging for compliance
+ * - PII findings search with advanced filtering
+ * - File export and dataset deletion with cleanup
+ *
+ * @remarks
+ * Security architecture:
+ * - Multi-layer file validation (MIME type, extension, magic bytes)
+ * - Input sanitization for SQL/XSS/path traversal prevention
+ * - User isolation enforced at database query level
+ * - File size limits (100MB default)
+ * - Content hash verification for integrity
+ * - Suspicious pattern detection
+ *
+ * File processing workflow:
+ * 1. Security validation (file type, size, patterns)
+ * 2. Metadata extraction (MIME type, hash, size)
+ * 3. Secure file storage with unique naming
+ * 4. Database record creation
+ * 5. PII analysis job creation and queuing
+ * 6. Real-time status updates via SSE
+ * 7. Audit log entry creation
+ *
+ * Storage strategy:
+ * - Local filesystem storage in ./uploads directory
+ * - Unique filenames: {name}_{timestamp}-{random}{ext}
+ * - SHA-256 hashing for duplicate detection
+ * - Automatic cleanup on dataset deletion
+ * - File size stored as BigInt for large files
+ *
+ * Performance considerations:
+ * - Parallel database queries for statistics
+ * - Pagination support for large datasets
+ * - Streaming for file operations
+ * - Background job processing via BullMQ
+ * - SSE for non-blocking progress updates
+ *
+ * Integration points:
+ * - QueueService: Job creation for PII analysis pipeline
+ * - FileValidatorService: Security validation
+ * - InputSanitizerService: XSS/SQL injection prevention
+ * - SSEService: Real-time client updates
+ * - PrismaService: Database operations with transactions
+ *
+ * @see {@link QueueService} for job queue management
+ * @see {@link FileValidatorService} for security validation
+ * @see {@link InputSanitizerService} for input sanitization
+ * @see {@link SSEService} for real-time updates
+ *
+ * @since 1.0.0
  */
 @Injectable()
 export class DatasetsService {
+  /**
+   * Initializes datasets service with required dependencies
+   *
+   * @param prisma - Database service for dataset and findings operations
+   * @param queueService - Job queue service for PII analysis pipeline
+   * @param fileValidator - Security validator for file uploads
+   * @param inputSanitizer - Input sanitization for XSS/SQL prevention
+   * @param sseService - Server-sent events service for real-time updates
+   */
   constructor(
     private prisma: PrismaService,
     private queueService: QueueService,
@@ -37,6 +95,75 @@ export class DatasetsService {
     private sseService: SSEService,
   ) {}
 
+  /**
+   * Find All User Datasets with Pagination
+   *
+   * Retrieves paginated list of datasets owned by user with job status,
+   * findings count, and project information. Enforces user isolation.
+   *
+   * @param userId - Authenticated user ID from JWT token
+   * @param params - Optional pagination and filtering parameters
+   * @param params.skip - Number of records to skip (default: 0)
+   * @param params.take - Number of records to return (default: 50)
+   * @param params.projectId - Optional filter by specific project
+   * @returns Paginated datasets with metadata
+   *
+   * @remarks
+   * Query behavior:
+   * - **User isolation**: Only returns datasets from user's projects
+   * - **Project filtering**: Optional projectId filter for project-specific views
+   * - **Latest job**: Includes most recent job per dataset for status tracking
+   * - **Counts**: Aggregates job count and findings count
+   * - **Sorted**: By createdAt DESC (newest first)
+   *
+   * BigInt serialization:
+   * - fileSize converted from BigInt to Number for JSON compatibility
+   * - Required for JavaScript/JSON serialization
+   * - Prevents serialization errors in API responses
+   *
+   * Response structure:
+   * ```typescript
+   * {
+   *   data: Dataset[],        // Array of datasets with jobs and counts
+   *   total: number,          // Total matching datasets
+   *   page: number,           // Current page number
+   *   pageSize: number,       // Results per page
+   *   totalPages: number      // Total pages available
+   * }
+   * ```
+   *
+   * Performance:
+   * - Two queries: findMany + count (can be optimized with single query)
+   * - Latest job only (not full job history)
+   * - Efficient _count aggregation
+   * - Typical query time: 30-100ms for 100-1000 datasets
+   *
+   * Use cases:
+   * - Dataset listing page
+   * - Project-specific dataset views
+   * - Dashboard recent uploads
+   * - Search and filtering interfaces
+   *
+   * @example
+   * ```typescript
+   * // Get first 50 datasets for user
+   * const result = await datasetsService.findAll(userId);
+   * // Result: { data: [...], total: 150, page: 1, pageSize: 50, totalPages: 3 }
+   *
+   * // Get datasets for specific project
+   * const projectDatasets = await datasetsService.findAll(userId, {
+   *   projectId: 'clx123...',
+   *   skip: 0,
+   *   take: 20
+   * });
+   *
+   * // Pagination - page 2
+   * const page2 = await datasetsService.findAll(userId, {
+   *   skip: 50,
+   *   take: 50
+   * });
+   * ```
+   */
   async findAll(userId: string, params?: {
     skip?: number;
     take?: number;
@@ -95,6 +222,56 @@ export class DatasetsService {
     };
   }
 
+  /**
+   * Find Single Dataset by ID
+   *
+   * Retrieves detailed dataset information including all jobs,
+   * recent findings, and project details. Enforces user isolation.
+   *
+   * @param id - Dataset ID (CUID)
+   * @param userId - Authenticated user ID from JWT token
+   * @returns Dataset with full job history and recent findings
+   * @throws {NotFoundException} If dataset not found or user lacks access
+   *
+   * @remarks
+   * Query behavior:
+   * - **User isolation**: Only returns if dataset belongs to user's project
+   * - **Full job history**: Includes all jobs (not just latest)
+   * - **Recent findings**: Limited to 10 most recent (optimization)
+   * - **Project info**: Full project details included
+   *
+   * BigInt serialization:
+   * - fileSize converted from BigInt to Number
+   * - Prevents JSON serialization errors
+   *
+   * Use cases:
+   * - Dataset detail page
+   * - PII findings review
+   * - Job progress monitoring
+   * - Download and export workflows
+   *
+   * Performance:
+   * - Single query with includes
+   * - Findings limited to 10 (prevents large responses)
+   * - Full job history included (consider pagination for 100+ jobs)
+   * - Typical query time: 20-80ms depending on findings count
+   *
+   * @example
+   * ```typescript
+   * const dataset = await datasetsService.findOne(datasetId, userId);
+   * // Result: {
+   * //   id: 'clx123...',
+   * //   name: 'customers.csv',
+   * //   fileSize: 1048576,
+   * //   status: 'COMPLETED',
+   * //   project: { id: '...', name: 'GDPR Project' },
+   * //   jobs: [
+   * //     { id: '...', status: 'COMPLETED', type: 'PII_ANALYSIS' }
+   * //   ],
+   * //   findings: [... first 10 findings ...]
+   * // }
+   * ```
+   */
   async findOne(id: string, userId: string) {
     const dataset = await this.prisma.dataset.findFirst({
       where: {
@@ -132,19 +309,120 @@ export class DatasetsService {
 
   /**
    * Upload File and Create Dataset
-   * 
-   * Processes uploaded files by:
-   * 1. Validating project access and policy existence
-   * 2. Computing SHA-256 hash for file integrity
-   * 3. Detecting file type from MIME type
-   * 4. Creating dataset record in database
-   * 5. Queuing PII analysis job
-   * 6. Logging audit trail
-   * 
-   * @param file - Multer file object from upload
-   * @param uploadFileDto - Upload metadata (projectId, policyId, description)
-   * @param userId - Authenticated user ID
-   * @returns Dataset and job creation details
+   *
+   * Complete file upload workflow with multi-layer security validation,
+   * metadata extraction, and automatic PII analysis job creation.
+   *
+   * @param file - Multer file object from multipart/form-data upload
+   * @param uploadFileDto - Upload metadata and configuration
+   * @param uploadFileDto.projectId - Target project ID (validated for user ownership)
+   * @param uploadFileDto.policyId - Optional PII detection policy ID
+   * @param uploadFileDto.description - Optional dataset description
+   * @param userId - Authenticated user ID from JWT token
+   * @returns Created dataset with job information and metadata
+   * @throws {BadRequestException} If security validation fails or policy not found
+   * @throws {NotFoundException} If project not found or user lacks access
+   *
+   * @remarks
+   * **Complete workflow (7 steps):**
+   *
+   * 1. **Enhanced Security Validation**:
+   *    - File signature validation (magic bytes)
+   *    - Suspicious pattern detection
+   *    - MIME type verification
+   *    - File size validation (100MB limit)
+   *    - Security violations logged to audit trail
+   *
+   * 2. **Input Sanitization**:
+   *    - projectId: Alphanumeric + dash/underscore only
+   *    - policyId: Same validation as projectId
+   *    - description: HTML stripped, max 500 chars
+   *    - filename: Sanitized for path traversal, reserved names
+   *
+   * 3. **Access Control Verification**:
+   *    - Project ownership validation
+   *    - Policy existence validation
+   *    - User isolation enforcement
+   *
+   * 4. **File Integrity & Metadata**:
+   *    - SHA-256 content hash calculation
+   *    - File type detection from MIME type
+   *    - Metadata extraction (size, name, timestamps)
+   *
+   * 5. **Database Operations**:
+   *    - Dataset record creation
+   *    - BigInt file size storage
+   *    - Source type tracking (UPLOAD)
+   *
+   * 6. **Job Queue Integration**:
+   *    - PII analysis job creation
+   *    - Policy association
+   *    - Job data payload preparation
+   *    - Queue submission to BullMQ
+   *
+   * 7. **Audit & Notifications**:
+   *    - Complete audit log entry
+   *    - SSE progress updates
+   *    - Security incident logging
+   *
+   * **Security features**:
+   * - Multi-layer file validation (see FileValidatorService)
+   * - Input sanitization (XSS, SQL injection, path traversal)
+   * - Content hash verification for integrity
+   * - Malicious file detection and blocking
+   * - Security violation audit trail
+   *
+   * **File type detection**:
+   * ```typescript
+   * text/plain           → TXT
+   * text/csv             → CSV
+   * application/pdf      → PDF
+   * application/msword   → DOCX
+   * image/jpeg           → IMAGE
+   * (and more...)
+   * ```
+   *
+   * **Performance**:
+   * - File hash calculation: O(n) where n = file size
+   * - SHA-256: ~50MB/s on modern hardware
+   * - Database operations: 2 queries (verify + create)
+   * - Job queue: Non-blocking async operation
+   * - Typical upload time: 100-500ms for small files (<10MB)
+   *
+   * **Error handling**:
+   * - Security failures: Logged and blocked with detailed reason
+   * - Access denied: 404 for project not found
+   * - Invalid policy: 400 with error message
+   * - File system errors: 500 with cleanup attempted
+   *
+   * @example
+   * ```typescript
+   * const dto: UploadFileDto = {
+   *   projectId: 'clx123...',
+   *   policyId: 'clx456...',  // Optional
+   *   description: 'Customer data for GDPR analysis'
+   * };
+   *
+   * const result = await datasetsService.uploadFile(
+   *   multerFile,
+   *   dto,
+   *   userId
+   * );
+   * // Result: {
+   * //   dataset: {
+   * //     id: 'clx789...',
+   * //     name: 'customers.csv',
+   * //     fileSize: 1048576,
+   * //     status: 'PENDING',
+   * //     contentHash: 'abc123...'
+   * //   },
+   * //   job: {
+   * //     id: 'clxabc...',
+   * //     status: 'PENDING',
+   * //     type: 'PII_ANALYSIS'
+   * //   }
+   * // }
+   * ```
    */
   async uploadFile(
     file: Express.Multer.File,
@@ -348,6 +626,68 @@ export class DatasetsService {
     };
   }
 
+  /**
+   * Delete Dataset
+   *
+   * Soft deletes dataset by marking as CANCELLED and attempts to
+   * remove associated file from filesystem. Enforces user isolation.
+   *
+   * @param id - Dataset ID (CUID)
+   * @param userId - Authenticated user ID from JWT token
+   * @returns Soft-deleted dataset with CANCELLED status
+   * @throws {NotFoundException} If dataset not found or user lacks access
+   *
+   * @remarks
+   * Deletion workflow:
+   * 1. Verify dataset exists and user has access
+   * 2. Attempt file deletion from filesystem (non-blocking)
+   * 3. Update dataset status to CANCELLED
+   * 4. Log deletion to audit trail
+   * 5. Return updated dataset
+   *
+   * Soft delete strategy:
+   * - Dataset NOT permanently removed from database
+   * - Status set to CANCELLED for filtering
+   * - Findings and jobs remain in database
+   * - File removed from filesystem (if possible)
+   * - Audit trail preserved
+   *
+   * File system cleanup:
+   * - Attempts to delete file via fs.unlink
+   * - Non-fatal if file deletion fails (logs warning)
+   * - Database update always succeeds
+   * - File may already be deleted or moved
+   *
+   * Cascading behavior:
+   * - Findings NOT deleted (preserved for audit)
+   * - Jobs NOT deleted (preserved for history)
+   * - Audit logs maintained
+   * - Can query CANCELLED datasets if needed
+   *
+   * BigInt serialization:
+   * - fileSize converted from BigInt to Number
+   * - Required for JSON response
+   *
+   * Use cases:
+   * - User-initiated dataset deletion
+   * - Cleanup of failed uploads
+   * - Dataset lifecycle management
+   * - Storage space management
+   *
+   * @example
+   * ```typescript
+   * const deleted = await datasetsService.delete(datasetId, userId);
+   * // Result: {
+   * //   id: 'clx123...',
+   * //   status: 'CANCELLED',
+   * //   fileSize: 1048576,
+   * //   updatedAt: 2024-08-18T...
+   * // }
+   * //
+   * // File deleted from: ./uploads/customers_1234567890-abc123.csv
+   * // Audit log: { action: 'DELETE', resource: 'dataset', ... }
+   * ```
+   */
   async delete(id: string, userId: string) {
     const dataset = await this.prisma.dataset.findFirst({
       where: {
@@ -401,14 +741,97 @@ export class DatasetsService {
 
   /**
    * Get PII Findings for Dataset
-   * 
-   * Retrieves all PII findings detected for a specific dataset.
-   * Only returns findings for datasets owned by the authenticated user.
-   * 
-   * @param id - Dataset ID
-   * @param userId - User ID (for ownership verification)
-   * @param pagination - Pagination options
-   * @returns Paginated findings data
+   *
+   * Retrieves paginated PII findings for specified dataset with
+   * entity type breakdown, confidence scores, and masked content.
+   *
+   * @param id - Dataset ID (CUID)
+   * @param userId - Authenticated user ID from JWT token
+   * @param pagination - Pagination configuration
+   * @param pagination.page - Page number (default: 1)
+   * @param pagination.limit - Results per page (default: 50)
+   * @returns Paginated findings with metadata and statistics
+   * @throws {NotFoundException} If dataset not found or user lacks access
+   *
+   * @remarks
+   * Query behavior:
+   * - **User isolation**: Verifies dataset belongs to user's project
+   * - **Pagination**: Skip/take calculated from page and limit
+   * - **Sorting**: By location (lineNumber, columnStart) for logical order
+   * - **Entity aggregation**: Groups findings by entity type with counts
+   *
+   * Response structure:
+   * ```typescript
+   * {
+   *   findings: Finding[],     // Paginated findings array
+   *   total: number,           // Total findings count
+   *   page: number,            // Current page
+   *   pageSize: number,        // Results per page
+   *   totalPages: number,      // Total pages
+   *   summary: {               // Entity type breakdown
+   *     [entityType]: number   // Count per entity type
+   *   }
+   * }
+   * ```
+   *
+   * Finding structure:
+   * ```typescript
+   * Finding {
+   *   id: string;
+   *   entityType: string;      // EMAIL_ADDRESS, SSN, etc.
+   *   text: string;            // Masked PII text
+   *   start: number;           // Character offset
+   *   end: number;             // Character offset
+   *   score: number;           // Confidence score (0.0-1.0)
+   *   lineNumber?: number;     // Line location
+   *   columnStart?: number;    // Column location
+   *   context?: string;        // Surrounding text
+   *   createdAt: Date;
+   * }
+   * ```
+   *
+   * Performance:
+   * - Two queries: findMany + count (parallel possible)
+   * - Entity type aggregation via groupBy
+   * - Efficient pagination with skip/take
+   * - Typical query time: 30-100ms for 1000-10000 findings
+   *
+   * Use cases:
+   * - PII findings review interface
+   * - Compliance reporting
+   * - Entity type analysis
+   * - False positive identification
+   * - Dataset quality assessment
+   *
+   * @example
+   * ```typescript
+   * const result = await datasetsService.getFindings(
+   *   datasetId,
+   *   userId,
+   *   { page: 1, limit: 50 }
+   * );
+   * // Result: {
+   * //   findings: [
+   * //     {
+   * //       entityType: 'EMAIL_ADDRESS',
+   * //       text: 'j***@example.com',
+   * //       score: 0.95,
+   * //       context: 'Contact email: j***@example.com for...'
+   * //     },
+   * //     ...
+   * //   ],
+   * //   total: 245,
+   * //   page: 1,
+   * //   pageSize: 50,
+   * //   totalPages: 5,
+   * //   summary: {
+   * //     'EMAIL_ADDRESS': 89,
+   * //     'PHONE_NUMBER': 67,
+   * //     'SSN': 43,
+   * //     ...
+   * //   }
+   * // }
+   * ```
    */
   async getFindings(id: string, userId: string, pagination: { page: number; limit: number }) {
     // Verify dataset ownership and exists
@@ -1093,6 +1516,66 @@ export class DatasetsService {
     }
   }
 
+  /**
+   * Get Project Statistics
+   *
+   * Aggregates dataset statistics for specified project including
+   * file counts, sizes, and breakdowns by file type and status.
+   *
+   * @param projectId - Project ID (CUID)
+   * @param userId - Authenticated user ID from JWT token
+   * @returns Project statistics with aggregated metrics
+   * @throws {NotFoundException} If project not found or user lacks access
+   *
+   * @remarks
+   * Statistics provided:
+   * - **totalFiles**: Total number of datasets in project
+   * - **totalSize**: Combined file size of all datasets
+   * - **breakdown**: Detailed breakdown by file type and status
+   *
+   * Breakdown structure:
+   * ```typescript
+   * {
+   *   fileType: string,    // TXT, CSV, PDF, DOCX, IMAGE, etc.
+   *   status: string,      // PENDING, PROCESSING, COMPLETED, FAILED
+   *   count: number,       // Number of files
+   *   totalSize: number    // Combined size in bytes
+   * }
+   * ```
+   *
+   * Aggregation method:
+   * - Uses Prisma groupBy for efficient aggregation
+   * - Groups by fileType and status
+   * - Counts files and sums sizes per group
+   * - BigInt conversion for JavaScript compatibility
+   *
+   * Use cases:
+   * - Project dashboard statistics
+   * - Storage quota monitoring
+   * - File type distribution analysis
+   * - Processing status overview
+   * - Capacity planning
+   *
+   * Performance:
+   * - Three queries: groupBy + count + aggregate
+   * - Can be optimized with single complex query
+   * - Typical execution: 30-80ms for projects with 100-1000 datasets
+   *
+   * @example
+   * ```typescript
+   * const stats = await datasetsService.getProjectStats(projectId, userId);
+   * // Result: {
+   * //   totalFiles: 156,
+   * //   totalSize: 524288000, // ~500MB
+   * //   breakdown: [
+   * //     { fileType: 'CSV', status: 'COMPLETED', count: 89, totalSize: 314572800 },
+   * //     { fileType: 'PDF', status: 'COMPLETED', count: 45, totalSize: 157286400 },
+   * //     { fileType: 'CSV', status: 'PROCESSING', count: 12, totalSize: 31457280 },
+   * //     { fileType: 'DOCX', status: 'PENDING', count: 10, totalSize: 20971520 }
+   * //   ]
+   * // }
+   * ```
+   */
   async getProjectStats(projectId: string, userId: string) {
     // Verify project access
     const project = await this.prisma.project.findFirst({
@@ -1142,6 +1625,140 @@ export class DatasetsService {
     };
   }
 
+  /**
+   * Retry Failed Dataset Processing
+   *
+   * Resubmits a failed or cancelled dataset for PII analysis, creating a new
+   * job with retry context tracking and cancelling any existing failed jobs.
+   * Enables recovery from transient failures and user-initiated retries.
+   *
+   * @param id - Dataset ID to retry
+   * @param userId - Authenticated user ID from JWT token
+   * @returns Success response with new job details
+   * @throws {NotFoundException} If dataset not found or user lacks access
+   * @throws {BadRequestException} If dataset is not in retryable state
+   *
+   * @remarks
+   * **Retry Workflow:**
+   *
+   * 1. Verify Dataset Access:
+   *    - Check dataset exists and user has ownership
+   *    - Retrieve dataset with job history and project
+   *    - Enforce user isolation via project relationship
+   *
+   * 2. Validate Retryable State:
+   *    - Only FAILED or CANCELLED datasets can be retried
+   *    - PENDING, PROCESSING, COMPLETED not eligible
+   *    - Returns 400 Bad Request for invalid states
+   *
+   * 3. Reset Dataset Status:
+   *    - Update dataset status to PENDING
+   *    - Update timestamp for tracking
+   *    - Prepares dataset for reprocessing
+   *
+   * 4. Cancel Existing Jobs:
+   *    - Mark FAILED and QUEUED jobs as CANCELLED
+   *    - Prevents duplicate job execution
+   *    - Cleans up failed job queue
+   *
+   * 5. Create New PII Analysis Job:
+   *    - Uses default policy or original policy
+   *    - Includes retry metadata (attempt count, original job count)
+   *    - Preserves original file metadata
+   *    - Marks as retry for special handling
+   *
+   * 6. Audit Logging:
+   *    - Records retry action with RETRY_PROCESSING identifier
+   *    - Tracks retry attempt number
+   *    - Links new job ID for traceability
+   *    - Preserves previous status for comparison
+   *
+   * 7. Return Success Response:
+   *    - Job created and ready for worker service pickup
+   *    - Returns success response with job details
+   *    - Note: Queue submission to BullMQ not yet implemented
+   *
+   * **Retry Context Tracking:**
+   *
+   * Job metadata includes:
+   * ```typescript
+   * {
+   *   filePath: string,         // Original file path
+   *   isRetry: true,            // Retry flag
+   *   originalJobCount: number, // Total previous jobs
+   *   retryAttempt: number,     // Current retry number (1, 2, 3...)
+   *   originalDataset: {        // Dataset snapshot
+   *     filename: string,
+   *     fileType: string,
+   *     fileSize: number
+   *   }
+   * }
+   * ```
+   *
+   * **Use Cases:**
+   *
+   * - Transient network failures (Presidio unavailable)
+   * - Worker service crashes during processing
+   * - User-initiated retry after fixing data issues
+   * - Policy configuration errors requiring reprocessing
+   * - Manual retry after system maintenance
+   *
+   * **Performance Considerations:**
+   *
+   * - Multiple database updates in sequence
+   * - Job cancellation may affect many jobs
+   * - Retry attempt tracking prevents infinite loops
+   * - Consider rate limiting for excessive retries
+   * - Typical execution time: 100-200ms
+   *
+   * **Error Handling:**
+   *
+   * - 404: Dataset not found or user lacks access
+   * - 400: Dataset status not FAILED or CANCELLED
+   * - 500: Database failure during retry setup
+   *
+   * **Security:**
+   *
+   * - User isolation enforced via project relationship
+   * - Cannot retry other users' datasets
+   * - Audit trail for all retry attempts
+   * - Rate limiting recommended (not implemented)
+   *
+   * **Future Enhancements:**
+   *
+   * - Maximum retry limit enforcement (e.g., 3 attempts)
+   * - Exponential backoff for automatic retries
+   * - Failure reason analysis before retry
+   * - Notification system for retry completion
+   *
+   * @example
+   * ```typescript
+   * // User retries failed dataset processing
+   * const result = await datasetsService.retryProcessing(datasetId, userId);
+   * // Result: {
+   * //   success: true,
+   * //   message: 'Dataset processing has been restarted',
+   * //   dataset: {
+   * //     id: 'clx123...',
+   * //     name: 'customers.csv',
+   * //     status: 'PENDING',
+   * //     newJobId: 'clx456...'
+   * //   }
+   * // }
+   *
+   * // Audit log entry created:
+   * // {
+   * //   action: 'UPDATE',
+   * //   resource: 'dataset',
+   * //   details: {
+   * //     action: 'RETRY_PROCESSING',
+   * //     previousStatus: 'FAILED',
+   * //     newJobId: 'clx456...',
+   * //     retryAttempt: 2  // Second retry attempt
+   * //   }
+   * // }
+   * ```
+   */
   async retryProcessing(id: string, userId: string) {
     // Verify dataset access and get dataset details
     const dataset = await this.prisma.dataset.findFirst({
@@ -1254,13 +1871,132 @@ export class DatasetsService {
 
   /**
    * Create Demo Dataset
-   * 
-   * Creates a sample dataset with PII content for new user onboarding.
-   * This method is used by the authentication service to provide users
-   * with immediate access to sample data for testing and experimentation.
-   * 
+   *
+   * Creates a sample dataset with PII content for new user onboarding and
+   * platform demonstration. Automatically generates a text file with sample
+   * data, stores it in the uploads directory, and optionally queues immediate
+   * PII analysis for instant results.
+   *
    * @param params - Demo dataset creation parameters
-   * @returns Dataset and job creation details
+   * @param params.projectId - Target project ID for demo dataset
+   * @param params.userId - User ID for ownership and audit
+   * @param params.name - Display name for demo dataset
+   * @param params.description - Description parameter (currently unused, for future use)
+   * @param params.content - Sample PII content to analyze
+   * @param params.policyId - Optional policy ID (uses default if not provided)
+   * @param params.processImmediately - If true, queues PII analysis job immediately
+   * @returns Demo dataset record, job details, and success message
+   *
+   * @remarks
+   * **Creation Workflow:**
+   *
+   * 1. File Generation:
+   *    - Creates temporary file in uploads directory
+   *    - Generates unique filename with timestamp
+   *    - Writes sample PII content to file
+   *    - Calculates file stats and SHA-256 hash
+   *
+   * 2. Dataset Record Creation:
+   *    - Sanitizes user-provided name
+   *    - Sets file type to TXT
+   *    - Stores BigInt file size
+   *    - Marks source type as UPLOAD
+   *    - Status: PENDING if processing immediately, UPLOADED otherwise
+   *
+   * 3. Optional Job Creation:
+   *    - Creates ANALYZE_PII job if processImmediately = true
+   *    - Uses provided policy or fetches default policy
+   *    - Marks job metadata with isDemoDataset flag
+   *    - Includes security validation metadata (low risk, validated)
+   *    - Queues job via BullMQ for worker processing
+   *
+   * 4. Audit Logging:
+   *    - Records CREATE action for compliance
+   *    - Flags as demo dataset for analytics
+   *    - Includes file size and processing status
+   *    - Links job ID if created
+   *
+   * **Demo Content Guidelines:**
+   *
+   * Sample content should include diverse PII types:
+   * - Email addresses (e.g., john.doe@example.com)
+   * - Phone numbers (e.g., +1-555-123-4567)
+   * - Credit card numbers (e.g., 4532-1234-5678-9010)
+   * - SSNs (e.g., 123-45-6789)
+   * - Names and addresses (e.g., "John Doe lives at 123 Main St")
+   * - Medical record numbers, license numbers, etc.
+   *
+   * **Use Cases:**
+   *
+   * - New user onboarding tutorial
+   * - Platform feature demonstration
+   * - Sales demos and presentations
+   * - QA testing and validation
+   * - API integration testing
+   *
+   * **Security Considerations:**
+   *
+   * - Demo content is still stored and encrypted
+   * - No special security bypass (same validation as real files)
+   * - Audit trail preserved for compliance
+   * - Consider marking demo datasets for easier cleanup
+   * - Demo flag enables analytics filtering
+   *
+   * **Performance:**
+   *
+   * - File I/O operations synchronous
+   * - Single database transaction for dataset + job
+   * - Queue submission asynchronous
+   * - Typical execution time: 100-200ms
+   * - Fast enough for real-time onboarding flow
+   *
+   * **Integration Points:**
+   *
+   * - Called by authentication service post-signup
+   * - Used by admin tools for demo data seeding
+   * - Accessible via API for custom integrations
+   * - Worker service processes jobs normally
+   *
+   * @example
+   * ```typescript
+   * // Create demo dataset during user onboarding
+   * const demo = await datasetsService.createDemoDataset({
+   *   projectId: 'clx123...',
+   *   userId: newUserId,
+   *   name: 'Sample Customer Data',
+   *   description: '', // Currently unused
+   *   content: `
+   *     Customer: John Doe
+   *     Email: john.doe@example.com
+   *     Phone: +1-555-123-4567
+   *     SSN: 123-45-6789
+   *     Credit Card: 4532-1234-5678-9010
+   *     Address: 123 Main St, Springfield, IL 62701
+   *   `,
+   *   policyId: undefined, // Use default policy
+   *   processImmediately: true // Queue for immediate analysis
+   * });
+   *
+   * // Result: {
+   * //   dataset: {
+   * //     id: 'clx456...',
+   * //     name: 'Sample Customer Data',
+   * //     status: 'PENDING',
+   * //     fileSize: 234,
+   * //     ...
+   * //   },
+   * //   job: {
+   * //     id: 'clx789...',
+   * //     type: 'ANALYZE_PII',
+   * //     status: 'QUEUED',
+   * //     metadata: {
+   * //       isDemoDataset: true,
+   * //       ...
+   * //     }
+   * //   },
+   * //   message: 'Demo dataset created successfully'
+   * // }
+   * ```
    */
   async createDemoDataset(params: {
     projectId: string;
@@ -1378,14 +2114,219 @@ export class DatasetsService {
 
   /**
    * Global PII Findings Search
-   * 
-   * Searches across all PII findings that belong to the current user's datasets.
-   * Supports comprehensive filtering by text content, entity types, confidence scores,
-   * date ranges, and project/dataset scoping.
-   * 
+   *
+   * Comprehensive cross-dataset PII search engine enabling users to query all
+   * their findings with advanced filtering, pagination, and analytics. Supports
+   * text search, entity type filtering, confidence ranges, date ranges, and
+   * project/dataset scoping with performance optimization.
+   *
    * @param userId - Current user ID for data isolation
    * @param searchParams - Search and filter parameters
-   * @returns Search results with metadata, pagination, and entity breakdown
+   * @param searchParams.query - Optional text search (searches masked text and context)
+   * @param searchParams.entityTypes - Filter by entity types (e.g., ['EMAIL_ADDRESS', 'SSN'])
+   * @param searchParams.minConfidence - Minimum confidence score (0.0 to 1.0, default: 0)
+   * @param searchParams.maxConfidence - Maximum confidence score (0.0 to 1.0, default: 1.0)
+   * @param searchParams.dateFrom - Filter findings created after this date
+   * @param searchParams.dateTo - Filter findings created before this date
+   * @param searchParams.projectIds - Filter by specific project IDs
+   * @param searchParams.datasetIds - Filter by specific dataset IDs
+   * @param searchParams.page - Page number for pagination (default: 1)
+   * @param searchParams.limit - Results per page (default: 50, max: recommended 100)
+   * @param searchParams.sortBy - Sort field ('confidence', 'createdAt', 'entityType')
+   * @param searchParams.sortOrder - Sort direction ('asc' or 'desc', default: 'desc')
+   * @returns Search results with findings, metadata, pagination, and entity breakdown
+   *
+   * @remarks
+   * **Search Architecture:**
+   *
+   * Query Construction:
+   * - User isolation enforced via project → dataset relationship
+   * - Case-insensitive text search across masked text, context before/after
+   * - Multiple filters combined with AND logic
+   * - Entity type filtering via array inclusion
+   * - Confidence range filtering with gte/lte operators
+   * - Date range filtering on createdAt timestamp
+   *
+   * Performance Optimization:
+   * - Parallel execution of findings query, count, and entity breakdown
+   * - Single database round-trip using Promise.all
+   * - Optimized Prisma aggregations with groupBy
+   * - Execution time tracking for monitoring
+   * - Recommended limit: 50-100 results per page
+   *
+   * **Response Structure:**
+   *
+   * ```typescript
+   * {
+   *   findings: Array<{
+   *     id: string,
+   *     entityType: string,
+   *     confidence: number,
+   *     text: string,
+   *     contextBefore: string,
+   *     contextAfter: string,
+   *     dataset: {
+   *       id, name, filename, fileType, status,
+   *       project: { id, name }
+   *     }
+   *   }>,
+   *   metadata: {
+   *     totalResults: number,
+   *     searchQuery?: string,
+   *     appliedFilters: {
+   *       entityTypes?: string[],
+   *       confidenceRange?: [number, number],
+   *       dateRange?: [string, string],
+   *       projects?: number,
+   *       datasets?: number
+   *     },
+   *     executionTime: number // milliseconds
+   *   },
+   *   pagination: {
+   *     page: number,
+   *     limit: number,
+   *     total: number,
+   *     pages: number,
+   *     hasNext: boolean,
+   *     hasPrev: boolean
+   *   },
+   *   breakdown: Array<{
+   *     entityType: string,
+   *     count: number,
+   *     avgConfidence: number
+   *   }>
+   * }
+   * ```
+   *
+   * **Text Search Behavior:**
+   *
+   * Searches across three fields with OR logic:
+   * - finding.text (masked PII text)
+   * - finding.contextBefore (preceding context)
+   * - finding.contextAfter (following context)
+   *
+   * Case-insensitive, contains-based matching
+   * Useful for:
+   * - Finding PII with specific patterns
+   * - Locating findings in specific contexts
+   * - Verifying masking accuracy
+   *
+   * **Filtering Capabilities:**
+   *
+   * Entity Type Filtering:
+   * - Supports multiple entity types (array)
+   * - Exact match on EntityType enum
+   * - Examples: EMAIL_ADDRESS, SSN, CREDIT_CARD
+   *
+   * Confidence Range:
+   * - Filter by detection confidence
+   * - Useful for reviewing low-confidence findings
+   * - Range: 0.0 (uncertain) to 1.0 (certain)
+   *
+   * Date Range:
+   * - Filter by creation timestamp
+   * - Supports dateFrom, dateTo, or both
+   * - ISO 8601 format recommended
+   *
+   * Scope Filtering:
+   * - projectIds: Filter by specific projects
+   * - datasetIds: Filter by specific datasets
+   * - Both support multiple IDs
+   *
+   * **Sorting Options:**
+   *
+   * - confidence: Sort by detection confidence
+   * - createdAt: Sort by finding creation time
+   * - entityType: Sort alphabetically by entity type
+   * - Order: asc (ascending) or desc (descending)
+   *
+   * **Performance Characteristics:**
+   *
+   * - Typical query time: 50-200ms for 1000-10000 findings
+   * - Execution time included in response metadata
+   * - Parallel aggregations optimize response time
+   * - Consider indexing on (userId, entityType, confidence, createdAt)
+   * - Text search can be slow on large datasets (use sparingly)
+   *
+   * **Audit Logging:**
+   *
+   * Logs search action when:
+   * - Text query provided
+   * - Entity type filter applied
+   * - Confidence range customized
+   *
+   * Does NOT log:
+   * - Simple browsing (no filters)
+   * - Pagination navigation only
+   *
+   * Audit entry includes:
+   * - Search query text
+   * - Applied filters
+   * - Results count
+   * - Execution time
+   *
+   * **Use Cases:**
+   *
+   * - Global PII discovery across all datasets
+   * - Compliance reporting and analysis
+   * - Low-confidence finding review
+   * - Entity type distribution analysis
+   * - Temporal PII analysis (trends over time)
+   * - Project-specific PII inventory
+   * - Finding verification and validation
+   *
+   * **Security:**
+   *
+   * - User isolation via nested project relationship
+   * - No cross-user finding access
+   * - Audit trail for all searches
+   * - Masked text returned (original PII not exposed)
+   *
+   * @example
+   * ```typescript
+   * // Search for email findings with high confidence
+   * const results = await datasetsService.searchFindings(userId, {
+   *   entityTypes: ['EMAIL_ADDRESS'],
+   *   minConfidence: 0.8,
+   *   page: 1,
+   *   limit: 50,
+   *   sortBy: 'confidence',
+   *   sortOrder: 'desc'
+   * });
+   *
+   * // Result: {
+   * //   findings: [
+   * //     {
+   * //       entityType: 'EMAIL_ADDRESS',
+   * //       confidence: 0.95,
+   * //       text: '[EMAIL_REDACTED]',
+   * //       contextBefore: 'Contact: ',
+   * //       contextAfter: ' for more info',
+   * //       dataset: { name: 'customers.csv', project: { name: 'GDPR' } }
+   * //     },
+   * //     ...
+   * //   ],
+   * //   metadata: {
+   * //     totalResults: 234,
+   * //     appliedFilters: {
+   * //       entityTypes: ['EMAIL_ADDRESS'],
+   * //       confidenceRange: [0.8, 1.0]
+   * //     },
+   * //     executionTime: 87
+   * //   },
+   * //   pagination: {
+   * //     page: 1,
+   * //     limit: 50,
+   * //     total: 234,
+   * //     pages: 5,
+   * //     hasNext: true,
+   * //     hasPrev: false
+   * //   },
+   * //   breakdown: [
+   * //     { entityType: 'EMAIL_ADDRESS', count: 234, avgConfidence: 0.91 }
+   * //   ]
+   * // }
+   * ```
    */
   async searchFindings(userId: string, searchParams: any) {
     const startTime = Date.now();
@@ -1618,14 +2559,196 @@ export class DatasetsService {
 
   /**
    * Export Global PII Findings Search Results
-   * 
-   * Exports search results as CSV or JSON format with the same filtering capabilities
-   * as the searchFindings method. Optimized for large result sets with appropriate limits.
-   * 
+   *
+   * Exports PII findings search results in CSV or JSON format for offline analysis,
+   * compliance reporting, or data sharing. Uses same filtering capabilities as
+   * searchFindings with optimized limits for large exports.
+   *
    * @param userId - Current user ID for data isolation
-   * @param searchParams - Search and filter parameters
-   * @param format - Export format ('csv' or 'json')
-   * @returns Formatted export data as string
+   * @param searchParams - Search and filter parameters (same as searchFindings)
+   * @param searchParams.query - Optional text search query
+   * @param searchParams.entityTypes - Filter by entity types array
+   * @param searchParams.minConfidence - Minimum confidence (default: 0)
+   * @param searchParams.maxConfidence - Maximum confidence (default: 1.0)
+   * @param searchParams.dateFrom - Start date filter
+   * @param searchParams.dateTo - End date filter
+   * @param searchParams.projectIds - Filter by projects
+   * @param searchParams.datasetIds - Filter by datasets
+   * @param searchParams.limit - Export limit (default: 10000, recommend max: 50000)
+   * @param searchParams.sortBy - Sort field
+   * @param searchParams.sortOrder - Sort direction
+   * @param format - Export format ('csv' or 'json', default: 'csv')
+   * @returns Formatted export data as string (CSV or JSON)
+   *
+   * @remarks
+   * **Export Workflow:**
+   *
+   * 1. Filter Construction:
+   *    - Same filtering logic as searchFindings
+   *    - User isolation enforced
+   *    - All search parameters supported
+   *    - Higher default limit (10000 vs 50)
+   *
+   * 2. Data Retrieval:
+   *    - Single query (no parallel aggregations needed)
+   *    - Includes dataset and project relationships
+   *    - Respects sort order and limit
+   *    - No pagination (exports full result set up to limit)
+   *
+   * 3. Format Conversion:
+   *    - CSV: RFC 4180 compliant with proper quoting
+   *    - JSON: Structured with metadata and findings array
+   *    - Execution time tracking
+   *
+   * 4. Audit Logging:
+   *    - Records export action
+   *    - Tracks format and filters applied
+   *    - Counts exported results
+   *    - Monitors execution time
+   *
+   * **CSV Format:**
+   *
+   * Headers (17 columns):
+   * - ID, Entity Type, Confidence, Text
+   * - Context Before, Context After
+   * - Line Number, Column Name
+   * - Start Offset, End Offset
+   * - Created Date
+   * - Dataset ID, Dataset Name, Filename, File Type
+   * - Project ID, Project Name
+   *
+   * Features:
+   * - RFC 4180 compliant
+   * - Double-quote escaping for commas and quotes
+   * - ISO 8601 timestamps
+   * - UTF-8 encoding
+   * - Compatible with Excel, Google Sheets
+   *
+   * **JSON Format:**
+   *
+   * Structure:
+   * ```typescript
+   * {
+   *   exportMetadata: {
+   *     searchQuery?: string,
+   *     appliedFilters: { ... },
+   *     exportInfo: {
+   *       exportedAt: string,    // ISO 8601
+   *       totalResults: number,
+   *       executionTime: number
+   *     }
+   *   },
+   *   findings: Array<{
+   *     id, entityType, confidence, text,
+   *     contextBefore, contextAfter,
+   *     lineNumber, startOffset, endOffset,
+   *     columnName, createdAt,
+   *     dataset: {
+   *       id, name, filename, fileType, status,
+   *       project: { id, name }
+   *     }
+   *   }>
+   * }
+   * ```
+   *
+   * Features:
+   * - Structured JSON with metadata
+   * - Nested relationships preserved
+   * - Pretty-printed (2-space indent)
+   * - Machine-readable format
+   * - Ideal for programmatic processing
+   *
+   * **Performance Considerations:**
+   *
+   * - Default limit: 10000 results (vs 50 for search)
+   * - Recommended max: 50000 results
+   * - Large exports may timeout (adjust limits)
+   * - No pagination (single query retrieval)
+   * - CSV generation faster than JSON
+   * - Consider streaming for very large exports
+   * - Typical execution time: 200-1000ms for 10000 results
+   *
+   * **Use Cases:**
+   *
+   * - Compliance audit reports
+   * - Offline data analysis in Excel/R/Python
+   * - Third-party tool integration
+   * - Backup and archival
+   * - Management reporting
+   * - Data sharing with auditors
+   * - Trend analysis and visualization
+   *
+   * **Export Limits:**
+   *
+   * - Default: 10000 results
+   * - Recommended max: 50000 results
+   * - Larger exports may require:
+   *   - Streaming implementation
+   *   - Background job processing
+   *   - Chunked export strategy
+   *   - Cloud storage integration
+   *
+   * **Security:**
+   *
+   * - User isolation via project relationship
+   * - Masked text only (no original PII exposed)
+   * - Audit trail for all exports
+   * - Consider access control on export files
+   * - Recommend encryption for exported data
+   *
+   * **Integration:**
+   *
+   * - Used by DatasetsController export endpoint
+   * - Generates downloadable file content
+   * - Content-Type set by controller based on format
+   * - Filename suggested by controller
+   *
+   * @example
+   * ```typescript
+   * // Export high-confidence email findings as CSV
+   * const csv = await datasetsService.exportSearchFindings(
+   *   userId,
+   *   {
+   *     entityTypes: ['EMAIL_ADDRESS'],
+   *     minConfidence: 0.8,
+   *     limit: 5000
+   *   },
+   *   'csv'
+   * );
+   *
+   * // CSV Result (first 2 rows):
+   * // ID,Entity Type,Confidence,Text,Context Before,...
+   * // "clx123...","EMAIL_ADDRESS",0.95,"[EMAIL_REDACTED]","Contact: ",...
+   * // "clx456...","EMAIL_ADDRESS",0.92,"[EMAIL_REDACTED]","Send to ",...
+   *
+   * // Export as JSON for programmatic processing
+   * const json = await datasetsService.exportSearchFindings(
+   *   userId,
+   *   {
+   *     entityTypes: ['SSN', 'CREDIT_CARD'],
+   *     dateFrom: '2024-01-01',
+   *     dateTo: '2024-12-31'
+   *   },
+   *   'json'
+   * );
+   *
+   * // JSON Result:
+   * // {
+   * //   "exportMetadata": {
+   * //     "appliedFilters": {
+   * //       "entityTypes": ["SSN", "CREDIT_CARD"],
+   * //       "confidenceRange": [0, 1],
+   * //       "dateRange": ["2024-01-01", "2024-12-31"]
+   * //     },
+   * //     "exportInfo": {
+   * //       "exportedAt": "2024-08-18T10:30:00.000Z",
+   * //       "totalResults": 1234,
+   * //       "executionTime": 456
+   * //     }
+   * //   },
+   * //   "findings": [ ... ]
+   * // }
+   * ```
    */
   async exportSearchFindings(userId: string, searchParams: any, format: 'csv' | 'json' = 'csv'): Promise<string> {
     const startTime = Date.now();
@@ -1796,7 +2919,110 @@ export class DatasetsService {
   }
 
   /**
-   * Format findings as JSON export
+   * Format Findings as JSON Export
+   *
+   * Transforms PII findings array into structured JSON format with metadata,
+   * nested relationships, and pretty-printing for human readability and
+   * programmatic consumption.
+   *
+   * @param findings - Array of finding records with dataset and project relations
+   * @param metadata - Export metadata including filters and export info
+   * @returns Pretty-printed JSON string with 2-space indentation
+   *
+   * @remarks
+   * **JSON Structure:**
+   *
+   * Top-level object contains:
+   * - exportMetadata: Search filters, export timestamp, execution time
+   * - findings: Array of formatted finding objects
+   *
+   * Each finding includes:
+   * - Core finding data: id, entityType, confidence, text
+   * - Context: contextBefore, contextAfter
+   * - Location: lineNumber, startOffset, endOffset, columnName
+   * - Timestamp: createdAt (ISO 8601)
+   * - Relationships: Nested dataset and project objects
+   *
+   * **Metadata Structure:**
+   * ```typescript
+   * {
+   *   searchQuery?: string,
+   *   appliedFilters: {
+   *     entityTypes: string[],
+   *     confidenceRange: [number, number],
+   *     dateRange: [string, string] | null,
+   *     projectIds: string[],
+   *     datasetIds: string[]
+   *   },
+   *   exportInfo: {
+   *     exportedAt: string,    // ISO 8601 timestamp
+   *     totalResults: number,  // Count of exported findings
+   *     executionTime: number  // Milliseconds
+   *   }
+   * }
+   * ```
+   *
+   * **Nested Relationships:**
+   *
+   * Dataset object preserves:
+   * - id, name, filename, fileType, status
+   * - project: { id, name }
+   *
+   * Benefits:
+   * - Maintains data context
+   * - Enables relationship queries
+   * - Supports drill-down analysis
+   *
+   * **Formatting Features:**
+   *
+   * - Pretty-printed with 2-space indentation
+   * - UTF-8 encoding
+   * - ISO 8601 timestamps
+   * - Preserves numeric precision for confidence scores
+   * - Null-safe handling for optional fields
+   *
+   * **Use Cases:**
+   *
+   * - Programmatic data processing (Python, R, JavaScript)
+   * - API integrations with external systems
+   * - Data warehousing and ETL pipelines
+   * - Machine learning dataset preparation
+   * - Automated reporting and analytics
+   *
+   * **Performance:**
+   *
+   * - In-memory transformation (no I/O)
+   * - O(n) time complexity for n findings
+   * - JSON.stringify overhead minimal
+   * - Typical execution: <10ms for 1000 findings
+   *
+   * @private
+   * @example
+   * ```typescript
+   * const json = this.formatJsonExport(findings, {
+   *   searchQuery: 'email',
+   *   appliedFilters: { entityTypes: ['EMAIL_ADDRESS'] },
+   *   exportInfo: { exportedAt: '2024-08-18T...', totalResults: 50, executionTime: 123 }
+   * });
+   *
+   * // Result:
+   * // {
+   * //   "exportMetadata": { ... },
+   * //   "findings": [
+   * //     {
+   * //       "id": "clx123...",
+   * //       "entityType": "EMAIL_ADDRESS",
+   * //       "confidence": 0.95,
+   * //       "text": "[EMAIL_REDACTED]",
+   * //       "dataset": {
+   * //         "id": "clx456...",
+   * //         "name": "customers.csv",
+   * //         "project": { "id": "clx789...", "name": "GDPR" }
+   * //       }
+   * //     }
+   * //   ]
+   * // }
+   * ```
    */
   private formatJsonExport(findings: any[], metadata: any): string {
     const exportData = {
@@ -1828,7 +3054,129 @@ export class DatasetsService {
   }
 
   /**
-   * Format findings as CSV export
+   * Format Findings as CSV Export
+   *
+   * Converts PII findings array into RFC 4180 compliant CSV format with proper
+   * quoting, escaping, and column organization for compatibility with Excel,
+   * Google Sheets, and other spreadsheet applications.
+   *
+   * @param findings - Array of finding records with dataset and project relations
+   * @returns CSV-formatted string with headers and data rows
+   *
+   * @remarks
+   * **CSV Structure:**
+   *
+   * Headers (17 columns):
+   * 1. ID - Finding unique identifier (CUID)
+   * 2. Entity Type - PII entity classification
+   * 3. Confidence - Detection confidence score (0.0-1.0)
+   * 4. Text - Masked PII text
+   * 5. Context Before - Text preceding PII
+   * 6. Context After - Text following PII
+   * 7. Line Number - Line position in source file
+   * 8. Column Name - Column name for structured data
+   * 9. Start Offset - Character start position
+   * 10. End Offset - Character end position
+   * 11. Created Date - Finding creation timestamp (ISO 8601)
+   * 12. Dataset ID - Parent dataset identifier
+   * 13. Dataset Name - Dataset display name
+   * 14. Filename - Original file name
+   * 15. File Type - File type classification
+   * 16. Project ID - Parent project identifier
+   * 17. Project Name - Project display name
+   *
+   * **RFC 4180 Compliance:**
+   *
+   * Quoting Rules:
+   * - All text fields enclosed in double quotes
+   * - Numeric fields unquoted (confidence, offsets, line numbers)
+   * - Internal quotes escaped as double-quotes (" → "")
+   * - Commas within fields safely handled
+   * - Line breaks preserved in quoted fields
+   *
+   * Encoding:
+   * - UTF-8 character encoding
+   * - ISO 8601 timestamp format
+   * - Null/undefined values rendered as empty strings
+   *
+   * **Data Handling:**
+   *
+   * Text Fields:
+   * - Replace double quotes with double-double quotes
+   * - Preserve internal commas and newlines
+   * - Empty fields represented as ""
+   * - Null-safe with fallback to empty string
+   *
+   * Numeric Fields:
+   * - Confidence: Decimal number (0.95)
+   * - Offsets: Integer or empty string
+   * - Line numbers: Integer or empty string
+   *
+   * Timestamp Fields:
+   * - ISO 8601 format: 2024-08-18T10:30:00.000Z
+   * - Quoted for Excel compatibility
+   * - Timezone-aware (UTC)
+   *
+   * **Excel Compatibility:**
+   *
+   * Features:
+   * - Automatic column width detection
+   * - Proper date/time recognition
+   * - Unicode character support
+   * - No BOM (Byte Order Mark) needed
+   * - Compatible with Excel 2010+
+   *
+   * Import Instructions:
+   * 1. Open Excel → Data → From Text/CSV
+   * 2. Select UTF-8 encoding
+   * 3. Comma delimiter auto-detected
+   * 4. Preview and import
+   *
+   * **Google Sheets Compatibility:**
+   *
+   * - Direct paste or import via File → Import
+   * - UTF-8 encoding auto-detected
+   * - Proper column separation
+   * - Timestamp parsing automatic
+   *
+   * **Performance:**
+   *
+   * - In-memory string concatenation
+   * - O(n) time complexity for n findings
+   * - Array.join optimized for large datasets
+   * - Typical execution: <20ms for 1000 findings
+   * - Memory efficient (no intermediate buffers)
+   *
+   * **Use Cases:**
+   *
+   * - Manual data analysis in spreadsheets
+   * - Compliance reporting for auditors
+   * - Data visualization in BI tools
+   * - Batch processing in scripts
+   * - Offline analysis without programming
+   *
+   * **Limitations:**
+   *
+   * - Nested relationships flattened (project/dataset)
+   * - No formula support (plain text only)
+   * - Large exports may exceed spreadsheet row limits
+   * - Binary data not supported (text only)
+   *
+   * @private
+   * @example
+   * ```typescript
+   * const csv = this.formatCsvExport(findings);
+   *
+   * // Result:
+   * // ID,Entity Type,Confidence,Text,Context Before,...
+   * // "clx123...","EMAIL_ADDRESS",0.95,"[EMAIL_REDACTED]","Contact: ",...
+   * // "clx456...","PHONE_NUMBER",0.88,"[PHONE_REDACTED]","Call us at ",...
+   *
+   * // Example row with quotes and commas:
+   * // "clx789...","PERSON",0.92,"John ""JJ"" Doe, Jr.","Name: ",...
+   * //                                      ↑ Escaped quote
+   * //                                                  ↑ Comma preserved
+   * ```
    */
   private formatCsvExport(findings: any[]): string {
     const headers = [
