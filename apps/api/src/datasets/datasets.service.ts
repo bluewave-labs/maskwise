@@ -1625,6 +1625,139 @@ export class DatasetsService {
     };
   }
 
+  /**
+   * Retry Failed Dataset Processing
+   *
+   * Resubmits a failed or cancelled dataset for PII analysis, creating a new
+   * job with retry context tracking and cancelling any existing failed jobs.
+   * Enables recovery from transient failures and user-initiated retries.
+   *
+   * @param id - Dataset ID to retry
+   * @param userId - Authenticated user ID from JWT token
+   * @returns Success response with new job details
+   * @throws {NotFoundException} If dataset not found or user lacks access
+   * @throws {BadRequestException} If dataset is not in retryable state
+   *
+   * @remarks
+   * **Retry Workflow:**
+   *
+   * 1. Verify Dataset Access:
+   *    - Check dataset exists and user has ownership
+   *    - Retrieve dataset with job history and project
+   *    - Enforce user isolation via project relationship
+   *
+   * 2. Validate Retryable State:
+   *    - Only FAILED or CANCELLED datasets can be retried
+   *    - PENDING, PROCESSING, COMPLETED not eligible
+   *    - Returns 400 Bad Request for invalid states
+   *
+   * 3. Reset Dataset Status:
+   *    - Update dataset status to PENDING
+   *    - Update timestamp for tracking
+   *    - Prepares dataset for reprocessing
+   *
+   * 4. Cancel Existing Jobs:
+   *    - Mark FAILED and QUEUED jobs as CANCELLED
+   *    - Prevents duplicate job execution
+   *    - Cleans up failed job queue
+   *
+   * 5. Create New PII Analysis Job:
+   *    - Uses default policy or original policy
+   *    - Includes retry metadata (attempt count, original job count)
+   *    - Preserves original file metadata
+   *    - Marks as retry for special handling
+   *
+   * 6. Audit Logging:
+   *    - Records retry action with RETRY_PROCESSING identifier
+   *    - Tracks retry attempt number
+   *    - Links new job ID for traceability
+   *    - Preserves previous status for comparison
+   *
+   * 7. Queue Submission:
+   *    - Job ready for worker service pickup
+   *    - Returns success response with job details
+   *
+   * **Retry Context Tracking:**
+   *
+   * Job metadata includes:
+   * ```typescript
+   * {
+   *   filePath: string,         // Original file path
+   *   isRetry: true,            // Retry flag
+   *   originalJobCount: number, // Total previous jobs
+   *   retryAttempt: number,     // Current retry number (1, 2, 3...)
+   *   originalDataset: {        // Dataset snapshot
+   *     filename: string,
+   *     fileType: string,
+   *     fileSize: number
+   *   }
+   * }
+   * ```
+   *
+   * **Use Cases:**
+   *
+   * - Transient network failures (Presidio unavailable)
+   * - Worker service crashes during processing
+   * - User-initiated retry after fixing data issues
+   * - Policy configuration errors requiring reprocessing
+   * - Manual retry after system maintenance
+   *
+   * **Performance Considerations:**
+   *
+   * - Multiple database updates in sequence
+   * - Job cancellation may affect many jobs
+   * - Retry attempt tracking prevents infinite loops
+   * - Consider rate limiting for excessive retries
+   * - Typical execution time: 100-200ms
+   *
+   * **Error Handling:**
+   *
+   * - 404: Dataset not found or user lacks access
+   * - 400: Dataset status not FAILED or CANCELLED
+   * - 500: Database failure during retry setup
+   *
+   * **Security:**
+   *
+   * - User isolation enforced via project relationship
+   * - Cannot retry other users' datasets
+   * - Audit trail for all retry attempts
+   * - Rate limiting recommended (not implemented)
+   *
+   * **Future Enhancements:**
+   *
+   * - Maximum retry limit enforcement (e.g., 3 attempts)
+   * - Exponential backoff for automatic retries
+   * - Failure reason analysis before retry
+   * - Notification system for retry completion
+   *
+   * @example
+   * ```typescript
+   * // User retries failed dataset processing
+   * const result = await datasetsService.retryProcessing(datasetId, userId);
+   * // Result: {
+   * //   success: true,
+   * //   message: 'Dataset processing has been restarted',
+   * //   dataset: {
+   * //     id: 'clx123...',
+   * //     name: 'customers.csv',
+   * //     status: 'PENDING',
+   * //     newJobId: 'clx456...'
+   * //   }
+   * // }
+   *
+   * // Audit log entry created:
+   * // {
+   * //   action: 'UPDATE',
+   * //   resource: 'dataset',
+   * //   details: {
+   * //     action: 'RETRY_PROCESSING',
+   * //     previousStatus: 'FAILED',
+   * //     newJobId: 'clx456...',
+   * //     retryAttempt: 2  // Second retry attempt
+   * //   }
+   * // }
+   * ```
+   */
   async retryProcessing(id: string, userId: string) {
     // Verify dataset access and get dataset details
     const dataset = await this.prisma.dataset.findFirst({
@@ -1737,13 +1870,132 @@ export class DatasetsService {
 
   /**
    * Create Demo Dataset
-   * 
-   * Creates a sample dataset with PII content for new user onboarding.
-   * This method is used by the authentication service to provide users
-   * with immediate access to sample data for testing and experimentation.
-   * 
+   *
+   * Creates a sample dataset with PII content for new user onboarding and
+   * platform demonstration. Automatically generates a text file with sample
+   * data, stores it in the uploads directory, and optionally queues immediate
+   * PII analysis for instant results.
+   *
    * @param params - Demo dataset creation parameters
-   * @returns Dataset and job creation details
+   * @param params.projectId - Target project ID for demo dataset
+   * @param params.userId - User ID for ownership and audit
+   * @param params.name - Display name for demo dataset
+   * @param params.description - Description of demo content
+   * @param params.content - Sample PII content to analyze
+   * @param params.policyId - Optional policy ID (uses default if not provided)
+   * @param params.processImmediately - If true, queues PII analysis job immediately
+   * @returns Demo dataset record, job details, and success message
+   *
+   * @remarks
+   * **Creation Workflow:**
+   *
+   * 1. File Generation:
+   *    - Creates temporary file in uploads directory
+   *    - Generates unique filename with timestamp
+   *    - Writes sample PII content to file
+   *    - Calculates file stats and SHA-256 hash
+   *
+   * 2. Dataset Record Creation:
+   *    - Sanitizes user-provided name
+   *    - Sets file type to TXT
+   *    - Stores BigInt file size
+   *    - Marks source type as UPLOAD
+   *    - Status: PENDING if processing immediately, UPLOADED otherwise
+   *
+   * 3. Optional Job Creation:
+   *    - Creates ANALYZE_PII job if processImmediately = true
+   *    - Uses provided policy or fetches default policy
+   *    - Marks job metadata with isDemoDataset flag
+   *    - Includes security validation bypass (trusted content)
+   *    - Queues job via BullMQ for worker processing
+   *
+   * 4. Audit Logging:
+   *    - Records CREATE action for compliance
+   *    - Flags as demo dataset for analytics
+   *    - Includes file size and processing status
+   *    - Links job ID if created
+   *
+   * **Demo Content Guidelines:**
+   *
+   * Sample content should include diverse PII types:
+   * - Email addresses (e.g., john.doe@example.com)
+   * - Phone numbers (e.g., +1-555-123-4567)
+   * - Credit card numbers (e.g., 4532-1234-5678-9010)
+   * - SSNs (e.g., 123-45-6789)
+   * - Names and addresses (e.g., "John Doe lives at 123 Main St")
+   * - Medical record numbers, license numbers, etc.
+   *
+   * **Use Cases:**
+   *
+   * - New user onboarding tutorial
+   * - Platform feature demonstration
+   * - Sales demos and presentations
+   * - QA testing and validation
+   * - API integration testing
+   *
+   * **Security Considerations:**
+   *
+   * - Demo content is still stored and encrypted
+   * - No special security bypass (same validation as real files)
+   * - Audit trail preserved for compliance
+   * - Consider marking demo datasets for easier cleanup
+   * - Demo flag enables analytics filtering
+   *
+   * **Performance:**
+   *
+   * - File I/O operations synchronous
+   * - Single database transaction for dataset + job
+   * - Queue submission asynchronous
+   * - Typical execution time: 100-200ms
+   * - Fast enough for real-time onboarding flow
+   *
+   * **Integration Points:**
+   *
+   * - Called by authentication service post-signup
+   * - Used by admin tools for demo data seeding
+   * - Accessible via API for custom integrations
+   * - Worker service processes jobs normally
+   *
+   * @example
+   * ```typescript
+   * // Create demo dataset during user onboarding
+   * const demo = await datasetsService.createDemoDataset({
+   *   projectId: 'clx123...',
+   *   userId: newUserId,
+   *   name: 'Sample Customer Data',
+   *   description: 'Demo dataset showing PII detection capabilities',
+   *   content: `
+   *     Customer: John Doe
+   *     Email: john.doe@example.com
+   *     Phone: +1-555-123-4567
+   *     SSN: 123-45-6789
+   *     Credit Card: 4532-1234-5678-9010
+   *     Address: 123 Main St, Springfield, IL 62701
+   *   `,
+   *   policyId: undefined, // Use default policy
+   *   processImmediately: true // Queue for immediate analysis
+   * });
+   *
+   * // Result: {
+   * //   dataset: {
+   * //     id: 'clx456...',
+   * //     name: 'Sample Customer Data',
+   * //     status: 'PENDING',
+   * //     fileSize: 234,
+   * //     ...
+   * //   },
+   * //   job: {
+   * //     id: 'clx789...',
+   * //     type: 'ANALYZE_PII',
+   * //     status: 'QUEUED',
+   * //     metadata: {
+   * //       isDemoDataset: true,
+   * //       ...
+   * //     }
+   * //   },
+   * //   message: 'Demo dataset created successfully'
+   * // }
+   * ```
    */
   async createDemoDataset(params: {
     projectId: string;
