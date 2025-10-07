@@ -537,7 +537,7 @@ export class InputSanitizerService {
    * Removes dangerous SQL elements:
    * - Quotes and semicolons (statement terminators)
    * - SQL keywords (select, union, drop, etc.)
-   * - SQL comments (-- and /* */)
+   * - SQL comments (-- and block comments)
    * - Extended procedures (xp_, sp_)
    *
    * @private
