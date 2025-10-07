@@ -97,7 +97,7 @@ export class InputSanitizerService {
    */
   private readonly DANGEROUS_CHARACTERS = {
     SQL_INJECTION: [
-      "'", '"', ';', '--', '/*', '*/', 'xp_', 'sp_', 'exec', 'execute',
+      "'", '"', ';', '--', 'xp_', 'sp_', 'exec', 'execute',
       'union', 'select', 'insert', 'update', 'delete', 'drop', 'create',
       'alter', 'truncate', 'grant', 'revoke'
     ],
