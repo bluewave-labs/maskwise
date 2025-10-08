@@ -92,7 +92,9 @@ services:
 
   # API Service
   api:
-    image: ghcr.io/bluewave-labs/maskwise-api:v1.2.0
+    image: ghcr.io/bluewave-labs/maskwise-api:latest
+    # For specific versions, use: ghcr.io/bluewave-labs/maskwise-api:v1.2.0
+    # To build locally instead, uncomment the build section below:
     # build:
     #   context: .
     #   dockerfile: ./apps/api/Dockerfile
@@ -133,7 +135,9 @@ services:
 
   # Worker Service
   worker:
-    image: ghcr.io/bluewave-labs/maskwise-worker:v1.2.0
+    image: ghcr.io/bluewave-labs/maskwise-worker:latest
+    # For specific versions, use: ghcr.io/bluewave-labs/maskwise-worker:v1.2.0
+    # To build locally instead, uncomment the build section below:
     # build:
     #   context: .
     #   dockerfile: ./apps/worker/Dockerfile
@@ -162,7 +166,9 @@ services:
 
   # Web Frontend
   web:
-    image: ghcr.io/bluewave-labs/maskwise-web:v1.2.0
+    image: ghcr.io/bluewave-labs/maskwise-web:latest
+    # For specific versions, use: ghcr.io/bluewave-labs/maskwise-web:v1.2.0
+    # To build locally instead, uncomment the build section below:
     # build:
     #   context: .
     #   dockerfile: ./apps/web/Dockerfile
