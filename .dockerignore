@@ -1,0 +1,111 @@
+# Git and version control
+.git
+.github
+.gitignore
+
+# Environment and secrets
+.env*
+!.env.example
+.env.local
+.env.development
+.env.production
+.env.test
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Documentation (keep only README.md)
+*.md
+!README.md
+!DOCKER.md
+
+# Dependencies (will be installed via package.json)
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn
+.pnp.*
+
+# Build outputs and cache
+dist
+build
+.next
+.turbo
+.cache
+coverage
+.nyc_output
+
+# Application data directories
+uploads/
+storage/
+logs/
+*.log
+
+# Test files
+*.test.ts
+*.spec.ts
+test/
+__tests__/
+*.test.js
+*.spec.js
+jest.config.*
+.jest
+
+# Temporary files
+tmp/
+temp/
+.tmp
+
+# OS generated files
+Thumbs.db
+.DS_Store
+*.pid
+*.seed
+*.pid.lock
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# parcel-bundler cache (https://parceljs.org/)
+.parcel-cache
+
+# Stores VSCode versions used for testing VSCode extensions
+.vscode-test
+
+# yarn v2
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
