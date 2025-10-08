@@ -103,15 +103,22 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-maskwise}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-maskwise}
       REDIS_URL: redis://redis:6379
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_SECRET: ${JWT_SECRET}  # REQUIRED - Min 32 chars
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}  # REQUIRED - Min 32 chars, different from JWT_SECRET
       PRESIDIO_ANALYZER_URL: http://presidio-analyzer:3000
       PRESIDIO_ANONYMIZER_URL: http://presidio-anonymizer:3000
       TIKA_URL: http://tika:9998
       TESSERACT_URL: http://tesseract:8884
-      DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:-admin@maskwise.com}
-      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:80,http://localhost:443}
+      DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL}  # REQUIRED - No default for security
+      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD}  # REQUIRED - Must be set
+      CORS_ORIGINS: ${CORS_ORIGINS}  # REQUIRED - Your production domains
+      MAX_FILE_SIZE: ${MAX_FILE_SIZE:-104857600}  # 100MB default
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      SESSION_TIMEOUT: ${SESSION_TIMEOUT:-3600}  # 1 hour
+      REFRESH_TOKEN_EXPIRY: ${REFRESH_TOKEN_EXPIRY:-604800}  # 7 days
+      ENABLE_UNLEARNING: ${ENABLE_UNLEARNING:-false}
+      ENABLE_CLOUD_CONNECTORS: ${ENABLE_CLOUD_CONNECTORS:-true}
+      ENABLE_SSO: ${ENABLE_SSO:-false}
     volumes:
       - ./uploads:/app/uploads
       - ./storage:/app/storage
@@ -177,7 +184,7 @@ services:
     container_name: maskwise-web
     environment:
       NODE_ENV: production
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost/api}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}  # REQUIRED - Your API URL
     depends_on:
       - api
     networks:

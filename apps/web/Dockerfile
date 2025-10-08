@@ -3,17 +3,18 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy workspace files
+# Copy package files first for better caching
 COPY package*.json ./
 COPY turbo.json ./
+COPY packages/database/package.json ./packages/database/
+COPY apps/web/package*.json ./apps/web/
+
+# Install dependencies using lockfile for deterministic builds
+RUN npm ci --only=production
+
+# Copy source code after dependencies for better layer caching
 COPY packages/ ./packages/
 COPY apps/web/ ./apps/web/
-
-# Delete any existing lockfile and install fresh
-RUN rm -f package-lock.json apps/web/package-lock.json
-
-# Install dependencies fresh (no lockfile) to avoid corruption
-RUN npm install --no-package-lock
 
 # Set build environment
 ENV NODE_ENV=production
