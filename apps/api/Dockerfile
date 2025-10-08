@@ -12,6 +12,9 @@ COPY apps/api/ ./apps/api/
 # Install dependencies
 RUN npm ci
 
+# Generate Prisma client with correct binary target
+RUN npx prisma generate --schema=packages/database/prisma/schema.prisma
+
 # Build the API application
 RUN cd apps/api && npm run build
 

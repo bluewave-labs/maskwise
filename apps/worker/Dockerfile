@@ -12,6 +12,9 @@ COPY apps/worker/ ./apps/worker/
 # Install dependencies
 RUN npm ci
 
+# Generate Prisma client with correct binary target
+RUN npx prisma generate --schema=packages/database/prisma/schema.prisma
+
 # Build the worker application
 RUN cd apps/worker && npm run build
 
