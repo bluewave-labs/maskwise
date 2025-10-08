@@ -97,7 +97,7 @@ export class InputSanitizerService {
    */
   private readonly DANGEROUS_CHARACTERS = {
     SQL_INJECTION: [
-      "'", '"', ';', '--', '/*', '*/', 'xp_', 'sp_', 'exec', 'execute',
+      "'", '"', ';', '--', 'xp_', 'sp_', 'exec', 'execute',
       'union', 'select', 'insert', 'update', 'delete', 'drop', 'create',
       'alter', 'truncate', 'grant', 'revoke'
     ],
@@ -537,7 +537,7 @@ export class InputSanitizerService {
    * Removes dangerous SQL elements:
    * - Quotes and semicolons (statement terminators)
    * - SQL keywords (select, union, drop, etc.)
-   * - SQL comments (-- and /* */)
+   * - SQL comments (-- and block comments)
    * - Extended procedures (xp_, sp_)
    *
    * @private
