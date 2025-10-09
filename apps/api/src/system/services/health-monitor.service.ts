@@ -117,31 +117,41 @@ export class HealthMonitorService {
   }
 
   private async checkRedis() {
-    // Mock Redis check - would need Redis client for real implementation
-    const redisUrl = this.configService.get('REDIS_URL', 'redis://localhost:6379');
+    const redisUrl = this.configService.get('REDIS_URL', 'redis://redis:6379');
     
     try {
-      // Simple TCP connection check
-      const response = await axios.get('http://localhost:6379/ping', { timeout: 5000 }).catch(() => null);
+      // Parse Redis URL to get host and port
+      const url = new URL(redisUrl);
+      const host = url.hostname || 'redis';
+      const port = parseInt(url.port) || 6379;
+      
+      // Try to connect to Redis using BullMQ Queue (which uses ioredis internally)
+      const { Queue } = await import('bullmq');
+      const testQueue = new Queue('health-check', { 
+        connection: { host, port }
+      });
+      
+      // Test the connection by pinging
+      await testQueue.waitUntilReady();
+      await testQueue.close();
+      
       return {
-        message: 'Redis connection available',
+        message: 'Redis connection successful',
         metadata: {
           url: redisUrl,
-          ping: response ? 'PONG' : 'No HTTP endpoint',
+          host,
+          port,
+          status: 'connected',
         },
       };
-    } catch {
-      // Assume healthy if we can't verify (Redis doesn't have HTTP by default)
-      return {
-        message: 'Redis service assumed healthy',
-        metadata: { url: redisUrl },
-      };
+    } catch (error) {
+      this.logger.warn('Redis health check failed:', error.message);
+      throw new Error(`Redis unreachable at ${redisUrl}: ${error.message}`);
     }
   }
 
   private async checkPresidioAnalyzer() {
-    // Temporarily hardcode the correct port to test the fix
-    const url = 'http://localhost:5003';
+    const url = this.configService.get('PRESIDIO_ANALYZER_URL', 'http://presidio-analyzer:3000');
     this.logger.debug(`Checking Presidio Analyzer at: ${url}`);
     
     try {
@@ -168,8 +178,7 @@ export class HealthMonitorService {
   }
 
   private async checkPresidioAnonymizer() {
-    // Temporarily hardcode the correct port to test the fix
-    const url = 'http://localhost:5004';
+    const url = this.configService.get('PRESIDIO_ANONYMIZER_URL', 'http://presidio-anonymizer:3000');
     this.logger.debug(`Checking Presidio Anonymizer at: ${url}`);
     
     try {
@@ -333,9 +342,13 @@ export class HealthMonitorService {
   private async getQueueStatus() {
     try {
       const { Queue } = await import('bullmq');
+      
+      // Parse Redis URL from environment
+      const redisUrl = this.configService.get('REDIS_URL', 'redis://redis:6379');
+      const url = new URL(redisUrl);
       const redisConnection = {
-        host: 'localhost',
-        port: 6379,
+        host: url.hostname || 'redis',
+        port: parseInt(url.port) || 6379,
       };
 
       // Only monitor queues that actually exist (no text-extraction)
