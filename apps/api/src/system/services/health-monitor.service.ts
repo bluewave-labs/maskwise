@@ -118,42 +118,58 @@ export class HealthMonitorService {
 
   private async checkRedis() {
     const redisUrl = this.configService.get('REDIS_URL', 'redis://redis:6379');
-    
+
     try {
-      // Parse Redis URL to get host and port
+      // Parse Redis URL to extract connection details
       const url = new URL(redisUrl);
       const host = url.hostname || 'redis';
       const port = parseInt(url.port) || 6379;
-      
-      // Try to connect to Redis using BullMQ Queue (which uses ioredis internally)
+      const password = url.password || undefined;
+
+      // Import BullMQ Queue for connection test
       const { Queue } = await import('bullmq');
-      const testQueue = new Queue('health-check', { 
-        connection: { host, port }
-      });
-      
-      // Test the connection by pinging
-      await testQueue.waitUntilReady();
-      await testQueue.close();
-      
-      return {
-        message: 'Redis connection successful',
-        metadata: {
-          url: redisUrl,
-          host,
-          port,
-          status: 'connected',
-        },
+
+      const redisConnection = {
+        host,
+        port,
+        ...(password && { password }),
       };
+
+      // Create a temporary queue for health check with timeout protection
+      const queue = new Queue('health-check', { connection: redisConnection });
+
+      try {
+        // Wrap waitUntilReady in Promise.race with 5 second timeout
+        await Promise.race([
+          queue.waitUntilReady(),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Redis connection timeout after 5s')), 5000)
+          )
+        ]);
+
+        return {
+          message: 'Redis connection successful',
+          metadata: {
+            host,
+            port,
+            status: 'connected',
+          },
+        };
+      } finally {
+        // Always close the queue connection to prevent leaks
+        await queue.close().catch(err =>
+          this.logger.warn('Failed to close Redis health check queue:', err.message)
+        );
+      }
     } catch (error) {
-      this.logger.warn('Redis health check failed:', error.message);
-      throw new Error(`Redis unreachable at ${redisUrl}: ${error.message}`);
+      throw new Error(`Redis health check failed: ${error.message}`);
     }
   }
 
   private async checkPresidioAnalyzer() {
     const url = this.configService.get('PRESIDIO_ANALYZER_URL', 'http://presidio-analyzer:3000');
     this.logger.debug(`Checking Presidio Analyzer at: ${url}`);
-    
+
     try {
       const response = await axios.get(`${url}/health`, { timeout: 5000 });
       return {
@@ -180,7 +196,7 @@ export class HealthMonitorService {
   private async checkPresidioAnonymizer() {
     const url = this.configService.get('PRESIDIO_ANONYMIZER_URL', 'http://presidio-anonymizer:3000');
     this.logger.debug(`Checking Presidio Anonymizer at: ${url}`);
-    
+
     try {
       const response = await axios.get(`${url}/health`, { timeout: 5000 });
       return {
@@ -342,32 +358,31 @@ export class HealthMonitorService {
   private async getQueueStatus() {
     try {
       const { Queue } = await import('bullmq');
-      
-      // Parse Redis URL from environment
+
+      // Parse Redis URL from configuration
       const redisUrl = this.configService.get('REDIS_URL', 'redis://redis:6379');
       const url = new URL(redisUrl);
       const redisConnection = {
         host: url.hostname || 'redis',
         port: parseInt(url.port) || 6379,
+        ...(url.password && { password: url.password }),
       };
 
       // Only monitor queues that actually exist (no text-extraction)
       const queueNames = ['file-processing', 'pii-analysis', 'anonymization'];
-      
+
       const queueStats = await Promise.allSettled(
         queueNames.map(async (name) => {
+          let queue: any;
           try {
-            const queue = new Queue(name, { connection: redisConnection });
-            
+            queue = new Queue(name, { connection: redisConnection });
+
             const [waiting, active, completed, failed] = await Promise.all([
               queue.getWaiting(),
-              queue.getActive(), 
+              queue.getActive(),
               queue.getCompleted(),
               queue.getFailed(),
             ]);
-
-            // Close queue connection
-            await queue.close();
 
             return {
               name,
@@ -388,6 +403,13 @@ export class HealthMonitorService {
               failed: 0,
               workers: 2,
             };
+          } finally {
+            // Always close queue connection to prevent leaks
+            if (queue) {
+              await queue.close().catch(err =>
+                this.logger.warn(`Failed to close queue ${name}:`, err.message)
+              );
+            }
           }
         })
       );
@@ -397,7 +419,7 @@ export class HealthMonitorService {
         .map(result => result.value);
     } catch (error) {
       this.logger.warn('Failed to get queue status:', error.message);
-      
+
       // Fallback to basic status for the 3 actual queues
       return [
         { name: 'file-processing', waiting: 0, active: 0, completed: 0, failed: 0, workers: 5 },
