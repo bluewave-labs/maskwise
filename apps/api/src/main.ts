@@ -36,14 +36,23 @@ async function bootstrap() {
   );
 
   // CORS configuration
+  const isProduction = process.env.NODE_ENV === 'production';
+  const corsOrigins = isProduction
+    ? // Production: Only allow configured origins
+      process.env.CORS_ORIGINS
+        ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim())
+        : [process.env.FRONTEND_URL || 'http://localhost:3000']
+    : // Development: Allow multiple localhost ports for convenience
+      [
+        'http://localhost:3000',
+        'http://localhost:3004',
+        'http://localhost:3005',
+        'http://localhost:4200',
+        process.env.FRONTEND_URL,
+      ].filter(Boolean);
+
   app.enableCors({
-    origin: [
-      'http://localhost:3000',
-      'http://localhost:3004',
-      'http://localhost:3005',
-      'http://localhost:4200',
-      process.env.FRONTEND_URL || 'http://localhost:4200'
-    ],
+    origin: corsOrigins,
     credentials: true,
   });
 

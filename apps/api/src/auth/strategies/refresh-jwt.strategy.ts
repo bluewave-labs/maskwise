@@ -81,10 +81,21 @@ export class RefreshJwtStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
     private configService: ConfigService,
     private usersService: UsersService,
   ) {
+    const jwtRefreshSecret = configService?.get<string>('JWT_REFRESH_SECRET');
+
+    if (!jwtRefreshSecret) {
+      throw new Error(
+        'CRITICAL SECURITY ERROR: JWT_REFRESH_SECRET is not configured. ' +
+        'Application cannot start without a secure JWT refresh secret. ' +
+        'Please set JWT_REFRESH_SECRET environment variable with a strong secret (minimum 32 characters). ' +
+        'This must be different from JWT_SECRET for security isolation.'
+      );
+    }
+
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService?.get<string>('JWT_REFRESH_SECRET') || configService?.get<string>('JWT_SECRET') || process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET || 'fallback-refresh-secret',
+      secretOrKey: jwtRefreshSecret,
     });
   }
 

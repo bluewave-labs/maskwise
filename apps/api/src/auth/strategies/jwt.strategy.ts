@@ -55,10 +55,20 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private configService: ConfigService,
     private usersService: UsersService,
   ) {
+    const jwtSecret = configService?.get<string>('JWT_SECRET');
+
+    if (!jwtSecret) {
+      throw new Error(
+        'CRITICAL SECURITY ERROR: JWT_SECRET is not configured. ' +
+        'Application cannot start without a secure JWT secret. ' +
+        'Please set JWT_SECRET environment variable with a strong secret (minimum 32 characters).'
+      );
+    }
+
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService?.get<string>('JWT_SECRET') || process.env.JWT_SECRET || 'fallback-secret',
+      secretOrKey: jwtSecret,
     });
   }
 
