@@ -30,6 +30,23 @@ export interface PolicyYAML {
 }
 
 /**
+ * Type guard to check if value matches PolicyYAML structure
+ */
+function isPolicyYAML(value: unknown): value is PolicyYAML {
+  if (!value || typeof value !== 'object') return false;
+  const obj = value as Record<string, unknown>;
+
+  return (
+    typeof obj.name === 'string' &&
+    typeof obj.version === 'string' &&
+    typeof obj.description === 'string' &&
+    obj.detection !== null &&
+    typeof obj.detection === 'object' &&
+    Array.isArray((obj.detection as any).entities)
+  );
+}
+
+/**
  * Parsed Policy Configuration Interface
  * Used by the PII analysis processor
  */
@@ -133,11 +150,17 @@ export class PolicyService {
         
         // Convert the parsed config data
         if (configData && typeof configData === 'object') {
-          policyConfig = this.convertYamlToConfig(configData as PolicyYAML);
-          logger.info('Policy configuration converted successfully', { 
-            policyId, 
-            entities: (configData as PolicyYAML).detection?.entities?.length || 0 
-          });
+          // Validate that configData matches PolicyYAML structure
+          if (isPolicyYAML(configData)) {
+            policyConfig = this.convertYamlToConfig(configData);
+            logger.info('Policy configuration converted successfully', {
+              policyId,
+              entities: configData.detection?.entities?.length || 0
+            });
+          } else {
+            logger.warn('Policy config does not match PolicyYAML structure, using legacy fallback', { policyId });
+            policyConfig = this.convertLegacyConfig(policy.config);
+          }
         } else {
           logger.warn('Policy config is not an object, using legacy fallback', { policyId });
           policyConfig = this.convertLegacyConfig(policy.config);
