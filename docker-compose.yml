@@ -1,3 +1,7 @@
+# ⚠️  WARNING: DEVELOPMENT ENVIRONMENT ONLY ⚠️
+# This file contains weak/default credentials for local development.
+# NEVER use these values in production or staging environments.
+# Production deployments MUST use strong, randomly-generated secrets.
 version: '3.8'
 
 services:

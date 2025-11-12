@@ -102,7 +102,8 @@ export class YamlValidationService {
    * **Validation Process:**
    *
    * 1. **YAML Parsing**:
-   *    - Uses js-yaml library for safe YAML parsing
+   *    - Uses js-yaml library with SAFE_SCHEMA for secure parsing
+   *    - Prevents code execution via YAML deserialization attacks
    *    - Handles malformed YAML syntax errors
    *    - Ensures result is a valid object structure
    *    - Prevents YAML injection and unsafe constructs
@@ -167,8 +168,9 @@ export class YamlValidationService {
    */
   validateYAML(yamlContent: string): ValidationResult {
     try {
-      // Parse YAML
-      const parsed = yaml.load(yamlContent) as any;
+      // Parse YAML with safe schema to prevent code execution
+      // SECURITY: Using SAFE_SCHEMA prevents arbitrary code execution via YAML deserialization
+      const parsed = yaml.load(yamlContent, { schema: yaml.SAFE_SCHEMA }) as any;
       
       if (!parsed || typeof parsed !== 'object') {
         return {

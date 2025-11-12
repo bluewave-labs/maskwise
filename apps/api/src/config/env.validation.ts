@@ -37,13 +37,14 @@ export const validationSchema = Joi.object({
   JWT_SECRET: Joi.string()
     .min(32)
     .required()
-    .description('JWT signing secret - MUST be at least 32 characters'),
+    .invalid('maskwise_jwt_secret_dev_only') // SECURITY: Block known development default in production
+    .description('JWT signing secret - MUST be at least 32 characters and NOT use development defaults'),
 
   JWT_REFRESH_SECRET: Joi.string()
     .min(32)
     .required()
-    .invalid(Joi.ref('JWT_SECRET'))
-    .description('JWT refresh token secret - MUST be different from JWT_SECRET'),
+    .invalid(Joi.ref('JWT_SECRET'), 'maskwise_jwt_refresh_secret_dev_only') // Block both duplicate and dev default
+    .description('JWT refresh token secret - MUST be different from JWT_SECRET and NOT use development defaults'),
 
   // ===========================================
   // Database Configuration
@@ -107,10 +108,16 @@ export const validationSchema = Joi.object({
     .default('admin123')
     .when('NODE_ENV', {
       is: 'production',
-      then: Joi.string().min(12).pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>])/),
+      then: Joi.string()
+        .min(12)
+        .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>])/)
+        .invalid('admin123', 'password', 'Password123!', 'Admin123!') // SECURITY: Block common weak defaults
+        .messages({
+          'any.invalid': 'DEFAULT_ADMIN_PASSWORD cannot use common weak passwords in production'
+        }),
       otherwise: Joi.string().min(8)
     })
-    .description('Default admin password - MUST be strong in production'),
+    .description('Default admin password - MUST be strong and NOT use common defaults in production'),
 
   // ===========================================
   // Storage Configuration

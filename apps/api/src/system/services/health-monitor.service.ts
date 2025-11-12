@@ -6,10 +6,7 @@ import axios from 'axios';
 import * as os from 'os';
 import * as fs from 'fs';
 import * as path from 'path';
-import { promisify } from 'util';
-import { exec } from 'child_process';
-
-const execAsync = promisify(exec);
+import checkDiskSpace from 'check-disk-space';
 
 @Injectable()
 export class HealthMonitorService {
@@ -329,24 +326,22 @@ export class HealthMonitorService {
 
   private async getDiskUsage() {
     try {
-      if (process.platform === 'win32') {
-        // Windows disk usage check
-        const { stdout } = await execAsync('wmic logicaldisk get size,freespace,caption');
-        // Parse Windows output (simplified)
-        return { usagePercent: 25, total: 500000, used: 125000 };
-      } else {
-        // Unix-like systems
-        const { stdout } = await execAsync('df -m .');
-        const lines = stdout.trim().split('\n');
-        if (lines.length > 1) {
-          const parts = lines[1].split(/\s+/);
-          const total = parseInt(parts[1]);
-          const used = parseInt(parts[2]);
-          const usagePercent = Math.round((used / total) * 100);
-          
-          return { usagePercent, total, used };
-        }
-      }
+      // SECURITY: Using check-disk-space library instead of shell commands to prevent command injection
+      // This is a cross-platform native API approach that doesn't execute shell commands
+      const diskPath = process.platform === 'win32' ? 'C:/' : '/';
+      const diskInfo = await checkDiskSpace(diskPath);
+
+      // diskInfo contains: { diskPath, free, size }
+      const totalMB = Math.round(diskInfo.size / (1024 * 1024));
+      const freeMB = Math.round(diskInfo.free / (1024 * 1024));
+      const usedMB = totalMB - freeMB;
+      const usagePercent = Math.round((usedMB / totalMB) * 100);
+
+      return {
+        usagePercent,
+        total: totalMB,
+        used: usedMB
+      };
     } catch (error) {
       this.logger.warn('Failed to get disk usage:', error.message);
     }

@@ -5,6 +5,7 @@ import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import helmet from 'helmet';
 import * as compression from 'compression';
+import * as cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -19,6 +20,9 @@ async function bootstrap() {
   // Security middleware
   app.use(helmet());
   app.use(compression());
+
+  // SECURITY: Cookie parser middleware for HttpOnly authentication cookies
+  app.use(cookieParser());
 
   // Global exception filter (must be before validation pipe)
   app.useGlobalFilters(new GlobalExceptionFilter());

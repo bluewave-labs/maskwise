@@ -1,7 +1,8 @@
-import { Controller, Post, Body, UseGuards, Request, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request, HttpCode, HttpStatus, Res } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { Throttle } from '@nestjs/throttler';
+import { Response } from 'express';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { LoginDto } from './dto/login.dto';
@@ -14,13 +15,39 @@ import { AuthRateLimit, StrictRateLimit } from '../throttling/rate-limit.decorat
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  /**
+   * Set secure authentication cookies with HttpOnly, Secure, and SameSite flags
+   * SECURITY: HttpOnly prevents XSS attacks, Secure ensures HTTPS-only, SameSite prevents CSRF
+   */
+  private setAuthCookies(res: Response, accessToken: string, refreshToken: string) {
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    // Access token - 1 hour expiry
+    res.cookie('access_token', accessToken, {
+      httpOnly: true,
+      secure: isProduction, // Only HTTPS in production
+      sameSite: 'strict',
+      maxAge: 60 * 60 * 1000, // 1 hour in milliseconds
+      path: '/',
+    });
+
+    // Refresh token - 7 days expiry
+    res.cookie('refresh_token', refreshToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
+      path: '/',
+    });
+  }
+
   @Post('login')
   @AuthRateLimit()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login user' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Login successful',
+  @ApiResponse({
+    status: 200,
+    description: 'Login successful. Tokens are set as HttpOnly cookies.',
     schema: {
       type: 'object',
       properties: {
@@ -40,16 +67,21 @@ export class AuthController {
     }
   })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
-  async login(@Body() loginDto: LoginDto) {
-    return this.authService.login(loginDto);
+  async login(@Body() loginDto: LoginDto, @Res({ passthrough: true }) res: Response) {
+    const result = await this.authService.login(loginDto);
+
+    // Set secure cookies with tokens
+    this.setAuthCookies(res, result.accessToken, result.refreshToken);
+
+    return result;
   }
 
   @Post('register')
   @StrictRateLimit()
   @ApiOperation({ summary: 'Register new user' })
-  @ApiResponse({ 
-    status: 201, 
-    description: 'User registered successfully',
+  @ApiResponse({
+    status: 201,
+    description: 'User registered successfully. Tokens are set as HttpOnly cookies.',
     schema: {
       type: 'object',
       properties: {
@@ -69,8 +101,13 @@ export class AuthController {
     }
   })
   @ApiResponse({ status: 409, description: 'User already exists' })
-  async register(@Body() registerDto: RegisterDto) {
-    return this.authService.register(registerDto);
+  async register(@Body() registerDto: RegisterDto, @Res({ passthrough: true }) res: Response) {
+    const result = await this.authService.register(registerDto);
+
+    // Set secure cookies with tokens
+    this.setAuthCookies(res, result.accessToken, result.refreshToken);
+
+    return result;
   }
 
   @Post('refresh')
@@ -79,7 +116,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Refresh access token' })
   @ApiResponse({
     status: 200,
-    description: 'Token refreshed successfully',
+    description: 'Token refreshed successfully. Tokens are set as HttpOnly cookies.',
     schema: {
       type: 'object',
       properties: {
@@ -90,8 +127,13 @@ export class AuthController {
   })
   @ApiResponse({ status: 401, description: 'Invalid refresh token' })
   @ApiResponse({ status: 429, description: 'Too many refresh requests. Please try again later.' })
-  async refresh(@Body() refreshTokenDto: RefreshTokenDto) {
-    return this.authService.refreshTokens(refreshTokenDto.refreshToken);
+  async refresh(@Body() refreshTokenDto: RefreshTokenDto, @Res({ passthrough: true }) res: Response) {
+    const result = await this.authService.refreshTokens(refreshTokenDto.refreshToken);
+
+    // Set secure cookies with refreshed tokens
+    this.setAuthCookies(res, result.accessToken, result.refreshToken);
+
+    return result;
   }
 
   @Post('logout')
@@ -99,9 +141,14 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Logout user' })
-  @ApiResponse({ status: 200, description: 'Logout successful' })
-  async logout(@Request() req) {
+  @ApiResponse({ status: 200, description: 'Logout successful. Auth cookies cleared.' })
+  async logout(@Request() req, @Res({ passthrough: true }) res: Response) {
     await this.authService.logout(req.user.id);
+
+    // Clear auth cookies
+    res.clearCookie('access_token', { path: '/' });
+    res.clearCookie('refresh_token', { path: '/' });
+
     return { message: 'Logout successful' };
   }
 

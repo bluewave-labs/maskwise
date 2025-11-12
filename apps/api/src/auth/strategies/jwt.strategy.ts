@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
+import { Request } from 'express';
 import { UsersService } from '../../users/users.service';
 import { JwtPayload } from '../auth.service';
 
@@ -9,29 +10,32 @@ import { JwtPayload } from '../auth.service';
  * JWT Authentication Strategy
  *
  * Passport.js strategy for validating JWT access tokens in API requests.
- * Extracts and verifies tokens from Authorization header, validates user exists
- * and is active, then attaches user information to request object.
+ * Extracts and verifies tokens from HttpOnly cookies (preferred) or Authorization header (fallback),
+ * validates user exists and is active, then attaches user information to request object.
  *
  * This strategy is automatically applied to routes protected with @UseGuards(JwtAuthGuard).
  *
  * @remarks
- * Token extraction:
- * - Expects "Authorization: Bearer <token>" header format
+ * Token extraction (in order of priority):
+ * - 1. HttpOnly cookie named 'access_token' (SECURITY: prevents XSS attacks)
+ * - 2. "Authorization: Bearer <token>" header format (backward compatibility)
  * - Token signature verified using JWT_SECRET
  * - Expired tokens automatically rejected (ignoreExpiration: false)
  *
  * Validation process:
- * 1. Extract token from Authorization header
+ * 1. Extract token from cookie or Authorization header
  * 2. Verify token signature and expiration
  * 3. Lookup user by ID from token payload
  * 4. Verify user exists and is active
  * 5. Attach user object to request for route handlers
  *
  * Security:
+ * - HttpOnly cookies prevent JavaScript access (XSS protection)
+ * - Secure flag ensures HTTPS-only transmission in production
+ * - SameSite=strict prevents CSRF attacks
  * - Inactive users cannot authenticate even with valid token
  * - Missing users treated as unauthorized
  * - Token expiration strictly enforced (15 minutes)
- * - Fallback secret for development only (should never be used in production)
  *
  * Performance:
  * - Database lookup on every authenticated request
@@ -66,7 +70,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      // SECURITY: Extract JWT from HttpOnly cookie first (preferred), then Authorization header (fallback)
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        (request: Request) => {
+          // Try to get token from HttpOnly cookie first
+          return request?.cookies?.access_token || null;
+        },
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+      ]),
       ignoreExpiration: false,
       secretOrKey: jwtSecret,
     });

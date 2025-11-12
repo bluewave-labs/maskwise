@@ -127,8 +127,9 @@ export class PolicyService {
           const configString = configData;
 
           // Try to parse as YAML first, then JSON
+          // SECURITY: Using SAFE_SCHEMA prevents arbitrary code execution via YAML deserialization
           try {
-            configData = yaml.load(configString);
+            configData = yaml.load(configString, { schema: yaml.SAFE_SCHEMA });
             logger.info('Policy parsed as YAML successfully', {
               policyId,
               policyName: (configData as any)?.name
