@@ -36,11 +36,24 @@ export interface AnonymizationJobData extends BaseJobData {
 }
 
 export interface PIIFinding {
+  id?: string;
   entityType: string;
   text: string;
   startOffset: number;
   endOffset: number;
+  start?: number; // Alias for startOffset (used in some contexts)
+  end?: number; // Alias for endOffset (used in some contexts)
   confidence: number;
+  lineNumber?: number;
+  columnNumber?: number;
+  columnName?: string;
+  context?: string;
+  contextBefore?: string;
+  contextAfter?: string;
+  action?: 'redact' | 'mask' | 'replace' | 'encrypt';
+  replacement?: string;
+  datasetId?: string;
+  createdAt?: Date;
 }
 
 export type JobData = 

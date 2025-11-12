@@ -18,6 +18,8 @@ import { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { diskStorage } from 'multer';
+import { fileTypeFromBuffer } from 'file-type';
+import { readFile, unlink } from 'fs/promises';
 import { UploadRateLimit, ModerateRateLimit, HeavyOperationRateLimit } from '../throttling/rate-limit.decorators';
 import { extname } from 'path';
 import * as fs from 'fs';
@@ -237,6 +239,50 @@ export class DatasetsController {
     const fileExtension = extname(file.originalname).toLowerCase();
     if (!allowedExtensions.includes(fileExtension)) {
       throw new BadRequestException(`File extension ${fileExtension} is not allowed`);
+    }
+
+    // SECURITY: Magic byte validation - verify file content matches claimed type
+    // Prevents malicious files disguised with valid extensions/MIME types
+    try {
+      const buffer = await readFile(file.path);
+      const detectedType = await fileTypeFromBuffer(buffer);
+
+      // Map of allowed MIME types to expected magic byte signatures
+      const allowedMagicBytes = [
+        'application/pdf',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'image/jpeg',
+        'image/png',
+        'image/tiff',
+        'image/bmp',
+        'image/gif',
+        'application/zip', // DOCX, XLSX, PPTX are ZIP-based
+      ];
+
+      // For files with detectable magic bytes, verify they're allowed
+      if (detectedType && !allowedMagicBytes.includes(detectedType.mime)) {
+        // Delete the uploaded file
+        await unlink(file.path);
+        throw new BadRequestException(
+          `File content type (${detectedType.mime}) does not match allowed types. ` +
+          `Possible malicious file disguised as ${file.mimetype}.`
+        );
+      }
+
+      // Note: Text files (txt, csv, json, html, xml) don't have magic bytes,
+      // so detectedType will be null - this is expected and acceptable
+    } catch (error) {
+      // If magic byte validation fails for any reason, delete file and reject
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      // For other errors (file read issues), still reject for security
+      try {
+        await unlink(file.path);
+      } catch {}
+      throw new BadRequestException(`File validation failed: ${error.message}`);
     }
 
     return this.datasetsService.uploadFile(

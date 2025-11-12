@@ -1,22 +1,23 @@
 import axios from 'axios';
-import Cookies from 'js-cookie';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
+// SECURITY: withCredentials allows HttpOnly cookies to be automatically sent with requests
+// This works with the server-side Set-Cookie headers that have HttpOnly, Secure, and SameSite flags
 export const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Enable sending cookies with CORS requests
 });
 
-// Request interceptor to add auth token
+// Request interceptor - no longer needed to manually add auth token
+// SECURITY: Tokens are now in HttpOnly cookies, automatically sent by browser
+// The server's JWT strategy reads from cookies instead of Authorization header
 api.interceptors.request.use(
   (config) => {
-    const token = Cookies.get('access_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    // Cookies are automatically included with withCredentials: true
     return config;
   },
   (error) => {
@@ -25,6 +26,8 @@ api.interceptors.request.use(
 );
 
 // Response interceptor to handle token refresh
+// SECURITY: Tokens are HttpOnly cookies, we can't access them from JavaScript
+// Server automatically handles cookie refresh via Set-Cookie headers
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -34,24 +37,20 @@ api.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const refreshToken = Cookies.get('refresh_token');
-        if (refreshToken) {
-          const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-            refreshToken,
-          });
+        // Call refresh endpoint - cookies are automatically sent via withCredentials
+        // Server will set new HttpOnly cookies in the response
+        const response = await axios.post(
+          `${API_BASE_URL}/auth/refresh`,
+          {}, // Body can be empty, refresh token is in HttpOnly cookie
+          { withCredentials: true } // Send cookies with this request
+        );
 
-          const { accessToken, refreshToken: newRefreshToken } = response.data;
-          
-          Cookies.set('access_token', accessToken, { expires: 1/24 }); // 1 hour
-          Cookies.set('refresh_token', newRefreshToken, { expires: 7 }); // 7 days
-
-          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-          return api(originalRequest);
-        }
+        // New tokens are now set as HttpOnly cookies by the server
+        // Retry the original request with the new cookies
+        return api(originalRequest);
       } catch (refreshError) {
         // Refresh failed, redirect to login
-        Cookies.remove('access_token');
-        Cookies.remove('refresh_token');
+        // We can't clear HttpOnly cookies from JavaScript, but server will handle it
         window.location.href = '/login';
         return Promise.reject(refreshError);
       }

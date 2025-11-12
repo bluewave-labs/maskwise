@@ -134,13 +134,23 @@ export class GlobalExceptionFilter implements ExceptionFilter {
   }
 
   private getPrismaErrorMessage(exception: Prisma.PrismaClientKnownRequestError): string {
+    const isProduction = process.env.NODE_ENV === 'production';
+
     switch (exception.code) {
       case 'P2002':
+        // SECURITY: In production, don't expose field names that might reveal schema
+        if (isProduction) {
+          return 'A record with these values already exists.';
+        }
         const target = (exception.meta?.target as string[]) || [];
         return `A record with this ${target.join(', ')} already exists.`;
       case 'P2025':
         return 'The requested record was not found.';
       case 'P2003':
+        // SECURITY: In production, don't expose relationship details
+        if (isProduction) {
+          return 'Cannot complete this operation.';
+        }
         return 'Cannot complete this operation due to related records.';
       case 'P2014':
         return 'The provided ID is invalid.';

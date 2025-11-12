@@ -229,14 +229,20 @@ export class ApiKeyAuthGuard implements CanActivate {
    * @private
    * @example
    * ```typescript
-   * // Header method (preferred):
+   * // Header method (ONLY supported method):
    * // Authorization: Bearer msk_1234567890abcdef
    * // Returns: "msk_1234567890abcdef"
-   *
-   * // Query param method (fallback):
-   * // GET /api/data?api_key=msk_1234567890abcdef
-   * // Returns: "msk_1234567890abcdef"
    * ```
+   *
+   * @remarks
+   * SECURITY: Query parameter support has been removed because:
+   * - API keys in URLs are logged in server access logs
+   * - API keys appear in browser history
+   * - API keys are visible in proxy logs
+   * - API keys can leak via Referer headers
+   * - API keys in URLs violate security best practices
+   *
+   * Clients MUST use the Authorization header to provide API keys.
    */
   private extractApiKey(request: any): string | null {
     const authHeader = request.headers.authorization;
@@ -245,7 +251,7 @@ export class ApiKeyAuthGuard implements CanActivate {
       return authHeader.substring(7); // Remove "Bearer " prefix
     }
 
-    // Also check for API key in query params (less secure, but sometimes needed)
-    return request.query.api_key || null;
+    // SECURITY: Query parameter support removed - API keys must be in Authorization header
+    return null;
   }
 }

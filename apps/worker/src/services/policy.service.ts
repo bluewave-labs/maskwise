@@ -30,6 +30,23 @@ export interface PolicyYAML {
 }
 
 /**
+ * Type guard to check if value matches PolicyYAML structure
+ */
+function isPolicyYAML(value: unknown): value is PolicyYAML {
+  if (!value || typeof value !== 'object') return false;
+  const obj = value as Record<string, unknown>;
+
+  return (
+    typeof obj.name === 'string' &&
+    typeof obj.version === 'string' &&
+    typeof obj.description === 'string' &&
+    obj.detection !== null &&
+    typeof obj.detection === 'object' &&
+    Array.isArray((obj.detection as any).entities)
+  );
+}
+
+/**
  * Parsed Policy Configuration Interface
  * Used by the PII analysis processor
  */
@@ -101,43 +118,54 @@ export class PolicyService {
       // Check if we have active versions
       if (policy.versions.length > 0) {
         const activeVersion = policy.versions[0];
-        
+
         // Check if config is already a parsed JSON object or a YAML string
-        let configData = activeVersion.config;
-        
+        let configData: unknown = activeVersion.config;
+
         if (typeof configData === 'string') {
+          // Store the string value for parsing attempts
+          const configString = configData;
+
           // Try to parse as YAML first, then JSON
+          // SECURITY: Using CORE_SCHEMA prevents arbitrary code execution via YAML deserialization
           try {
-            configData = yaml.load(configData) as PolicyYAML;
-            logger.info('Policy parsed as YAML successfully', { 
-              policyId, 
-              policyName: (configData as any).name 
+            configData = yaml.load(configString, { schema: yaml.CORE_SCHEMA });
+            logger.info('Policy parsed as YAML successfully', {
+              policyId,
+              policyName: (configData as any)?.name
             });
           } catch (yamlError) {
             try {
-              configData = JSON.parse(configData);
-              logger.info('Policy parsed as JSON successfully', { 
-                policyId, 
-                policyName: (configData as any).name 
+              configData = JSON.parse(configString);
+              logger.info('Policy parsed as JSON successfully', {
+                policyId,
+                policyName: (configData as any)?.name
               });
             } catch (jsonError) {
-              logger.error('Failed to parse policy as YAML or JSON', { 
-                policyId, 
+              logger.error('Failed to parse policy as YAML or JSON', {
+                policyId,
                 yamlError: yamlError instanceof Error ? yamlError.message : 'Unknown error',
                 jsonError: jsonError instanceof Error ? jsonError.message : 'Unknown error'
               });
               policyConfig = this.convertLegacyConfig(policy.config);
+              return policyConfig;
             }
           }
         }
-        
+
         // Convert the parsed config data
         if (configData && typeof configData === 'object') {
-          policyConfig = this.convertYamlToConfig(configData as PolicyYAML);
-          logger.info('Policy configuration converted successfully', { 
-            policyId, 
-            entities: (configData as PolicyYAML).detection?.entities?.length || 0 
-          });
+          // Validate that configData matches PolicyYAML structure
+          if (isPolicyYAML(configData)) {
+            policyConfig = this.convertYamlToConfig(configData);
+            logger.info('Policy configuration converted successfully', {
+              policyId,
+              entities: configData.detection?.entities?.length || 0
+            });
+          } else {
+            logger.warn('Policy config does not match PolicyYAML structure, using legacy fallback', { policyId });
+            policyConfig = this.convertLegacyConfig(policy.config);
+          }
         } else {
           logger.warn('Policy config is not an object, using legacy fallback', { policyId });
           policyConfig = this.convertLegacyConfig(policy.config);

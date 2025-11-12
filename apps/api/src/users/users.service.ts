@@ -264,7 +264,7 @@ export class UsersService {
    * @returns Updated user object
    * @throws {NotFoundException} If user doesn't exist
    */
-  async update(id: string, data: Prisma.UserUpdateInput): Promise<User> {
+  async update(id: string, data: Partial<User>): Promise<User> {
     const user = await this.findById(id);
     if (!user) {
       throw new NotFoundException('User not found');
@@ -489,26 +489,26 @@ export class UsersService {
   async getAuditLogs(userId?: string, params?: {
     skip?: number;
     take?: number;
-    where?: Prisma.AuditLogWhereInput;
+    where?: any;
     search?: string;
     action?: string;
     dateFrom?: string;
     dateTo?: string;
     userId?: string;
   }) {
-    const { 
-      skip = 0, 
-      take = 50, 
-      where, 
+    const {
+      skip = 0,
+      take = 50,
+      where,
       search,
       action,
       dateFrom,
       dateTo,
       userId: filterUserId
     } = params || {};
-    
+
     // Build where clause with filters
-    let whereClause: Prisma.AuditLogWhereInput = {};
+    let whereClause: any = {};
 
     // Apply user filter
     if (userId) {
@@ -539,7 +539,7 @@ export class UsersService {
 
     // Apply search filter (search in user names, emails, resource, or match action)
     if (search) {
-      const searchFilters: Prisma.AuditLogWhereInput[] = [
+      const searchFilters: any[] = [
         {
           user: {
             firstName: { contains: search, mode: 'insensitive' },
@@ -561,7 +561,7 @@ export class UsersService {
 
       // For action search, check if search matches any enum value (case-insensitive)
       const matchingActions = Object.values(AuditAction).filter(actionValue =>
-        actionValue.toLowerCase().includes(search.toLowerCase())
+        String(actionValue).toLowerCase().includes(search.toLowerCase())
       );
       
       if (matchingActions.length > 0) {

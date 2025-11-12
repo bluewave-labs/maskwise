@@ -6,10 +6,7 @@ import axios from 'axios';
 import * as os from 'os';
 import * as fs from 'fs';
 import * as path from 'path';
-import { promisify } from 'util';
-import { exec } from 'child_process';
-
-const execAsync = promisify(exec);
+import checkDiskSpace from 'check-disk-space';
 
 @Injectable()
 export class HealthMonitorService {
@@ -118,42 +115,58 @@ export class HealthMonitorService {
 
   private async checkRedis() {
     const redisUrl = this.configService.get('REDIS_URL', 'redis://redis:6379');
-    
+
     try {
-      // Parse Redis URL to get host and port
+      // Parse Redis URL to extract connection details
       const url = new URL(redisUrl);
       const host = url.hostname || 'redis';
       const port = parseInt(url.port) || 6379;
-      
-      // Try to connect to Redis using BullMQ Queue (which uses ioredis internally)
+      const password = url.password || undefined;
+
+      // Import BullMQ Queue for connection test
       const { Queue } = await import('bullmq');
-      const testQueue = new Queue('health-check', { 
-        connection: { host, port }
-      });
-      
-      // Test the connection by pinging
-      await testQueue.waitUntilReady();
-      await testQueue.close();
-      
-      return {
-        message: 'Redis connection successful',
-        metadata: {
-          url: redisUrl,
-          host,
-          port,
-          status: 'connected',
-        },
+
+      const redisConnection = {
+        host,
+        port,
+        ...(password && { password }),
       };
+
+      // Create a temporary queue for health check with timeout protection
+      const queue = new Queue('health-check', { connection: redisConnection });
+
+      try {
+        // Wrap waitUntilReady in Promise.race with 5 second timeout
+        await Promise.race([
+          queue.waitUntilReady(),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Redis connection timeout after 5s')), 5000)
+          )
+        ]);
+
+        return {
+          message: 'Redis connection successful',
+          metadata: {
+            host,
+            port,
+            status: 'connected',
+          },
+        };
+      } finally {
+        // Always close the queue connection to prevent leaks
+        await queue.close().catch(err =>
+          this.logger.warn('Failed to close Redis health check queue:', err.message)
+        );
+      }
     } catch (error) {
-      this.logger.warn('Redis health check failed:', error.message);
-      throw new Error(`Redis unreachable at ${redisUrl}: ${error.message}`);
+      throw new Error(`Redis health check failed: ${error.message}`);
     }
   }
 
   private async checkPresidioAnalyzer() {
     const url = this.configService.get('PRESIDIO_ANALYZER_URL', 'http://presidio-analyzer:3000');
     this.logger.debug(`Checking Presidio Analyzer at: ${url}`);
-    
+
     try {
       const response = await axios.get(`${url}/health`, { timeout: 5000 });
       return {
@@ -180,7 +193,7 @@ export class HealthMonitorService {
   private async checkPresidioAnonymizer() {
     const url = this.configService.get('PRESIDIO_ANONYMIZER_URL', 'http://presidio-anonymizer:3000');
     this.logger.debug(`Checking Presidio Anonymizer at: ${url}`);
-    
+
     try {
       const response = await axios.get(`${url}/health`, { timeout: 5000 });
       return {
@@ -313,24 +326,22 @@ export class HealthMonitorService {
 
   private async getDiskUsage() {
     try {
-      if (process.platform === 'win32') {
-        // Windows disk usage check
-        const { stdout } = await execAsync('wmic logicaldisk get size,freespace,caption');
-        // Parse Windows output (simplified)
-        return { usagePercent: 25, total: 500000, used: 125000 };
-      } else {
-        // Unix-like systems
-        const { stdout } = await execAsync('df -m .');
-        const lines = stdout.trim().split('\n');
-        if (lines.length > 1) {
-          const parts = lines[1].split(/\s+/);
-          const total = parseInt(parts[1]);
-          const used = parseInt(parts[2]);
-          const usagePercent = Math.round((used / total) * 100);
-          
-          return { usagePercent, total, used };
-        }
-      }
+      // SECURITY: Using check-disk-space library instead of shell commands to prevent command injection
+      // This is a cross-platform native API approach that doesn't execute shell commands
+      const diskPath = process.platform === 'win32' ? 'C:/' : '/';
+      const diskInfo = await checkDiskSpace(diskPath);
+
+      // diskInfo contains: { diskPath, free, size }
+      const totalMB = Math.round(diskInfo.size / (1024 * 1024));
+      const freeMB = Math.round(diskInfo.free / (1024 * 1024));
+      const usedMB = totalMB - freeMB;
+      const usagePercent = Math.round((usedMB / totalMB) * 100);
+
+      return {
+        usagePercent,
+        total: totalMB,
+        used: usedMB
+      };
     } catch (error) {
       this.logger.warn('Failed to get disk usage:', error.message);
     }
@@ -342,32 +353,31 @@ export class HealthMonitorService {
   private async getQueueStatus() {
     try {
       const { Queue } = await import('bullmq');
-      
-      // Parse Redis URL from environment
+
+      // Parse Redis URL from configuration
       const redisUrl = this.configService.get('REDIS_URL', 'redis://redis:6379');
       const url = new URL(redisUrl);
       const redisConnection = {
         host: url.hostname || 'redis',
         port: parseInt(url.port) || 6379,
+        ...(url.password && { password: url.password }),
       };
 
       // Only monitor queues that actually exist (no text-extraction)
       const queueNames = ['file-processing', 'pii-analysis', 'anonymization'];
-      
+
       const queueStats = await Promise.allSettled(
         queueNames.map(async (name) => {
+          let queue: any;
           try {
-            const queue = new Queue(name, { connection: redisConnection });
-            
+            queue = new Queue(name, { connection: redisConnection });
+
             const [waiting, active, completed, failed] = await Promise.all([
               queue.getWaiting(),
-              queue.getActive(), 
+              queue.getActive(),
               queue.getCompleted(),
               queue.getFailed(),
             ]);
-
-            // Close queue connection
-            await queue.close();
 
             return {
               name,
@@ -388,6 +398,13 @@ export class HealthMonitorService {
               failed: 0,
               workers: 2,
             };
+          } finally {
+            // Always close queue connection to prevent leaks
+            if (queue) {
+              await queue.close().catch(err =>
+                this.logger.warn(`Failed to close queue ${name}:`, err.message)
+              );
+            }
           }
         })
       );
@@ -397,7 +414,7 @@ export class HealthMonitorService {
         .map(result => result.value);
     } catch (error) {
       this.logger.warn('Failed to get queue status:', error.message);
-      
+
       // Fallback to basic status for the 3 actual queues
       return [
         { name: 'file-processing', waiting: 0, active: 0, completed: 0, failed: 0, workers: 5 },

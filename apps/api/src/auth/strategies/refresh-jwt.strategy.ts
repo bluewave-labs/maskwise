@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
+import { Request } from 'express';
 import { UsersService } from '../../users/users.service';
 import { JwtPayload } from '../auth.service';
 
@@ -16,9 +17,10 @@ import { JwtPayload } from '../auth.service';
  * specifically the token refresh endpoint.
  *
  * @remarks
- * Token extraction:
- * - Expects "Authorization: Bearer <refresh_token>" header format
- * - Token signature verified using JWT_REFRESH_SECRET (or JWT_SECRET as fallback)
+ * Token extraction (in order of priority):
+ * - 1. HttpOnly cookie named 'refresh_token' (SECURITY: prevents XSS attacks)
+ * - 2. "Authorization: Bearer <refresh_token>" header format (backward compatibility)
+ * - Token signature verified using JWT_REFRESH_SECRET
  * - Expired tokens automatically rejected (ignoreExpiration: false)
  * - Expiration set to 7 days at token generation
  *
@@ -93,7 +95,14 @@ export class RefreshJwtStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
     }
 
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      // SECURITY: Extract refresh token from HttpOnly cookie first (preferred), then Authorization header (fallback)
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        (request: Request) => {
+          // Try to get token from HttpOnly cookie first
+          return request?.cookies?.refresh_token || null;
+        },
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+      ]),
       ignoreExpiration: false,
       secretOrKey: jwtRefreshSecret,
     });
