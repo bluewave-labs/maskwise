@@ -118,36 +118,40 @@ export class PolicyService {
       // Check if we have active versions
       if (policy.versions.length > 0) {
         const activeVersion = policy.versions[0];
-        
+
         // Check if config is already a parsed JSON object or a YAML string
-        let configData = activeVersion.config;
-        
+        let configData: unknown = activeVersion.config;
+
         if (typeof configData === 'string') {
+          // Store the string value for parsing attempts
+          const configString = configData;
+
           // Try to parse as YAML first, then JSON
           try {
-            configData = yaml.load(configData) as PolicyYAML;
-            logger.info('Policy parsed as YAML successfully', { 
-              policyId, 
-              policyName: (configData as any).name 
+            configData = yaml.load(configString);
+            logger.info('Policy parsed as YAML successfully', {
+              policyId,
+              policyName: (configData as any)?.name
             });
           } catch (yamlError) {
             try {
-              configData = JSON.parse(configData);
-              logger.info('Policy parsed as JSON successfully', { 
-                policyId, 
-                policyName: (configData as any).name 
+              configData = JSON.parse(configString);
+              logger.info('Policy parsed as JSON successfully', {
+                policyId,
+                policyName: (configData as any)?.name
               });
             } catch (jsonError) {
-              logger.error('Failed to parse policy as YAML or JSON', { 
-                policyId, 
+              logger.error('Failed to parse policy as YAML or JSON', {
+                policyId,
                 yamlError: yamlError instanceof Error ? yamlError.message : 'Unknown error',
                 jsonError: jsonError instanceof Error ? jsonError.message : 'Unknown error'
               });
               policyConfig = this.convertLegacyConfig(policy.config);
+              return policyConfig;
             }
           }
         }
-        
+
         // Convert the parsed config data
         if (configData && typeof configData === 'object') {
           // Validate that configData matches PolicyYAML structure
