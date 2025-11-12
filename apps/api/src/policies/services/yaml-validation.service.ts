@@ -169,8 +169,8 @@ export class YamlValidationService {
   validateYAML(yamlContent: string): ValidationResult {
     try {
       // Parse YAML with safe schema to prevent code execution
-      // SECURITY: Using SAFE_SCHEMA prevents arbitrary code execution via YAML deserialization
-      const parsed = yaml.load(yamlContent, { schema: yaml.SAFE_SCHEMA }) as any;
+      // SECURITY: Using CORE_SCHEMA prevents arbitrary code execution via YAML deserialization
+      const parsed = yaml.load(yamlContent, { schema: yaml.CORE_SCHEMA }) as any;
       
       if (!parsed || typeof parsed !== 'object') {
         return {

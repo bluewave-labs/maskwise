@@ -12,6 +12,17 @@ export const Config = {
     password: process.env.REDIS_PASSWORD,
   },
 
+  // SECURITY: Validate Redis authentication in production
+  _validateRedisAuth() {
+    if (process.env.NODE_ENV === 'production' && !process.env.REDIS_PASSWORD) {
+      throw new Error(
+        'CRITICAL SECURITY ERROR: REDIS_PASSWORD is required in production. ' +
+        'Unauthenticated Redis instances expose sensitive data to network attackers. ' +
+        'Set REDIS_PASSWORD environment variable with a strong password (minimum 16 characters).'
+      );
+    }
+  },
+
   // Database configuration  
   database: {
     url: process.env.DATABASE_URL || 'postgresql://maskwise:maskwise_dev_password@localhost:5432/maskwise',
