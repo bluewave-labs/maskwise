@@ -10,6 +10,7 @@ import { RegisterDto } from '../dto/register.dto';
 describe('AuthController', () => {
   let controller: AuthController;
   let authService: AuthService;
+  let mockResponse: any;
 
   const mockUser = {
     id: 'user-1',
@@ -29,6 +30,12 @@ describe('AuthController', () => {
     refreshTokens: jest.fn(),
     logout: jest.fn(),
   };
+
+  // Mock Express Response object for cookie operations
+  const createMockResponse = () => ({
+    cookie: jest.fn().mockReturnThis(),
+    clearCookie: jest.fn().mockReturnThis(),
+  });
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -56,6 +63,7 @@ describe('AuthController', () => {
 
     controller = module.get<AuthController>(AuthController);
     authService = module.get<AuthService>(AuthService);
+    mockResponse = createMockResponse();
   });
 
   afterEach(() => {
@@ -82,16 +90,19 @@ describe('AuthController', () => {
 
       mockAuthService.login.mockResolvedValue(expectedResult);
 
-      const result = await controller.login(loginDto);
+      const result = await controller.login(loginDto, mockResponse);
 
       expect(authService.login).toHaveBeenCalledWith(loginDto);
       expect(result).toEqual(expectedResult);
+      expect(mockResponse.cookie).toHaveBeenCalledTimes(2);
+      expect(mockResponse.cookie).toHaveBeenCalledWith('access_token', mockTokens.accessToken, expect.any(Object));
+      expect(mockResponse.cookie).toHaveBeenCalledWith('refresh_token', mockTokens.refreshToken, expect.any(Object));
     });
 
     it('should throw UnauthorizedException for invalid credentials', async () => {
       mockAuthService.login.mockRejectedValue(new UnauthorizedException('Invalid credentials'));
 
-      await expect(controller.login(loginDto)).rejects.toThrow(UnauthorizedException);
+      await expect(controller.login(loginDto, mockResponse)).rejects.toThrow(UnauthorizedException);
       expect(authService.login).toHaveBeenCalledWith(loginDto);
     });
   });
@@ -116,10 +127,13 @@ describe('AuthController', () => {
 
       mockAuthService.register.mockResolvedValue(expectedResult);
 
-      const result = await controller.register(registerDto);
+      const result = await controller.register(registerDto, mockResponse);
 
       expect(authService.register).toHaveBeenCalledWith(registerDto);
       expect(result).toEqual(expectedResult);
+      expect(mockResponse.cookie).toHaveBeenCalledTimes(2);
+      expect(mockResponse.cookie).toHaveBeenCalledWith('access_token', mockTokens.accessToken, expect.any(Object));
+      expect(mockResponse.cookie).toHaveBeenCalledWith('refresh_token', mockTokens.refreshToken, expect.any(Object));
     });
 
     it('should throw ConflictException for existing email', async () => {
@@ -127,7 +141,7 @@ describe('AuthController', () => {
         new ConflictException('User with this email already exists')
       );
 
-      await expect(controller.register(registerDto)).rejects.toThrow(ConflictException);
+      await expect(controller.register(registerDto, mockResponse)).rejects.toThrow(ConflictException);
       expect(authService.register).toHaveBeenCalledWith(registerDto);
     });
   });
@@ -145,10 +159,13 @@ describe('AuthController', () => {
 
       mockAuthService.refreshTokens.mockResolvedValue(expectedResult);
 
-      const result = await controller.refresh(refreshDto);
+      const result = await controller.refresh(refreshDto, mockResponse);
 
       expect(authService.refreshTokens).toHaveBeenCalledWith(refreshDto.refreshToken);
       expect(result).toEqual(expectedResult);
+      expect(mockResponse.cookie).toHaveBeenCalledTimes(2);
+      expect(mockResponse.cookie).toHaveBeenCalledWith('access_token', 'new-access-token', expect.any(Object));
+      expect(mockResponse.cookie).toHaveBeenCalledWith('refresh_token', 'new-refresh-token', expect.any(Object));
     });
 
     it('should throw UnauthorizedException for invalid refresh token', async () => {
@@ -156,7 +173,7 @@ describe('AuthController', () => {
         new UnauthorizedException('Invalid refresh token')
       );
 
-      await expect(controller.refresh(refreshDto)).rejects.toThrow(UnauthorizedException);
+      await expect(controller.refresh(refreshDto, mockResponse)).rejects.toThrow(UnauthorizedException);
       expect(authService.refreshTokens).toHaveBeenCalledWith(refreshDto.refreshToken);
     });
   });
@@ -172,16 +189,19 @@ describe('AuthController', () => {
     it('should successfully logout user', async () => {
       mockAuthService.logout.mockResolvedValue(undefined);
 
-      const result = await controller.logout(mockRequest as any);
+      const result = await controller.logout(mockRequest as any, mockResponse);
 
       expect(authService.logout).toHaveBeenCalledWith(mockRequest.user.id);
       expect(result).toEqual({ message: 'Logout successful' });
+      expect(mockResponse.clearCookie).toHaveBeenCalledTimes(2);
+      expect(mockResponse.clearCookie).toHaveBeenCalledWith('access_token', { path: '/' });
+      expect(mockResponse.clearCookie).toHaveBeenCalledWith('refresh_token', { path: '/' });
     });
 
     it('should handle logout errors gracefully', async () => {
       mockAuthService.logout.mockRejectedValue(new Error('Logout failed'));
 
-      await expect(controller.logout(mockRequest as any)).rejects.toThrow('Logout failed');
+      await expect(controller.logout(mockRequest as any, mockResponse)).rejects.toThrow('Logout failed');
       expect(authService.logout).toHaveBeenCalledWith(mockRequest.user.id);
     });
   });
