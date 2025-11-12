@@ -440,8 +440,17 @@ export class AuthService {
    * @see {@link refreshTokens} for token rotation logic
    */
   private async generateRefreshToken(payload: JwtPayload): Promise<string> {
+    const jwtRefreshSecret = this.configService.get<string>('JWT_REFRESH_SECRET');
+
+    if (!jwtRefreshSecret) {
+      throw new Error(
+        'CRITICAL SECURITY ERROR: JWT_REFRESH_SECRET is not configured. ' +
+        'Cannot generate refresh tokens without a secure secret.'
+      );
+    }
+
     return this.jwtService.signAsync(payload, {
-      secret: this.configService.get<string>('JWT_REFRESH_SECRET') || this.configService.get<string>('JWT_SECRET'),
+      secret: jwtRefreshSecret,
       expiresIn: '7d', // Refresh token expires in 7 days
     });
   }

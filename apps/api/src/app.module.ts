@@ -16,12 +16,14 @@ import { DatabaseModule } from './common/database.module';
 import { V1Module } from './v1/v1.module';
 import { SSEModule } from './sse/sse.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { validate } from './config/env.validation';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['.env.local', '.env'],
+      validate,
     }),
     ThrottlerModule.forRoot([
       {
