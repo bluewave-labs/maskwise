@@ -19,13 +19,20 @@ Join the Discord server for discussions: [Click here](https://discord.gg/xr5ta83
   - Original + Anonymized Downloads for audit workflows
   - On-premise & Docker Installation
   - RESTful API for existing system integration
- 
-Roadmap: 
+
+<center>
+ <img width="737" height="326" alt="image" src="https://github.com/user-attachments/assets/e3bca2fd-69d6-4dd2-affd-6e6a3f58312e" />
+</center>
+
+**Roadmap:**
 
 - Vault
 - Single Sign-On Ready (Active Directory, SAML, OIDC) (in the works)
 
 You can deploy Maskwise in 24 hours an reduce PII exposure risk by 95%. Maskwise can process thousands of documents per hour.
+
+
+
 
 ## 🚀 Quick Deploy with Docker (Recommended)
 
