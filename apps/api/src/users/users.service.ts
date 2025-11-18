@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { User, UserRole, AuditAction, Prisma } from '@prisma/client';
 import { PrismaService } from '../common/prisma.service';
+import { CacheService } from '../cache/cache.service';
 
 /**
  * User Creation Data
@@ -69,7 +70,10 @@ export class UsersService {
    *
    * @param prisma - Prisma service for database operations
    */
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private cacheService: CacheService,
+  ) {}
 
   /**
    * Creates new user account
@@ -270,10 +274,15 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    return this.prisma.user.update({
+    const updatedUser = await this.prisma.user.update({
       where: { id },
       data,
     });
+
+    // Invalidate user cache to ensure fresh data on next JWT validation
+    await this.cacheService.invalidateUser(id);
+
+    return updatedUser;
   }
 
   /**
@@ -299,10 +308,15 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    return this.prisma.user.update({
+    const deletedUser = await this.prisma.user.update({
       where: { id },
       data: { isActive: false },
     });
+
+    // Invalidate user cache to immediately revoke authentication
+    await this.cacheService.invalidateUser(id);
+
+    return deletedUser;
   }
 
   /**

@@ -7,6 +7,7 @@ import { UsersService } from '../users/users.service';
 import { ProjectsService } from '../projects/projects.service';
 import { DatasetsService } from '../datasets/datasets.service';
 import { PrismaService } from '../common/prisma.service';
+import { CacheService } from '../cache/cache.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 
@@ -86,6 +87,7 @@ export class AuthService {
     private projectsService: ProjectsService,
     private datasetsService: DatasetsService,
     private prisma: PrismaService,
+    private cacheService: CacheService,
   ) {}
 
   /**
@@ -380,6 +382,9 @@ export class AuthService {
    * @see {@link UsersService.logAuditAction} for audit logging
    */
   async logout(userId: string): Promise<void> {
+    // Invalidate user cache to force fresh database lookup on next request
+    await this.cacheService.invalidateUser(userId);
+
     // Log the logout action
     await this.usersService.logAuditAction(userId, 'LOGOUT', 'user', userId);
   }

@@ -2,6 +2,7 @@ import { Injectable, OnModuleInit, Inject, forwardRef, Logger } from '@nestjs/co
 import { PrismaService } from '../common/prisma.service';
 import { SSEService } from '../sse/sse.service';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
+import { NotificationMetadata } from './dto/notification-metadata.dto';
 
 /**
  * Notification Payload Interface
@@ -20,7 +21,7 @@ export interface NotificationPayload {
   /** Notification category for filtering and preferences (SYSTEM, JOB, SECURITY, USER) */
   category: 'SYSTEM' | 'JOB' | 'SECURITY' | 'USER';
   /** Optional additional data for the notification (JSON object) */
-  metadata?: any;
+  metadata?: NotificationMetadata;
   /** Optional URL for notification action button */
   actionUrl?: string;
   /** Optional label for the action button */
@@ -820,7 +821,7 @@ export class NotificationsService implements OnModuleInit {
   /**
    * Security alert notification
    */
-  async notifySecurityAlert(userId: string, alertType: string, details: any): Promise<void> {
+  async notifySecurityAlert(userId: string, alertType: string, details: Record<string, any>): Promise<void> {
     await this.sendNotification({
       userId,
       title: 'Security Alert',
