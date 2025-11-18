@@ -350,7 +350,7 @@ export class NotificationsService implements OnModuleInit {
           message: payload.message,
           type: payload.type,
           category: payload.category,
-          metadata: payload.metadata || {},
+          metadata: (payload.metadata as any) || {},
           actionUrl: payload.actionUrl,
           actionLabel: payload.actionLabel,
           isRead: false,

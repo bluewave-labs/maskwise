@@ -91,7 +91,6 @@ export class QueueService implements OnModuleInit {
           type: 'exponential',
           delay: 2000,
         },
-        timeout: 3600000, // 1 hour timeout for job processing
       },
     });
 
