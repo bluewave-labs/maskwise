@@ -88,6 +88,8 @@ model Dataset {
   @@index([projectId])
   @@index([status])
   @@index([createdAt])
+  @@index([projectId, status, createdAt]) // Composite index for filtered + sorted queries
+  @@index([status, createdAt]) // Composite index for status filtering with sort
   @@map("datasets")
 }
 
@@ -118,6 +120,9 @@ model Job {
   @@index([status])
   @@index([type])
   @@index([createdAt])
+  @@index([datasetId, status]) // Composite index for dataset's jobs by status
+  @@index([status, createdAt]) // Composite index for job queues sorted by time
+  @@index([createdById, status, createdAt]) // Composite index for user's jobs filtered and sorted
   @@map("jobs")
 }
 

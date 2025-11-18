@@ -517,6 +517,12 @@ export class DatasetsService {
     // Determine file type from MIME type
     const fileType = this.getFileTypeFromMime(file.mimetype);
 
+    // Get default policy ID before transaction if needed (avoids external call inside transaction)
+    let policyIdToUse: string | undefined = sanitizedDto.policyId;
+    if (uploadFileDto.processImmediately && !policyIdToUse) {
+      policyIdToUse = await this.getDefaultPolicyId();
+    }
+
     // Use transaction to ensure dataset and job are created atomically
     const result = await this.prisma.$transaction(async (prisma) => {
       // Create dataset record (each file is a dataset in this schema)
@@ -538,14 +544,13 @@ export class DatasetsService {
       // Create processing job only if requested
       let job = null;
       if (uploadFileDto.processImmediately) {
-        const defaultPolicyId = await this.getDefaultPolicyId();
         job = await prisma.job.create({
           data: {
             type: 'ANALYZE_PII',
             status: 'QUEUED',
             datasetId: dataset.id,
             createdById: userId,
-            policyId: sanitizedDto.policyId || defaultPolicyId,
+            policyId: policyIdToUse!,
             metadata: {
               fileName: sanitizedFilename,
               originalFileName: file.originalname,

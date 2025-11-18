@@ -33,7 +33,7 @@ const generateSecureRandomString = (length: number): string => {
 };
 
 export const useSSE = (): SSEHookReturn => {
-  const { token, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [status, setStatus] = useState<SSEStatus>({
     connected: false,
     connecting: false,
@@ -50,7 +50,7 @@ export const useSSE = (): SSEHookReturn => {
   const maxReconnectAttempts = 5;
 
   const connect = useCallback(() => {
-    if (!isAuthenticated || !token) {
+    if (!isAuthenticated) {
       console.log('SSE: Cannot connect - not authenticated');
       return;
     }
