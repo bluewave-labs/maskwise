@@ -69,8 +69,7 @@ export const useSSE = (): SSEHookReturn => {
       console.log('SSE: Connecting to', url);
 
       const eventSource = new EventSource(url, {
-        // Note: EventSource doesn't support custom headers, so we'll pass auth via URL params if needed
-        // For now, we rely on cookie-based auth
+        withCredentials: true, // Enable CORS credentials (cookies) for cross-origin requests
       });
 
       eventSourceRef.current = eventSource;
@@ -162,7 +161,7 @@ export const useSSE = (): SSEHookReturn => {
         lastHeartbeat: null,
       });
     }
-  }, [isAuthenticated, token]);
+  }, [isAuthenticated]);
 
   const disconnect = useCallback(() => {
     console.log('SSE: Disconnecting');
@@ -206,7 +205,7 @@ export const useSSE = (): SSEHookReturn => {
 
   // Auto-connect when authenticated
   useEffect(() => {
-    if (isAuthenticated && token) {
+    if (isAuthenticated) {
       connect();
     } else {
       disconnect();
@@ -215,7 +214,7 @@ export const useSSE = (): SSEHookReturn => {
     return () => {
       disconnect();
     };
-  }, [isAuthenticated, token, connect, disconnect]);
+  }, [isAuthenticated, connect, disconnect]);
 
   // Cleanup on unmount
   useEffect(() => {

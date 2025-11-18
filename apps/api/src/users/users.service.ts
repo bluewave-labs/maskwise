@@ -332,10 +332,15 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    return this.prisma.user.update({
+    const activatedUser = await this.prisma.user.update({
       where: { id },
       data: { isActive: true },
     });
+
+    // Invalidate user cache to ensure fresh active status
+    await this.cacheService.invalidateUser(id);
+
+    return activatedUser;
   }
 
   /**
