@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, OnModuleInit, Inject, forwardRef, Logger } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { SSEService } from '../sse/sse.service';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
@@ -182,6 +182,7 @@ export interface NotificationPreferences {
  */
 @Injectable()
 export class NotificationsService implements OnModuleInit {
+  private readonly logger = new Logger(NotificationsService.name);
   private readonly eventEmitter = new EventEmitter2();
 
   constructor(
@@ -365,7 +366,7 @@ export class NotificationsService implements OnModuleInit {
             payload.type.toLowerCase() as 'info' | 'success' | 'warning' | 'error'
           );
         } catch (error) {
-          console.warn('SSE service not available:', error.message);
+          this.logger.warn(`SSE service not available: ${error.message}`);
         }
       }
 
@@ -380,7 +381,7 @@ export class NotificationsService implements OnModuleInit {
       await this.updateUnreadCount(payload.userId);
 
     } catch (error) {
-      console.error('Failed to send notification:', error);
+      this.logger.error('Failed to send notification', error.stack);
       throw error;
     }
   }
@@ -890,7 +891,7 @@ export class NotificationsService implements OnModuleInit {
         'info'
       );
     } catch (error) {
-      console.warn('SSE service not available for unread count update:', error.message);
+      this.logger.warn(`SSE service not available for unread count update: ${error.message}`);
     }
   }
 

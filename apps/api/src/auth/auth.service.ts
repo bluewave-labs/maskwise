@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
@@ -77,6 +77,8 @@ export interface AuthResponse {
  */
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
@@ -526,7 +528,7 @@ export class AuthService {
       await this.createDemoDataset(defaultProject.id, userId);
     } catch (error) {
       // Log error but don't fail user registration if default setup fails
-      console.error('Failed to create default project and dataset:', error);
+      this.logger.error('Failed to create default project and dataset', error.stack);
     }
   }
 
@@ -622,9 +624,9 @@ Note: This is synthetic sample data for demonstration purposes only. No real per
         processImmediately: true,
       });
 
-      console.log(`Successfully created demo dataset for user ${userId} in project ${projectId}:`, demoDatasetResult.dataset.id);
+      this.logger.log(`Successfully created demo dataset for user ${userId} in project ${projectId}: ${demoDatasetResult.dataset.id}`);
     } catch (error) {
-      console.error('Failed to create demo dataset:', error);
+      this.logger.error('Failed to create demo dataset', error.stack);
       // Don't throw - we don't want to fail user registration
     }
   }

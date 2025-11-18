@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, InternalServerErrorException, Logger } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { QueueService } from '../queue/queue.service';
 import { CreateDatasetDto } from './dto/create-dataset.dto';
@@ -87,6 +87,8 @@ export class DatasetsService {
    * @param inputSanitizer - Input sanitization for XSS/SQL prevention
    * @param sseService - Server-sent events service for real-time updates
    */
+  private readonly logger = new Logger(DatasetsService.name);
+
   constructor(
     private prisma: PrismaService,
     private queueService: QueueService,
@@ -718,7 +720,7 @@ export class DatasetsService {
     try {
       await fs.unlink(dataset.sourcePath);
     } catch (error) {
-      console.warn(`Failed to delete file: ${dataset.sourcePath}`, error);
+      this.logger.warn(`Failed to delete file: ${dataset.sourcePath}`, error.stack);
     }
 
     // Soft delete dataset (mark as cancelled)
@@ -1017,7 +1019,7 @@ export class DatasetsService {
         throw error;
       }
 
-      console.error('Error reading anonymized content:', error);
+      this.logger.error('Error reading anonymized content', error.stack);
       throw new NotFoundException('Failed to retrieve anonymized content');
     }
   }
@@ -1277,7 +1279,7 @@ export class DatasetsService {
         throw error;
       }
       
-      console.error('Error reading original file:', error);
+      this.logger.error('Error reading original file', error.stack);
       throw new BadRequestException('Failed to read original file');
     }
   }
@@ -2564,7 +2566,7 @@ export class DatasetsService {
       return result;
 
     } catch (error) {
-      console.error('Error in global findings search:', error);
+      this.logger.error('Error in global findings search', error.stack);
       throw new InternalServerErrorException('Failed to search findings');
     }
   }
@@ -2925,7 +2927,7 @@ export class DatasetsService {
       }
 
     } catch (error) {
-      console.error('Error in export findings:', error);
+      this.logger.error('Error in export findings', error.stack);
       throw new InternalServerErrorException('Failed to export search results');
     }
   }

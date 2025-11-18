@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { ReportsService } from './reports.service';
 import { CreateReportTemplateDto } from './dto/create-report-template.dto';
@@ -11,6 +11,8 @@ import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class ReportBuilderService {
+  private readonly logger = new Logger(ReportBuilderService.name);
+
   constructor(
     private prisma: PrismaService,
     private reportsService: ReportsService,
@@ -456,7 +458,7 @@ export class ReportBuilderService {
         const componentData = await this.getComponentData(userId, component.id, filters);
         data[component.id] = componentData;
       } catch (error) {
-        console.error(`Error collecting data for component ${component.id}:`, error);
+        this.logger.error(`Error collecting data for component ${component.id}`, error.stack);
         data[component.id] = { error: 'Failed to load data' };
       }
     }

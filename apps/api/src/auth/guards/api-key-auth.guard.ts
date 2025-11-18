@@ -1,4 +1,4 @@
-import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, UnauthorizedException, Logger } from '@nestjs/common';
 import { ApiKeysService } from '../../api-keys/api-keys.service';
 import * as crypto from 'crypto';
 
@@ -90,6 +90,8 @@ export class ApiKeyAuthGuard implements CanActivate {
    *
    * @param apiKeysService - Service for API key lookup and management
    */
+  private readonly logger = new Logger(ApiKeyAuthGuard.name);
+
   constructor(private apiKeysService: ApiKeysService) {}
 
   /**
@@ -180,7 +182,7 @@ export class ApiKeyAuthGuard implements CanActivate {
 
       // Update last used timestamp (fire and forget)
       this.apiKeysService.updateLastUsed(apiKeyData.id).catch(err =>
-        console.error('Failed to update API key last used:', err)
+        this.logger.error('Failed to update API key last used', err.stack)
       );
 
       // Attach user info to request for use in controllers
