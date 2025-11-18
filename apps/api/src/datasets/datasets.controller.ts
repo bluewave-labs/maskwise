@@ -245,8 +245,8 @@ export class DatasetsController {
     try {
       const buffer = await readFile(file.path);
       // Dynamic import for ESM module compatibility
-      const { fileTypeFromBuffer } = await import('file-type');
-      const detectedType = await fileTypeFromBuffer(buffer);
+      const { fromBuffer } = await import('file-type');
+      const detectedType = await fromBuffer(buffer);
 
       // Map of allowed MIME types to expected magic byte signatures
       const allowedMagicBytes = [
