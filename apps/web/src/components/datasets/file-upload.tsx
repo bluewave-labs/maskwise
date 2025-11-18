@@ -93,7 +93,12 @@ export function FileUpload({
   const [loadingPolicies, setLoadingPolicies] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const generateId = () => Math.random().toString(36).substr(2, 9);
+  const generateId = () => {
+    // Generate cryptographically secure random ID
+    const array = new Uint8Array(9);
+    crypto.getRandomValues(array);
+    return Array.from(array, byte => byte.toString(36)).join('').slice(0, 9);
+  };
 
   // Fetch policies when component mounts
   useEffect(() => {
@@ -343,11 +348,6 @@ export function FileUpload({
     // Add the processImmediately flag
     formData.append('processImmediately', processImmediately.toString());
 
-    const token = Cookies.get('access_token');
-    if (!token) {
-      throw new Error('Authentication required');
-    }
-
     const xhr = new XMLHttpRequest();
     let timeoutId: NodeJS.Timeout;
 
@@ -431,8 +431,10 @@ export function FileUpload({
         reject(new Error('Upload was cancelled'));
       });
 
-      xhr.open('POST', 'http://localhost:3001/datasets/upload');
-      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      xhr.open('POST', `${apiUrl}/datasets/upload`);
+      // Use cookie-based authentication instead of Authorization header
+      xhr.withCredentials = true;
       xhr.send(formData);
     });
   };

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, InternalServerErrorException, Logger } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { QueueService } from '../queue/queue.service';
 import { CreateDatasetDto } from './dto/create-dataset.dto';
@@ -87,6 +87,8 @@ export class DatasetsService {
    * @param inputSanitizer - Input sanitization for XSS/SQL prevention
    * @param sseService - Server-sent events service for real-time updates
    */
+  private readonly logger = new Logger(DatasetsService.name);
+
   constructor(
     private prisma: PrismaService,
     private queueService: QueueService,
@@ -171,6 +173,14 @@ export class DatasetsService {
   }) {
     const { skip = 0, take = 50, projectId } = params || {};
 
+    // Validate pagination parameters
+    if (skip < 0) {
+      throw new BadRequestException('Skip parameter must be non-negative');
+    }
+    if (take <= 0 || take > 100) {
+      throw new BadRequestException('Take parameter must be between 1 and 100');
+    }
+
     let where: any = {
       project: {
         userId: userId,
@@ -181,37 +191,36 @@ export class DatasetsService {
       where.projectId = projectId;
     }
 
-    const datasets = await this.prisma.dataset.findMany({
-      skip,
-      take,
-      where,
-      include: {
-        project: true,
-        jobs: {
-          orderBy: {
-            createdAt: 'desc',
+    // Use Promise.all to fetch data and count in parallel
+    const [datasets, total] = await Promise.all([
+      this.prisma.dataset.findMany({
+        skip,
+        take,
+        where,
+        include: {
+          project: true,
+          jobs: {
+            orderBy: {
+              createdAt: 'desc',
+            },
+            take: 1,
           },
-          take: 1,
-        },
-        _count: {
-          select: {
-            jobs: true,
-            findings: true,
+          _count: {
+            select: {
+              jobs: true,
+              findings: true,
+            },
           },
         },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+        orderBy: {
+          createdAt: 'desc',
+        },
+      }),
+      this.prisma.dataset.count({ where }),
+    ]);
 
-    const total = await this.prisma.dataset.count({ where });
-
-    // Convert BigInt to Number for serialization
-    const serializedDatasets = datasets.map(dataset => ({
-      ...dataset,
-      fileSize: Number(dataset.fileSize),
-    }));
+    // BigInt fileSize will be automatically serialized to string via toJSON
+    const serializedDatasets = datasets;
 
     return {
       data: serializedDatasets,
@@ -508,46 +517,63 @@ export class DatasetsService {
     // Determine file type from MIME type
     const fileType = this.getFileTypeFromMime(file.mimetype);
 
-    // Create dataset record (each file is a dataset in this schema)
-    const dataset = await this.prisma.dataset.create({
-      data: {
-        name: sanitizedDto.description || sanitizedFilename,
-        filename: sanitizedFilename,
-        fileType,
-        fileSize: BigInt(file.size),
-        sourcePath: file.path,
-        sourceType: 'UPLOAD',
-        contentHash,
-        metadataHash: contentHash, // Using same hash for now
-        status: 'PENDING',
-        projectId: sanitizedDto.projectId,
-      },
-    });
+    // Get default policy ID before transaction if needed (avoids external call inside transaction)
+    let policyIdToUse: string | undefined = sanitizedDto.policyId;
+    if (uploadFileDto.processImmediately && !policyIdToUse) {
+      policyIdToUse = await this.getDefaultPolicyId();
+    }
 
-    // Create processing job only if requested
-    let job = null;
-    if (uploadFileDto.processImmediately) {
-      job = await this.prisma.job.create({
+    // Use transaction to ensure dataset and job are created atomically
+    const result = await this.prisma.$transaction(async (prisma) => {
+      // Create dataset record (each file is a dataset in this schema)
+      const dataset = await prisma.dataset.create({
         data: {
-          type: 'ANALYZE_PII',
-          status: 'QUEUED',
-          datasetId: dataset.id,
-          createdById: userId,
-          policyId: sanitizedDto.policyId || await this.getDefaultPolicyId(),
-          metadata: {
-            fileName: sanitizedFilename,
-            originalFileName: file.originalname,
-            fileSize: file.size,
-            mimeType: file.mimetype,
-            contentHash,
-            securityValidation: {
-              riskLevel: fileValidation.riskLevel,
-              detectedFileType: fileValidation.metadata?.detectedFileType,
-              validationPassed: true
-            }
-          },
+          name: sanitizedDto.description || sanitizedFilename,
+          filename: sanitizedFilename,
+          fileType,
+          fileSize: BigInt(file.size),
+          sourcePath: file.path,
+          sourceType: 'UPLOAD',
+          contentHash,
+          metadataHash: contentHash, // Using same hash for now
+          status: 'PENDING',
+          projectId: sanitizedDto.projectId,
         },
       });
+
+      // Create processing job only if requested
+      let job = null;
+      if (uploadFileDto.processImmediately) {
+        job = await prisma.job.create({
+          data: {
+            type: 'ANALYZE_PII',
+            status: 'QUEUED',
+            datasetId: dataset.id,
+            createdById: userId,
+            policyId: policyIdToUse!,
+            metadata: {
+              fileName: sanitizedFilename,
+              originalFileName: file.originalname,
+              fileSize: file.size,
+              mimeType: file.mimetype,
+              contentHash,
+              securityValidation: {
+                riskLevel: fileValidation.riskLevel,
+                detectedFileType: fileValidation.metadata?.detectedFileType,
+                validationPassed: true
+              }
+            },
+          },
+        });
+      }
+
+      return { dataset, job };
+    });
+
+    const { dataset, job } = result;
+
+    // Queue the job for processing (outside transaction)
+    if (uploadFileDto.processImmediately && job) {
 
       // Queue the job for processing
       await this.queueService.addPiiAnalysisJob({
@@ -706,7 +732,7 @@ export class DatasetsService {
     try {
       await fs.unlink(dataset.sourcePath);
     } catch (error) {
-      console.warn(`Failed to delete file: ${dataset.sourcePath}`, error);
+      this.logger.warn(`Failed to delete file: ${dataset.sourcePath}`, error.stack);
     }
 
     // Soft delete dataset (mark as cancelled)
@@ -1005,7 +1031,7 @@ export class DatasetsService {
         throw error;
       }
 
-      console.error('Error reading anonymized content:', error);
+      this.logger.error('Error reading anonymized content', error.stack);
       throw new NotFoundException('Failed to retrieve anonymized content');
     }
   }
@@ -1265,7 +1291,7 @@ export class DatasetsService {
         throw error;
       }
       
-      console.error('Error reading original file:', error);
+      this.logger.error('Error reading original file', error.stack);
       throw new BadRequestException('Failed to read original file');
     }
   }
@@ -2552,7 +2578,7 @@ export class DatasetsService {
       return result;
 
     } catch (error) {
-      console.error('Error in global findings search:', error);
+      this.logger.error('Error in global findings search', error.stack);
       throw new InternalServerErrorException('Failed to search findings');
     }
   }
@@ -2913,7 +2939,7 @@ export class DatasetsService {
       }
 
     } catch (error) {
-      console.error('Error in export findings:', error);
+      this.logger.error('Error in export findings', error.stack);
       throw new InternalServerErrorException('Failed to export search results');
     }
   }

@@ -275,29 +275,17 @@ export class ApiKeysService {
       throw new BadRequestException('API key name must be less than 100 characters');
     }
 
-    // Check if user already has a key with this name
-    const existingKey = await this.prisma.apiKey.findFirst({
-      where: {
-        userId,
-        name: data.name.trim(),
-      },
-    });
-
-    if (existingKey) {
-      throw new BadRequestException('An API key with this name already exists');
-    }
-
     // Generate cryptographically secure key
     const secret = crypto.randomBytes(36).toString('hex'); // 72 chars
-    const prefixRandom = crypto.randomBytes(4).toString('hex'); // 8 chars  
+    const prefixRandom = crypto.randomBytes(4).toString('hex'); // 8 chars
     const prefix = `mk_live_${prefixRandom}`;
     const fullKey = `${prefix}_${secret}`;
-    
+
     // Hash the key for secure storage (never store plain text)
     const keyHash = crypto.createHash('sha256').update(fullKey).digest('hex');
 
     try {
-      // Create the API key record
+      // Create the API key record - unique constraint on (userId, name) prevents duplicates
       const apiKey = await this.prisma.apiKey.create({
         data: {
           name: data.name.trim(),
@@ -333,6 +321,10 @@ export class ApiKeysService {
         fullKey, // Return full key only once
       };
     } catch (error) {
+      // Handle Prisma unique constraint violation (P2002)
+      if (error.code === 'P2002') {
+        throw new BadRequestException('An API key with this name already exists');
+      }
       throw new BadRequestException('Failed to generate API key');
     }
   }

@@ -1,6 +1,8 @@
-import { IsString, IsOptional, IsEmail, IsBoolean, IsEnum } from 'class-validator';
+import { IsString, IsOptional, IsEmail, IsBoolean, IsEnum, ValidateNested } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import { UserRole } from '@prisma/client';
+import { NotificationPreferencesDto } from './notification-preferences.dto';
 
 export class UpdateUserDto {
   @ApiProperty({
@@ -48,4 +50,14 @@ export class UpdateUserDto {
   @IsOptional()
   @IsEnum(UserRole)
   role?: UserRole;
+
+  @ApiProperty({
+    type: NotificationPreferencesDto,
+    description: 'User notification preferences',
+    required: false,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => NotificationPreferencesDto)
+  notificationPreferences?: NotificationPreferencesDto;
 }

@@ -175,28 +175,13 @@ export function useGlobalSearch(): UseGlobalSearchReturn {
         queryParams.set('datasetIds', searchParams.datasetIds.join(','));
       }
 
-      // Create download link
-      const token = document.cookie
-        .split('; ')
-        .find(row => row.startsWith('access_token='))
-        ?.split('=')[1];
-
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
       const exportUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/datasets/search/export?${queryParams.toString()}`;
-      
-      // Create temporary link for download
-      const link = document.createElement('a');
-      link.href = exportUrl;
-      link.style.display = 'none';
-      
-      // Set authorization header via fetch and blob download
+
+      // Use cookie-based authentication with credentials
       const response = await fetch(exportUrl, {
         method: 'GET',
+        credentials: 'include', // Send cookies with request
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Accept': format === 'json' ? 'application/json' : 'text/csv',
         },
       });
@@ -212,6 +197,7 @@ export function useGlobalSearch(): UseGlobalSearchReturn {
       // Download the file
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
       link.href = url;
       link.download = filename;
       

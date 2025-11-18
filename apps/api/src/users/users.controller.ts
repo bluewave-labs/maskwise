@@ -30,7 +30,7 @@ export class UsersController {
   @ApiOperation({ summary: 'Update current user profile' })
   @ApiResponse({ status: 200, description: 'Profile updated successfully' })
   async updateProfile(@Request() req, @Body() updateUserDto: UpdateUserDto) {
-    const updatedUser = await this.usersService.update(req.user.id, updateUserDto);
+    const updatedUser = await this.usersService.update(req.user.id, updateUserDto as any);
     
     // Log the profile update
     await this.usersService.logAuditAction(
@@ -172,7 +172,7 @@ export class UsersController {
     @Body() updateUserDto: UpdateUserDto,
     @Request() req,
   ) {
-    const updatedUser = await this.usersService.update(id, updateUserDto);
+    const updatedUser = await this.usersService.update(id, updateUserDto as any);
     
     // Log the user update
     await this.usersService.logAuditAction(

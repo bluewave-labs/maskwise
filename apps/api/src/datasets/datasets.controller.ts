@@ -18,7 +18,6 @@ import { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { diskStorage } from 'multer';
-import { fileTypeFromBuffer } from 'file-type';
 import { readFile, unlink } from 'fs/promises';
 import { UploadRateLimit, ModerateRateLimit, HeavyOperationRateLimit } from '../throttling/rate-limit.decorators';
 import { extname } from 'path';
@@ -245,7 +244,9 @@ export class DatasetsController {
     // Prevents malicious files disguised with valid extensions/MIME types
     try {
       const buffer = await readFile(file.path);
-      const detectedType = await fileTypeFromBuffer(buffer);
+      // Dynamic import for ESM module compatibility
+      const { fromBuffer } = await import('file-type');
+      const detectedType = await fromBuffer(buffer);
 
       // Map of allowed MIME types to expected magic byte signatures
       const allowedMagicBytes = [

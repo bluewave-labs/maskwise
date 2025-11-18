@@ -25,8 +25,15 @@ export interface SSEHookReturn {
   removeEventListener: (type: string, callback: (event: SSEEvent) => void) => void;
 }
 
+// Generate cryptographically secure random string
+const generateSecureRandomString = (length: number): string => {
+  const array = new Uint8Array(length);
+  crypto.getRandomValues(array);
+  return Array.from(array, byte => byte.toString(36)).join('').slice(0, length);
+};
+
 export const useSSE = (): SSEHookReturn => {
-  const { token, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [status, setStatus] = useState<SSEStatus>({
     connected: false,
     connecting: false,
@@ -43,7 +50,7 @@ export const useSSE = (): SSEHookReturn => {
   const maxReconnectAttempts = 5;
 
   const connect = useCallback(() => {
-    if (!isAuthenticated || !token) {
+    if (!isAuthenticated) {
       console.log('SSE: Cannot connect - not authenticated');
       return;
     }
@@ -56,14 +63,13 @@ export const useSSE = (): SSEHookReturn => {
     setStatus(prev => ({ ...prev, connecting: true, error: null }));
 
     try {
-      const clientId = `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const clientId = `client_${Date.now()}_${generateSecureRandomString(9)}`;
       const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/sse/events?clientId=${clientId}`;
       
       console.log('SSE: Connecting to', url);
 
       const eventSource = new EventSource(url, {
-        // Note: EventSource doesn't support custom headers, so we'll pass auth via URL params if needed
-        // For now, we rely on cookie-based auth
+        withCredentials: true, // Enable CORS credentials (cookies) for cross-origin requests
       });
 
       eventSourceRef.current = eventSource;
@@ -155,7 +161,7 @@ export const useSSE = (): SSEHookReturn => {
         lastHeartbeat: null,
       });
     }
-  }, [isAuthenticated, token]);
+  }, [isAuthenticated]);
 
   const disconnect = useCallback(() => {
     console.log('SSE: Disconnecting');
@@ -199,7 +205,7 @@ export const useSSE = (): SSEHookReturn => {
 
   // Auto-connect when authenticated
   useEffect(() => {
-    if (isAuthenticated && token) {
+    if (isAuthenticated) {
       connect();
     } else {
       disconnect();
@@ -208,7 +214,7 @@ export const useSSE = (): SSEHookReturn => {
     return () => {
       disconnect();
     };
-  }, [isAuthenticated, token, connect, disconnect]);
+  }, [isAuthenticated, connect, disconnect]);
 
   // Cleanup on unmount
   useEffect(() => {

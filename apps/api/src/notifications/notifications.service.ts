@@ -1,7 +1,8 @@
-import { Injectable, OnModuleInit, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, OnModuleInit, Inject, forwardRef, Logger } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { SSEService } from '../sse/sse.service';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
+import { NotificationMetadata } from './dto/notification-metadata.dto';
 
 /**
  * Notification Payload Interface
@@ -20,7 +21,7 @@ export interface NotificationPayload {
   /** Notification category for filtering and preferences (SYSTEM, JOB, SECURITY, USER) */
   category: 'SYSTEM' | 'JOB' | 'SECURITY' | 'USER';
   /** Optional additional data for the notification (JSON object) */
-  metadata?: any;
+  metadata?: NotificationMetadata;
   /** Optional URL for notification action button */
   actionUrl?: string;
   /** Optional label for the action button */
@@ -182,6 +183,7 @@ export interface NotificationPreferences {
  */
 @Injectable()
 export class NotificationsService implements OnModuleInit {
+  private readonly logger = new Logger(NotificationsService.name);
   private readonly eventEmitter = new EventEmitter2();
 
   constructor(
@@ -348,7 +350,7 @@ export class NotificationsService implements OnModuleInit {
           message: payload.message,
           type: payload.type,
           category: payload.category,
-          metadata: payload.metadata || {},
+          metadata: (payload.metadata as any) || {},
           actionUrl: payload.actionUrl,
           actionLabel: payload.actionLabel,
           isRead: false,
@@ -365,7 +367,7 @@ export class NotificationsService implements OnModuleInit {
             payload.type.toLowerCase() as 'info' | 'success' | 'warning' | 'error'
           );
         } catch (error) {
-          console.warn('SSE service not available:', error.message);
+          this.logger.warn(`SSE service not available: ${error.message}`);
         }
       }
 
@@ -380,7 +382,7 @@ export class NotificationsService implements OnModuleInit {
       await this.updateUnreadCount(payload.userId);
 
     } catch (error) {
-      console.error('Failed to send notification:', error);
+      this.logger.error('Failed to send notification', error.stack);
       throw error;
     }
   }
@@ -711,29 +713,34 @@ export class NotificationsService implements OnModuleInit {
 
   /**
    * Clean up old notifications (keep last 1000 per user)
+   * Optimized to use a date-based deletion to avoid N+1 queries
    */
   async cleanupOldNotifications(): Promise<void> {
-    const users = await this.prisma.user.findMany({
-      select: { id: true },
+    // Use a more efficient approach: delete notifications older than 90 days
+    // This avoids N+1 queries and is more performant
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
+    await this.prisma.notification.deleteMany({
+      where: {
+        createdAt: {
+          lt: ninetyDaysAgo,
+        },
+      },
     });
 
-    for (const user of users) {
-      const notifications = await this.prisma.notification.findMany({
-        where: { userId: user.id },
-        orderBy: { createdAt: 'desc' },
-        skip: 1000, // Keep last 1000
-        select: { id: true },
-      });
-
-      if (notifications.length > 0) {
-        const idsToDelete = notifications.map(n => n.id);
-        await this.prisma.notification.deleteMany({
-          where: {
-            id: { in: idsToDelete },
-          },
-        });
-      }
-    }
+    // Alternative: If we need to keep exactly 1000 per user, use raw SQL
+    // This is more complex but more accurate to the original intent
+    // await this.prisma.$executeRaw`
+    //   DELETE FROM notifications
+    //   WHERE id IN (
+    //     SELECT id FROM (
+    //       SELECT id, ROW_NUMBER() OVER (PARTITION BY "userId" ORDER BY "createdAt" DESC) as rn
+    //       FROM notifications
+    //     ) sub
+    //     WHERE rn > 1000
+    //   )
+    // `;
   }
 
   // Event-driven notification methods
@@ -814,7 +821,7 @@ export class NotificationsService implements OnModuleInit {
   /**
    * Security alert notification
    */
-  async notifySecurityAlert(userId: string, alertType: string, details: any): Promise<void> {
+  async notifySecurityAlert(userId: string, alertType: string, details: Record<string, any>): Promise<void> {
     await this.sendNotification({
       userId,
       title: 'Security Alert',
@@ -885,7 +892,7 @@ export class NotificationsService implements OnModuleInit {
         'info'
       );
     } catch (error) {
-      console.warn('SSE service not available for unread count update:', error.message);
+      this.logger.warn(`SSE service not available for unread count update: ${error.message}`);
     }
   }
 

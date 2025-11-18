@@ -1,21 +1,35 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
+import { PrismaService } from './common/prisma.service';
 import helmet from 'helmet';
 import * as compression from 'compression';
 import * as cookieParser from 'cookie-parser';
 
 async function bootstrap() {
+  const logger = new Logger('Bootstrap');
+
   const app = await NestFactory.create(AppModule, {
     logger: ['error', 'warn', 'log', 'debug', 'verbose'],
   });
 
-  // Fix BigInt serialization globally
+  // Fix BigInt serialization globally - use toString() to avoid precision loss
   (BigInt.prototype as any).toJSON = function() {
-    return Number(this);
+    return this.toString();
   };
+
+  // Test database connection on startup
+  const prisma = app.get(PrismaService);
+  try {
+    await prisma.$connect();
+    logger.log('✅ Database connection established successfully');
+  } catch (error) {
+    logger.error('❌ Failed to connect to database', error.stack);
+    logger.error('Please check DATABASE_URL environment variable and ensure PostgreSQL is running');
+    process.exit(1);
+  }
 
   // Security middleware
   app.use(helmet());

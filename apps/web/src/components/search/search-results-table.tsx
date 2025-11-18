@@ -144,9 +144,9 @@ export function SearchResultsTable({
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
                           <span className="text-[12px]">{config.icon}</span>
-                          <Badge 
-                            variant="secondary" 
-                            className={`text-[10px] h-5 bg-${config.color}-50 text-${config.color}-700 border-${config.color}-200`}
+                          <Badge
+                            variant="secondary"
+                            className={`text-[10px] h-5 ${config.className}`}
                           >
                             {config.label}
                           </Badge>

@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
@@ -7,6 +7,7 @@ import { UsersService } from '../users/users.service';
 import { ProjectsService } from '../projects/projects.service';
 import { DatasetsService } from '../datasets/datasets.service';
 import { PrismaService } from '../common/prisma.service';
+import { CacheService } from '../cache/cache.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 
@@ -77,6 +78,8 @@ export interface AuthResponse {
  */
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
@@ -84,6 +87,7 @@ export class AuthService {
     private projectsService: ProjectsService,
     private datasetsService: DatasetsService,
     private prisma: PrismaService,
+    private cacheService: CacheService,
   ) {}
 
   /**
@@ -378,6 +382,9 @@ export class AuthService {
    * @see {@link UsersService.logAuditAction} for audit logging
    */
   async logout(userId: string): Promise<void> {
+    // Invalidate user cache to force fresh database lookup on next request
+    await this.cacheService.invalidateUser(userId);
+
     // Log the logout action
     await this.usersService.logAuditAction(userId, 'LOGOUT', 'user', userId);
   }
@@ -526,7 +533,7 @@ export class AuthService {
       await this.createDemoDataset(defaultProject.id, userId);
     } catch (error) {
       // Log error but don't fail user registration if default setup fails
-      console.error('Failed to create default project and dataset:', error);
+      this.logger.error('Failed to create default project and dataset', error.stack);
     }
   }
 
@@ -622,9 +629,9 @@ Note: This is synthetic sample data for demonstration purposes only. No real per
         processImmediately: true,
       });
 
-      console.log(`Successfully created demo dataset for user ${userId} in project ${projectId}:`, demoDatasetResult.dataset.id);
+      this.logger.log(`Successfully created demo dataset for user ${userId} in project ${projectId}: ${demoDatasetResult.dataset.id}`);
     } catch (error) {
-      console.error('Failed to create demo dataset:', error);
+      this.logger.error('Failed to create demo dataset', error.stack);
       // Don't throw - we don't want to fail user registration
     }
   }

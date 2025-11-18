@@ -86,8 +86,12 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   logErrorToService = (error: Error, errorInfo: ErrorInfo): string => {
-    const eventId = `err_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+    // Generate cryptographically secure random string
+    const array = new Uint8Array(9);
+    crypto.getRandomValues(array);
+    const randomString = Array.from(array, byte => byte.toString(36)).join('').slice(0, 9);
+    const eventId = `err_${Date.now()}_${randomString}`;
+
     const errorDetails = {
       eventId,
       message: error.message,

@@ -122,7 +122,7 @@ export function CreateUserForm({ onCancel, onUserCreated }: CreateUserFormProps)
         lastName: '',
         email: '',
         password: '',
-        role: 'DATA_ENGINEER'
+        role: 'MEMBER'
       });
 
       onUserCreated();
@@ -147,15 +147,15 @@ export function CreateUserForm({ onCancel, onUserCreated }: CreateUserFormProps)
   };
 
   const generatePassword = () => {
-    // Generate a secure random password
+    // Generate a cryptographically secure random password
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-    let password = '';
-    for (let i = 0; i < 12; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
+    const array = new Uint8Array(12);
+    crypto.getRandomValues(array);
+    const password = Array.from(array, byte => chars.charAt(byte % chars.length)).join('');
+
     setFormData(prev => ({ ...prev, password }));
     setShowPassword(true);
-    
+
     // Copy to clipboard
     navigator.clipboard.writeText(password).then(() => {
       toast({
