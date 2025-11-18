@@ -348,11 +348,6 @@ export function FileUpload({
     // Add the processImmediately flag
     formData.append('processImmediately', processImmediately.toString());
 
-    const token = Cookies.get('access_token');
-    if (!token) {
-      throw new Error('Authentication required');
-    }
-
     const xhr = new XMLHttpRequest();
     let timeoutId: NodeJS.Timeout;
 
@@ -438,7 +433,8 @@ export function FileUpload({
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
       xhr.open('POST', `${apiUrl}/datasets/upload`);
-      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      // Use cookie-based authentication instead of Authorization header
+      xhr.withCredentials = true;
       xhr.send(formData);
     });
   };

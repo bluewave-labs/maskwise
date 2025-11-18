@@ -173,6 +173,14 @@ export class DatasetsService {
   }) {
     const { skip = 0, take = 50, projectId } = params || {};
 
+    // Validate pagination parameters
+    if (skip < 0) {
+      throw new BadRequestException('Skip parameter must be non-negative');
+    }
+    if (take <= 0 || take > 100) {
+      throw new BadRequestException('Take parameter must be between 1 and 100');
+    }
+
     let where: any = {
       project: {
         userId: userId,
@@ -183,37 +191,36 @@ export class DatasetsService {
       where.projectId = projectId;
     }
 
-    const datasets = await this.prisma.dataset.findMany({
-      skip,
-      take,
-      where,
-      include: {
-        project: true,
-        jobs: {
-          orderBy: {
-            createdAt: 'desc',
+    // Use Promise.all to fetch data and count in parallel
+    const [datasets, total] = await Promise.all([
+      this.prisma.dataset.findMany({
+        skip,
+        take,
+        where,
+        include: {
+          project: true,
+          jobs: {
+            orderBy: {
+              createdAt: 'desc',
+            },
+            take: 1,
           },
-          take: 1,
-        },
-        _count: {
-          select: {
-            jobs: true,
-            findings: true,
+          _count: {
+            select: {
+              jobs: true,
+              findings: true,
+            },
           },
         },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+        orderBy: {
+          createdAt: 'desc',
+        },
+      }),
+      this.prisma.dataset.count({ where }),
+    ]);
 
-    const total = await this.prisma.dataset.count({ where });
-
-    // Convert BigInt to Number for serialization
-    const serializedDatasets = datasets.map(dataset => ({
-      ...dataset,
-      fileSize: Number(dataset.fileSize),
-    }));
+    // BigInt fileSize will be automatically serialized to string via toJSON
+    const serializedDatasets = datasets;
 
     return {
       data: serializedDatasets,
