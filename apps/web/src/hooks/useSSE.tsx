@@ -25,6 +25,13 @@ export interface SSEHookReturn {
   removeEventListener: (type: string, callback: (event: SSEEvent) => void) => void;
 }
 
+// Generate cryptographically secure random string
+const generateSecureRandomString = (length: number): string => {
+  const array = new Uint8Array(length);
+  crypto.getRandomValues(array);
+  return Array.from(array, byte => byte.toString(36)).join('').slice(0, length);
+};
+
 export const useSSE = (): SSEHookReturn => {
   const { token, isAuthenticated } = useAuth();
   const [status, setStatus] = useState<SSEStatus>({
@@ -56,7 +63,7 @@ export const useSSE = (): SSEHookReturn => {
     setStatus(prev => ({ ...prev, connecting: true, error: null }));
 
     try {
-      const clientId = `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const clientId = `client_${Date.now()}_${generateSecureRandomString(9)}`;
       const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/sse/events?clientId=${clientId}`;
       
       console.log('SSE: Connecting to', url);

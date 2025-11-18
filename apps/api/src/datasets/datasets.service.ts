@@ -508,46 +508,58 @@ export class DatasetsService {
     // Determine file type from MIME type
     const fileType = this.getFileTypeFromMime(file.mimetype);
 
-    // Create dataset record (each file is a dataset in this schema)
-    const dataset = await this.prisma.dataset.create({
-      data: {
-        name: sanitizedDto.description || sanitizedFilename,
-        filename: sanitizedFilename,
-        fileType,
-        fileSize: BigInt(file.size),
-        sourcePath: file.path,
-        sourceType: 'UPLOAD',
-        contentHash,
-        metadataHash: contentHash, // Using same hash for now
-        status: 'PENDING',
-        projectId: sanitizedDto.projectId,
-      },
-    });
-
-    // Create processing job only if requested
-    let job = null;
-    if (uploadFileDto.processImmediately) {
-      job = await this.prisma.job.create({
+    // Use transaction to ensure dataset and job are created atomically
+    const result = await this.prisma.$transaction(async (prisma) => {
+      // Create dataset record (each file is a dataset in this schema)
+      const dataset = await prisma.dataset.create({
         data: {
-          type: 'ANALYZE_PII',
-          status: 'QUEUED',
-          datasetId: dataset.id,
-          createdById: userId,
-          policyId: sanitizedDto.policyId || await this.getDefaultPolicyId(),
-          metadata: {
-            fileName: sanitizedFilename,
-            originalFileName: file.originalname,
-            fileSize: file.size,
-            mimeType: file.mimetype,
-            contentHash,
-            securityValidation: {
-              riskLevel: fileValidation.riskLevel,
-              detectedFileType: fileValidation.metadata?.detectedFileType,
-              validationPassed: true
-            }
-          },
+          name: sanitizedDto.description || sanitizedFilename,
+          filename: sanitizedFilename,
+          fileType,
+          fileSize: BigInt(file.size),
+          sourcePath: file.path,
+          sourceType: 'UPLOAD',
+          contentHash,
+          metadataHash: contentHash, // Using same hash for now
+          status: 'PENDING',
+          projectId: sanitizedDto.projectId,
         },
       });
+
+      // Create processing job only if requested
+      let job = null;
+      if (uploadFileDto.processImmediately) {
+        const defaultPolicyId = await this.getDefaultPolicyId();
+        job = await prisma.job.create({
+          data: {
+            type: 'ANALYZE_PII',
+            status: 'QUEUED',
+            datasetId: dataset.id,
+            createdById: userId,
+            policyId: sanitizedDto.policyId || defaultPolicyId,
+            metadata: {
+              fileName: sanitizedFilename,
+              originalFileName: file.originalname,
+              fileSize: file.size,
+              mimeType: file.mimetype,
+              contentHash,
+              securityValidation: {
+                riskLevel: fileValidation.riskLevel,
+                detectedFileType: fileValidation.metadata?.detectedFileType,
+                validationPassed: true
+              }
+            },
+          },
+        });
+      }
+
+      return { dataset, job };
+    });
+
+    const { dataset, job } = result;
+
+    // Queue the job for processing (outside transaction)
+    if (uploadFileDto.processImmediately && job) {
 
       // Queue the job for processing
       await this.queueService.addPiiAnalysisJob({

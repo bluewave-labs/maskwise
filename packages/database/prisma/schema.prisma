@@ -13,7 +13,7 @@ model User {
   id        String   @id @default(cuid())
   email     String   @unique
   password  String
-  role      UserRole @default(ADMIN)
+  role      UserRole @default(MEMBER)
   firstName String?
   lastName  String?
   createdAt DateTime @default(now())
@@ -47,6 +47,7 @@ model Project {
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   datasets Dataset[]
 
+  @@index([userId])
   @@map("projects")
 }
 
@@ -84,6 +85,9 @@ model Dataset {
   jobs      Job[]
   findings  Finding[]
 
+  @@index([projectId])
+  @@index([status])
+  @@index([createdAt])
   @@map("datasets")
 }
 
@@ -108,6 +112,12 @@ model Job {
   policy      Policy? @relation(fields: [policyId], references: [id])
   policyId    String?
 
+  @@index([datasetId])
+  @@index([createdById])
+  @@index([policyId])
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
   @@map("jobs")
 }
 
@@ -128,6 +138,7 @@ model Finding {
   datasetId String
   dataset   Dataset @relation(fields: [datasetId], references: [id], onDelete: Cascade)
 
+  @@index([datasetId])
   @@map("findings")
 }
 
@@ -162,6 +173,7 @@ model PolicyVersion {
   policy   Policy @relation(fields: [policyId], references: [id], onDelete: Cascade)
 
   @@unique([policyId, version])
+  @@index([policyId])
   @@map("policy_versions")
 }
 
@@ -194,6 +206,10 @@ model AuditLog {
   userId String
   user   User   @relation(fields: [userId], references: [id])
 
+  @@index([userId])
+  @@index([action])
+  @@index([resource])
+  @@index([createdAt])
   @@map("audit_logs")
 }
 
@@ -339,11 +355,14 @@ model ApiKey {
   expiresAt   DateTime? // Optional expiration
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
+
   // Relations
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@index([prefix])
   @@map("api_keys")
 }
 
@@ -361,7 +380,8 @@ model ReportTemplate {
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   generatedReports GeneratedReport[]
-  
+
+  @@index([userId])
   @@map("report_templates")
 }
 
@@ -381,7 +401,9 @@ model GeneratedReport {
   userId       String
   user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   template     ReportTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
-  
+
+  @@index([userId])
+  @@index([templateId])
   @@map("generated_reports")
 }
 

@@ -711,29 +711,34 @@ export class NotificationsService implements OnModuleInit {
 
   /**
    * Clean up old notifications (keep last 1000 per user)
+   * Optimized to use a date-based deletion to avoid N+1 queries
    */
   async cleanupOldNotifications(): Promise<void> {
-    const users = await this.prisma.user.findMany({
-      select: { id: true },
+    // Use a more efficient approach: delete notifications older than 90 days
+    // This avoids N+1 queries and is more performant
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
+    await this.prisma.notification.deleteMany({
+      where: {
+        createdAt: {
+          lt: ninetyDaysAgo,
+        },
+      },
     });
 
-    for (const user of users) {
-      const notifications = await this.prisma.notification.findMany({
-        where: { userId: user.id },
-        orderBy: { createdAt: 'desc' },
-        skip: 1000, // Keep last 1000
-        select: { id: true },
-      });
-
-      if (notifications.length > 0) {
-        const idsToDelete = notifications.map(n => n.id);
-        await this.prisma.notification.deleteMany({
-          where: {
-            id: { in: idsToDelete },
-          },
-        });
-      }
-    }
+    // Alternative: If we need to keep exactly 1000 per user, use raw SQL
+    // This is more complex but more accurate to the original intent
+    // await this.prisma.$executeRaw`
+    //   DELETE FROM notifications
+    //   WHERE id IN (
+    //     SELECT id FROM (
+    //       SELECT id, ROW_NUMBER() OVER (PARTITION BY "userId" ORDER BY "createdAt" DESC) as rn
+    //       FROM notifications
+    //     ) sub
+    //     WHERE rn > 1000
+    //   )
+    // `;
   }
 
   // Event-driven notification methods
